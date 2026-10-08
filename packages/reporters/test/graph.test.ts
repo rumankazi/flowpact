@@ -141,6 +141,47 @@ describe('calls to workflows that are not reusable (review #23)', () => {
   });
 });
 
+describe('$/ and workspace-relative uses:', () => {
+  it('draws $/ calls and checkout-relative action uses as local edges', async () => {
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
+    const r = analyze({
+      root: '/v',
+      fs: memoryFileSystem({
+        '.github/workflows/a.yml': [
+          'on: push',
+          'jobs:',
+          '  x:',
+          '    uses: $/.github/workflows/b.yml',
+          '  y:',
+          '    runs-on: x',
+          '    steps:',
+          '      - uses: actions/checkout@v5',
+          '        with: { path: src }',
+          '      - uses: ./src/.github/actions/act',
+          '      - uses: $/.github/actions/act',
+          '',
+        ].join('\n'),
+        '.github/workflows/b.yml':
+          'on: workflow_call\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
+        '.github/actions/act/action.yml': 'runs:\n  using: composite\n  steps: []\n',
+      }),
+      validateSchema: false,
+      repository: 'a/b',
+    });
+    const g = buildCallGraph(r.index);
+    expect(g.nodes.map((n) => [n.kind, n.id])).toEqual([
+      ['workflow', '.github/workflows/a.yml'],
+      ['workflow', '.github/workflows/b.yml'],
+      ['action', '.github/actions/act'],
+    ]);
+    expect(g.edges.map((e) => `${e.via} -> ${e.to}`)).toEqual([
+      'jobs.x -> .github/workflows/b.yml',
+      'jobs.y › steps[1] -> .github/actions/act',
+      'jobs.y › steps[2] -> .github/actions/act',
+    ]);
+  });
+});
+
 describe('mermaid ids', () => {
   it('trims underscores in linear time (js/polynomial-redos)', async () => {
     const { memoryFileSystem } = await import('@flowpact/core');

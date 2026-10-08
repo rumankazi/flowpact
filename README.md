@@ -97,7 +97,7 @@ fails when they are out of date.
 
 ## Status
 
-Shipped: the engine, 50 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
+Shipped: the engine, 51 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
 the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`), the GitHub Action, a language server and the
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact) (diagnostics as you
 type, hover traces, go to definition across workflow calls; also on
