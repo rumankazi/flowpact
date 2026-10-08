@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { DefaultArtifactClient } from '@actions/artifact';
@@ -418,12 +418,18 @@ async function driftArtifact(
   runId: string | undefined,
 ): Promise<DriftArtifact> {
   // One folder per step (and project), so several flowpact steps in a job never overwrite each other's patch.
-  const dir = join(
-    process.env.RUNNER_TEMP || tmpdir(),
-    `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? 'flowpact')}-${slug(prefix)}`,
-  );
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
+  const name = `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? 'flowpact')}-${slug(prefix)}`;
+  const runnerTemp = process.env.RUNNER_TEMP;
+  let dir: string;
+  if (runnerTemp) {
+    // The runner's per-job folder: a predictable path later steps can read (the summary names it).
+    dir = join(runnerTemp, name);
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+  } else {
+    // Outside Actions the shared temp folder is world-writable: a fresh, private folder, never a predictable path.
+    dir = mkdtempSync(join(tmpdir(), `${name}-`));
+  }
   // Paths in the patch and the artifact are relative to the repository, not to working-directory.
   const repoPlan: ContractPlan = {
     ...plan,

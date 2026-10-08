@@ -1,4 +1,12 @@
-import type { AnalysisResult, ContractPlan, Finding, ImpactResult, Loc, Severity } from '@flowpact/core';
+import {
+  type AnalysisResult,
+  type ContractPlan,
+  type Finding,
+  type ImpactResult,
+  type Loc,
+  type Severity,
+  trimChar,
+} from '@flowpact/core';
 import { buildCallGraph, renderMermaid } from './graph';
 import { describeDeclared, listedChanges, shortCommit } from './impact';
 
@@ -28,6 +36,8 @@ const SEVERITY: Record<Severity, { icon: string; title: string; noun: (n: number
 const STATUS_LABEL = { create: 'new', update: 'changed', delete: 'removed', unchanged: 'unchanged' } as const;
 
 const PROSE_ESCAPES: Record<string, string> = {
+  // A backslash would otherwise cancel the escape that follows it: `\[x\](url)` would become a link again.
+  '\\': '\\\\',
   '&': '&amp;',
   '<': '&lt;',
   '>': '&gt;',
@@ -78,9 +88,18 @@ function text(s: string): string {
   return out;
 }
 
+/**
+ * Fits Markdown that is already safe (escaped prose, code spans, links) into a table cell: pipes and line breaks.
+ * GFM splits cells on a pipe after an even run of backslashes; prose has its backslashes doubled by `text`, so the
+ * added one always makes the run odd, and the table parser removes it again before the inline content is rendered.
+ */
+function tableCell(md: string): string {
+  return md.split('|').join('\\|').replace(/\r?\n/g, '<br/>');
+}
+
 /** Escapes text for a table cell. */
 function cell(s: string): string {
-  return text(s).replace(/\|/g, '\\|').replace(/\r?\n/g, '<br/>');
+  return tableCell(text(s));
 }
 
 /** Inline code that survives backticks inside the value. */
@@ -96,7 +115,7 @@ function locLink(
 ): string {
   const label = code(`${loc.file}:${loc.line}${withColumn ? `:${loc.column}` : ''}`);
   if (!opts.repoUrl || !opts.sha) return label;
-  const base = opts.repoUrl.replace(/\/+$/, '');
+  const base = trimChar(opts.repoUrl, '/');
   const path = loc.file.split('/').map(encodeURIComponent).join('/');
   return `[${label}](${base}/blob/${opts.sha}/${path}#L${loc.line})`;
 }
@@ -173,7 +192,7 @@ function renderContracts(plan: ContractPlan, opts: MarkdownOptions): string[] {
   for (const e of changed) {
     const breaking = e.changes.filter((c) => c.breaking).length;
     const status = `${STATUS_LABEL[e.status]}${e.invalid ? ' (invalid)' : ''}`;
-    out.push(`| ${cell(code(e.file))} | ${status} | ${breaking} |`);
+    out.push(`| ${tableCell(code(e.file))} | ${status} | ${breaking} |`);
   }
   const withChanges = changed.filter((e) => e.changes.length > 0 || e.invalid);
   if (withChanges.length) {
@@ -232,7 +251,7 @@ function renderImpactMarkdown(impact: ImpactResult, opts: MarkdownOptions): stri
     const limit = Math.max(1, opts.maxFindings ?? 50);
     for (const c of changes.slice(0, limit)) {
       out.push(
-        `| ${c.level === 'major' ? '**major**' : c.level}${c.certain ? '' : ' (uncertain)'} | ${cell(code(c.unit))} | ${cell(c.message)} |`,
+        `| ${c.level === 'major' ? '**major**' : c.level}${c.certain ? '' : ' (uncertain)'} | ${tableCell(code(c.unit))} | ${cell(c.message)} |`,
       );
     }
     if (changes.length > limit)
@@ -307,7 +326,7 @@ export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {
     for (const f of result.suppressed.slice(0, max)) {
       const o = f.override;
       out.push(
-        `| [${code(f.code)}](${f.docsUrl}) | ${cell(locLink(f.loc, opts))} | ${cell(o.reason)} | ${o.expires ?? '—'} | ${o.owner ? cell(o.owner) : '—'} |`,
+        `| [${code(f.code)}](${f.docsUrl}) | ${tableCell(locLink(f.loc, opts))} | ${cell(o.reason)} | ${o.expires ?? '—'} | ${o.owner ? cell(o.owner) : '—'} |`,
       );
     }
     if (result.suppressed.length > max) {

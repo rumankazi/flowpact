@@ -15,8 +15,13 @@ const SEVERITY_BADGE: Record<string, string> = {
   off: '⚪ off (opt-in)',
 };
 
-/** Escapes text for MDX prose (braces and angle brackets would be parsed as JSX). */
-const mdx = (s: string) => s.replace(/[{}<>]/g, (c) => `\\${c}`);
+/**
+ * Escapes text for MDX prose (braces and angle brackets would be parsed as JSX). Backslashes too: `\{` would otherwise
+ * become an escaped backslash followed by a `{` that starts an expression.
+ */
+const mdx = (s: string) => s.replace(/[\\{}<>]/g, (c) => `\\${c}`);
+/** `mdx` for a table cell: pipes are escaped in the same pass, after an already escaped backslash run. */
+const mdxCell = (s: string) => s.replace(/[\\{}<>|]/g, (c) => `\\${c}`);
 
 export function rulePage(rule: RuleDefinition): string {
   const category = Object.values(CATEGORIES).find((c) => c.id === rule.category)!;
@@ -109,7 +114,7 @@ export function indexPage(rules: RuleDefinition[]): string {
     );
     for (const r of inCat) {
       lines.push(
-        `| [\`${r.code}\`](/docs/rules/${r.code.toLowerCase()}) | \`${r.name}\` | ${SEVERITY_BADGE[r.defaultSeverity]} | ${mdx(r.docs.summary).replace(/\|/g, '\\|')} |`,
+        `| [\`${r.code}\`](/docs/rules/${r.code.toLowerCase()}) | \`${r.name}\` | ${SEVERITY_BADGE[r.defaultSeverity]} | ${mdxCell(r.docs.summary)} |`,
       );
     }
     lines.push('');

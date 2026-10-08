@@ -289,11 +289,8 @@ describe('flowpact explain / rules / --version', () => {
 
   it('prints version and schema versions', async () => {
     const r = await flowpact(['--version']);
-    expect(r.stdout.trim()).toMatch(
-      new RegExp(
-        `^flowpact v${VERSION.replace(/\./g, '\\.')} · config schema v1 · contract schema v1 · report schema v1 · node v`,
-      ),
-    );
+    const banner = `flowpact v${VERSION} · config schema v1 · contract schema v1 · report schema v1 · node v`;
+    expect(r.stdout.trim().slice(0, banner.length)).toBe(banner);
   });
 
   it('is an executable single-file bundle', () => {

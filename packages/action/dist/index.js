@@ -58701,7 +58701,7 @@ var require_cronstrue = __commonJS({
 
 // src/main.ts
 import { execFileSync as execFileSync2 } from "child_process";
-import { mkdirSync as mkdirSync3, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
+import { mkdirSync as mkdirSync3, mkdtempSync, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
 import { tmpdir } from "os";
 import { dirname as dirname4, join as join8, posix as posix3, relative as relative5, resolve as resolve4, sep as sep3 } from "path";
 
@@ -127178,6 +127178,26 @@ function compareLoc(a, b) {
   return a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column;
 }
 
+// ../core/src/text.ts
+function escapeControl(s, keepNewlines = false) {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, (ch) => {
+    if (keepNewlines && ch === "\n") return ch;
+    if (ch === "\n") return "\\n";
+    if (ch === "	") return "\\t";
+    return `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+  });
+}
+function neutralizeWorkflowCommands(s) {
+  return s.replace(/^((?:\s|\u001b\[[\d;]*m)*):(?=:)/gm, "$1:\u200B");
+}
+function trimChar(s, ch, { start = false } = {}) {
+  let from = 0;
+  let to = s.length;
+  if (start) while (from < to && s[from] === ch) from++;
+  while (to > from && s[to - 1] === ch) to--;
+  return s.slice(from, to);
+}
+
 // ../core/src/parse.ts
 function createParseContext(repository) {
   let id = 0;
@@ -127415,7 +127435,7 @@ function classifyUses(raw, at, loc, ctx) {
   const value = raw.trim();
   if (value.startsWith("docker://")) return { raw, loc, kind: "docker" };
   if (value.startsWith("./")) {
-    const target = posix.normalize(value.slice(2).replace(/\/+$/, "") || ".").replace(/\/+$/, "") || ".";
+    const target = trimChar(posix.normalize(trimChar(value.slice(2), "/") || "."), "/") || ".";
     if (at === "job") return { raw, loc, kind: "local-workflow", target };
     return { raw, loc, kind: "local-action", target };
   }
@@ -132857,19 +132877,6 @@ function defineRule(rule) {
   return rule;
 }
 
-// ../core/src/text.ts
-function escapeControl(s, keepNewlines = false) {
-  return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, (ch) => {
-    if (keepNewlines && ch === "\n") return ch;
-    if (ch === "\n") return "\\n";
-    if (ch === "	") return "\\t";
-    return `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
-  });
-}
-function neutralizeWorkflowCommands(s) {
-  return s.replace(/^((?:\s|\u001b\[[\d;]*m)*):(?=:)/gm, "$1:\u200B");
-}
-
 // ../core/src/rules/util.ts
 function* refsOf(unit) {
   for (const site of unit.sites)
@@ -135631,12 +135638,7 @@ function gitFileSystem(root, commit) {
     }
   }
   const cache = /* @__PURE__ */ new Map();
-  const norm = (p) => {
-    const s = p.startsWith("./") ? p.slice(2) : p;
-    let end = s.length;
-    while (end > 0 && s[end - 1] === "/") end--;
-    return s.slice(0, end);
-  };
+  const norm = (p) => trimChar(p.startsWith("./") ? p.slice(2) : p, "/");
   const under = (dir2) => {
     const d = norm(dir2);
     return d === "" || d === "." ? "" : `${d}/`;
@@ -136180,7 +136182,8 @@ function safeIds(graph) {
   const out = /* @__PURE__ */ new Map();
   const taken = /* @__PURE__ */ new Set();
   for (const n of graph.nodes) {
-    const base = `${prefix2[n.kind]}_${n.id.replace(/^remote:/, "").replace(/^\.github\/(workflows|actions)\//, "").replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "")}`;
+    const slug2 = n.id.replace(/^remote:/, "").replace(/^\.github\/(workflows|actions)\//, "").replace(/[^A-Za-z0-9_]+/g, "_");
+    const base = `${prefix2[n.kind]}_${trimChar(slug2, "_", { start: true })}`;
     let id = base;
     for (let i = 2; taken.has(id); i++) id = `${base}_${i}`;
     taken.add(id);
@@ -136242,6 +136245,8 @@ var SEVERITY = {
 };
 var STATUS_LABEL = { create: "new", update: "changed", delete: "removed", unchanged: "unchanged" };
 var PROSE_ESCAPES = {
+  // A backslash would otherwise cancel the escape that follows it: `\[x\](url)` would become a link again.
+  "\\": "\\\\",
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
@@ -136285,8 +136290,11 @@ function text(s) {
   }
   return out;
 }
+function tableCell(md) {
+  return md.split("|").join("\\|").replace(/\r?\n/g, "<br/>");
+}
 function cell(s) {
-  return text(s).replace(/\|/g, "\\|").replace(/\r?\n/g, "<br/>");
+  return tableCell(text(s));
 }
 function code(s) {
   const fence = s.includes("`") ? "``" : "`";
@@ -136295,7 +136303,7 @@ function code(s) {
 function locLink(loc, opts, withColumn = true) {
   const label = code(`${loc.file}:${loc.line}${withColumn ? `:${loc.column}` : ""}`);
   if (!opts.repoUrl || !opts.sha) return label;
-  const base = opts.repoUrl.replace(/\/+$/, "");
+  const base = trimChar(opts.repoUrl, "/");
   const path4 = loc.file.split("/").map(encodeURIComponent).join("/");
   return `[${label}](${base}/blob/${opts.sha}/${path4}#L${loc.line})`;
 }
@@ -136365,7 +136373,7 @@ function renderContracts(plan, opts) {
   for (const e of changed) {
     const breaking = e.changes.filter((c) => c.breaking).length;
     const status = `${STATUS_LABEL[e.status]}${e.invalid ? " (invalid)" : ""}`;
-    out.push(`| ${cell(code(e.file))} | ${status} | ${breaking} |`);
+    out.push(`| ${tableCell(code(e.file))} | ${status} | ${breaking} |`);
   }
   const withChanges = changed.filter((e) => e.changes.length > 0 || e.invalid);
   if (withChanges.length) {
@@ -136423,7 +136431,7 @@ function renderImpactMarkdown(impact, opts) {
     const limit = Math.max(1, opts.maxFindings ?? 50);
     for (const c of changes.slice(0, limit)) {
       out.push(
-        `| ${c.level === "major" ? "**major**" : c.level}${c.certain ? "" : " (uncertain)"} | ${cell(code(c.unit))} | ${cell(c.message)} |`
+        `| ${c.level === "major" ? "**major**" : c.level}${c.certain ? "" : " (uncertain)"} | ${tableCell(code(c.unit))} | ${cell(c.message)} |`
       );
     }
     if (changes.length > limit)
@@ -136492,7 +136500,7 @@ function renderMarkdown(result, opts = {}) {
     for (const f of result.suppressed.slice(0, max)) {
       const o = f.override;
       out.push(
-        `| [${code(f.code)}](${f.docsUrl}) | ${cell(locLink(f.loc, opts))} | ${cell(o.reason)} | ${o.expires ?? "\u2014"} | ${o.owner ? cell(o.owner) : "\u2014"} |`
+        `| [${code(f.code)}](${f.docsUrl}) | ${tableCell(locLink(f.loc, opts))} | ${cell(o.reason)} | ${o.expires ?? "\u2014"} | ${o.owner ? cell(o.owner) : "\u2014"} |`
       );
     }
     if (result.suppressed.length > max) {
@@ -136887,12 +136895,16 @@ function artifactReadme(plan, artifactName, runId) {
   ].join("\n");
 }
 async function driftArtifact(plan, prefix2, inputs, runId) {
-  const dir2 = join8(
-    process.env.RUNNER_TEMP || tmpdir(),
-    `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? "flowpact")}-${slug(prefix2)}`
-  );
-  rmSync3(dir2, { recursive: true, force: true });
-  mkdirSync3(dir2, { recursive: true });
+  const name = `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? "flowpact")}-${slug(prefix2)}`;
+  const runnerTemp = process.env.RUNNER_TEMP;
+  let dir2;
+  if (runnerTemp) {
+    dir2 = join8(runnerTemp, name);
+    rmSync3(dir2, { recursive: true, force: true });
+    mkdirSync3(dir2, { recursive: true });
+  } else {
+    dir2 = mkdtempSync(join8(tmpdir(), `${name}-`));
+  }
   const repoPlan = {
     ...plan,
     entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix2, e.file) }))

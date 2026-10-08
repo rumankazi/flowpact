@@ -69,7 +69,14 @@ export function parseAnsi(input: string): Span[][] {
   return lines;
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+/** Escapes text for SVG content and attribute values. */
+const esc = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 export function ansiToSvg(input: string, opts: { title?: string; prompt?: string } = {}): string {
   const lines = parseAnsi(opts.prompt ? `\u001B[32m$\u001B[0m ${opts.prompt}\n${input}` : input);

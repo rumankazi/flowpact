@@ -186,6 +186,13 @@ describe('renderMarkdown contracts and suppressions', () => {
     expect(out).toContain('Kept for callers on v1 \\| removed in v3 | 2099-01-01 | &#64;platform |');
   });
 
+  it('links the location of a suppressed finding instead of escaping the link', () => {
+    const out = renderMarkdown(r, { repoUrl: 'https://github.com/o/r', sha: 'abc' });
+    const row = out.split('\n').find((l) => l.includes('Kept for callers on v1'))!;
+    expect(row).toMatch(/\| \[`[^`]+`\]\(https:\/\/github\.com\/o\/r\/blob\/abc\/[^)]+\) \|/);
+    expect(row).not.toContain('\\[');
+  });
+
   it('says when contracts are up to date', () => {
     const files: Record<string, string> = { [`${WF}/release.yml`]: caller, [`${WF}/deploy.yml`]: deployV1 };
     const index = analyze({ root: '/r', fs: memoryFileSystem(files), validateSchema: false }).index;
@@ -221,5 +228,25 @@ describe('markdown escaping of untrusted names', () => {
     expect(message).toContain('&lt;a href=');
     expect(message).toContain('\\[link\\](https://evil.example)');
     expect(message).toContain('&#64;team');
+  });
+
+  it('escapes backslashes, so one cannot cancel the escape of a link bracket or a table pipe', async () => {
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
+    const evil = '\\[x\\](https://evil.example) a\\|b';
+    const r = analyze({
+      root: '/v',
+      fs: memoryFileSystem({
+        '.github/workflows/c.yml': `on: push\njobs:\n  call:\n    uses: ./.github/workflows/r.yml\n    with:\n      ${JSON.stringify(evil)}: 1\n`,
+        '.github/workflows/r.yml':
+          'on:\n  workflow_call:\n    inputs:\n      a: {}\njobs:\n  j:\n    runs-on: x\n    steps:\n      - run: echo ${{ inputs.a }}\n',
+      }),
+      validateSchema: false,
+      repository: 'a/b',
+    });
+    const message = renderMarkdown(r)
+      .split('\n')
+      .find((l) => l.startsWith('.github/workflows/r.yml has no input'))!;
+    // Each backslash is doubled, so it renders as itself and the bracket escapes stay in force.
+    expect(message).toContain('\\\\\\[x\\\\\\](https://evil.example) a\\\\|b');
   });
 });

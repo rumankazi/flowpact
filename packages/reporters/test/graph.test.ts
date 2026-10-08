@@ -140,3 +140,27 @@ describe('calls to workflows that are not reusable (review #23)', () => {
     expect(edgeLabel(g.edges[0]!)).toBe('jobs.x (not reusable)');
   });
 });
+
+describe('mermaid ids', () => {
+  it('trims underscores in linear time (js/polynomial-redos)', async () => {
+    const { memoryFileSystem } = await import('@flowpact/core');
+    // A long run of separators between two letters: `/_+$/` retried it from every position.
+    const name = `a${'_-'.repeat(40_000)}x`;
+    const r = analyze({
+      root: '/r',
+      fs: memoryFileSystem({
+        '.github/workflows/ci.yml': `on: push\njobs:\n  a:\n    uses: ./.github/workflows/${name}.yml\n`,
+        [`.github/workflows/${name}.yml`]:
+          'on: workflow_call\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
+        '.github/workflows/__edge__.yml':
+          'on: workflow_call\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
+      }),
+      validateSchema: false,
+    });
+    const started = performance.now();
+    const out = renderMermaid(buildCallGraph(r.index));
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(out).toMatch(/ wf_a_+x_yml\(/);
+    expect(out).toContain(' wf_edge___yml(');
+  });
+});

@@ -3,6 +3,7 @@ import {
   type JobDecl,
   type ProjectIndex,
   sym,
+  trimChar,
   type UnitDecl,
   type UsesRef,
 } from '@flowpact/core';
@@ -157,11 +158,11 @@ function safeIds(graph: CallGraph): Map<string, string> {
   const out = new Map<string, string>();
   const taken = new Set<string>();
   for (const n of graph.nodes) {
-    const base = `${prefix[n.kind]}_${n.id
+    const slug = n.id
       .replace(/^remote:/, '')
       .replace(/^\.github\/(workflows|actions)\//, '')
-      .replace(/[^A-Za-z0-9_]+/g, '_')
-      .replace(/^_+|_+$/g, '')}`;
+      .replace(/[^A-Za-z0-9_]+/g, '_');
+    const base = `${prefix[n.kind]}_${trimChar(slug, '_', { start: true })}`;
     let id = base;
     for (let i = 2; taken.has(id); i++) id = `${base}_${i}`;
     taken.add(id);
