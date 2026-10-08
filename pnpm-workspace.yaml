@@ -3,5 +3,7 @@ packages:
   - apps/*
 allowBuilds:
   esbuild: true
+  # Installs vsce's native signing binary; packaging and publishing do not need it.
+  '@vscode/vsce-sign': false
 minimumReleaseAgeExclude:
   - execa@10.1.0

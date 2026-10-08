@@ -47,7 +47,8 @@ export function startServer(connection: Connection): void {
           if (r.level === 'error') connection.console.error(line);
           else if (r.level === 'warn') connection.console.warn(line);
           else if (r.level === 'info') connection.console.info(line);
-          else connection.console.log(line);
+          // Not `log`: editors filter `debug` by the output's log level, while `log` lines always show.
+          else connection.console.debug(line);
         },
       },
     });

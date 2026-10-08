@@ -4,6 +4,7 @@
     "includes": [
       "**",
       "!**/dist",
+      "!**/.vscode-test",
       "!**/coverage",
       "!**/.next",
       "!**/out",

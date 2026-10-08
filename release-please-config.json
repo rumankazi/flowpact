@@ -90,6 +90,11 @@
         },
         {
           "type": "json",
+          "path": "packages/vscode/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "apps/docs/package.json",
           "jsonpath": "$.version"
         },

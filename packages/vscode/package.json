@@ -1,0 +1,158 @@
+{
+  "name": "vscode-flowpact",
+  "displayName": "flowpact",
+  "description": "Diagnostics, hover traces and go to definition across GitHub Actions workflow calls: inputs, secrets, outputs and matrices checked as you type.",
+  "version": "0.5.0",
+  "private": true,
+  "publisher": "rumankazi",
+  "license": "MIT",
+  "author": "Ruman Kazi",
+  "icon": "icon.png",
+  "homepage": "https://rumankazi.github.io/flowpact/docs/editors",
+  "bugs": {
+    "url": "https://github.com/rumankazi/flowpact/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rumankazi/flowpact.git",
+    "directory": "packages/vscode"
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "github-actions",
+    "workflow",
+    "reusable-workflows",
+    "actions",
+    "ci",
+    "lint",
+    "matrix",
+    "language-server"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/.github/workflows/**",
+    "workspaceContains:**/action.yml",
+    "workspaceContains:**/action.yaml"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "flowpact plugins run JavaScript from the repository, so they load only in trusted workspaces. Everything else works in Restricted Mode.",
+      "restrictedConfigurations": [
+        "flowpact.plugins"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "flowpact reads workflow files from disk."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "flowpact.restartServer",
+        "title": "Restart Language Server",
+        "category": "flowpact"
+      },
+      {
+        "command": "flowpact.showOutput",
+        "title": "Show Output",
+        "category": "flowpact"
+      }
+    ],
+    "configuration": {
+      "title": "flowpact",
+      "properties": {
+        "flowpact.plugins": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Load the [plugins](https://rumankazi.github.io/flowpact/docs/custom-rules) the flowpact config lists. They run JavaScript from the repository, so they never load in an untrusted workspace, whatever this setting says."
+        },
+        "flowpact.contracts": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "auto",
+            "on",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Compare with the committed contracts when `.github/flowpact/contracts/` exists.",
+            "Always compare with the committed contracts.",
+            "Never compare with the committed contracts."
+          ],
+          "default": "auto",
+          "markdownDescription": "Report [contract](https://rumankazi.github.io/flowpact/docs/contracts) drift and breaking interface changes (`FP801`–`FP805`), as `flowpact check` does."
+        },
+        "flowpact.overlappingRules": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "auto",
+            "show",
+            "hide"
+          ],
+          "enumDescriptions": [
+            "Hide them in files you open in the editor while the GitHub Actions extension runs: it reports the same problems there.",
+            "Always show them.",
+            "Never show them."
+          ],
+          "default": "auto",
+          "markdownDescription": "`FP502`–`FP505` (expression syntax, schema, YAML syntax and context availability) repeat checks the [GitHub Actions](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions) extension makes."
+        },
+        "flowpact.hiddenRules": {
+          "scope": "window",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Rule codes not to show in the editor, e.g. `FP604`. To turn a rule off everywhere (CLI and CI too), set it to `off` in the flowpact config instead."
+        },
+        "flowpact.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "messages",
+            "verbose"
+          ],
+          "default": "messages",
+          "markdownDescription": "How much of each message between VS Code and the language server to show when the flowpact output's log level is Trace (**Developer: Set Log Level…**): `messages` names them, `verbose` adds their content."
+        }
+      }
+    }
+  },
+  "files": [
+    "dist/extension.js",
+    "dist/server.mjs",
+    "icon.png",
+    "LICENSE"
+  ],
+  "vsce": {
+    "dependencies": false
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "package": "vsce package --no-dependencies",
+    "test:e2e": "node e2e/run.mjs"
+  },
+  "devDependencies": {
+    "@flowpact/language-server": "workspace:*",
+    "@types/vscode": "1.101.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "tsup": "^8.5.1",
+    "vscode-languageclient": "10.1.2"
+  }
+}
