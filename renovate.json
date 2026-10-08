@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommits", ":semanticPrefixFixDepsChoreOthers"],
-  "description": "Pull request titles follow Conventional Commits (the PR title check and release-please rely on it).",
+  "description": "Pull request titles follow Conventional Commits (the PR title check and release-please rely on it). pnpm 11 refuses versions younger than a day, hence minimumReleaseAge; commits by the release bot (rebuilt action bundle) do not stop Renovate from updating its branches.",
   "ignorePaths": [
     "**/node_modules/**",
     "**/vendor/**",
@@ -30,6 +30,13 @@
       "description": "Runtime dependencies are bundled into the CLI and the action: fix(deps), so they ship in a patch release.",
       "matchDepTypes": ["dependencies"],
       "semanticCommitType": "fix"
+    },
+    {
+      "description": "The docs site is not published to npm: its dependencies are chore(deps), not releases.",
+      "matchFileNames": ["apps/docs/package.json"],
+      "semanticCommitType": "chore"
     }
-  ]
+  ],
+  "minimumReleaseAge": "2 days",
+  "gitIgnoredAuthors": ["290186233+rk-release-bot[bot]@users.noreply.github.com"]
 }
