@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow dispatches this for release pull requests, which GITHUB_TOKEN cannot trigger by pushing.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -54,3 +56,131 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:build
       - run: pnpm docs:check
+
+  smoke:
+    # The packed CLI, installed the way users install it, on every platform.
+    name: Smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter workflow-contracts build
+      - name: Pack the CLI and check the tarball
+        shell: bash
+        working-directory: packages/cli
+        run: |
+          node ../../scripts/check-pack.mjs
+          tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP")
+          npm install --global "$RUNNER_TEMP/$tarball"
+      - run: node scripts/smoke.mjs
+
+  action-dist:
+    name: Action bundle is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wfc/action build
+      - name: Compare with the committed bundle
+        run: |
+          if [ -n "$(git status --porcelain packages/action/dist)" ]; then
+            git status --short packages/action/dist
+            echo "::error::packages/action/dist is out of date. Run 'pnpm --filter @wfc/action build' and commit the result."
+            exit 1
+          fi
+
+  action-dogfood:
+    name: Action on this repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: wfc
+        uses: ./
+        with:
+          mode: lint
+          fail-on: warning
+          report-sarif: wfc.sarif
+      - name: Upload SARIF to code scanning
+        # Pull requests from forks get a read-only token, so only upload for this repository's own refs.
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: wfc.sarif
+          category: wfc
+
+  action-smoke:
+    # The committed action bundle against fixtures with known results: outputs, reports and the drift artifact.
+    name: Action smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: incident
+        name: lint finds the matrix incident
+        uses: ./
+        with:
+          working-directory: fixtures/incident-matrix
+          fail-on: never
+          annotations: false
+          summary: false
+          report-json: incident.json
+      - id: drift
+        name: check reports contract drift
+        uses: ./
+        with:
+          mode: check
+          working-directory: fixtures/contracts-drift
+          fail-on: never
+          annotations: false
+          artifact-name: wfc-contracts-smoke-${{ github.run_attempt }}
+          retention-days: 1
+      - name: Check the outputs
+        env:
+          INCIDENT_ERRORS: ${{ steps.incident.outputs.errors }}
+          INCIDENT_EXIT: ${{ steps.incident.outputs.exit-code }}
+          DRIFT: ${{ steps.drift.outputs.drift }}
+          PATCH: ${{ steps.drift.outputs.patch }}
+          ARTIFACT_ID: ${{ steps.drift.outputs.artifact-id }}
+        run: |
+          set -x
+          test "$INCIDENT_ERRORS" -ge 1
+          test "$INCIDENT_EXIT" = 1
+          jq -e '.findings | any(.code == "WFC401")' incident.json
+          test "$DRIFT" = true
+          test -s "$PATCH"
+          test -n "$ARTIFACT_ID"
+
+  ci-passed:
+    # The only required status check: add new jobs to `needs` instead of changing the branch rules.
+    name: CI passed
+    if: always()
+    needs: [test, docs, smoke, action-dist, action-dogfood, action-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != success ]; then
+              echo "::error::a required job did not succeed ($r)"
+              exit 1
+            fi
+          done

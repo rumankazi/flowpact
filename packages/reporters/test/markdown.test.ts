@@ -7,6 +7,7 @@ const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
 const normalize = (r: AnalysisResult) => {
   r.durationMs = 7; // keep snapshots deterministic
   r.meta.node = 'v24.0.0';
+  r.meta.version = '0.0.0-test'; // snapshots must not change with every release
   return r;
 };
 const fixture = (name: string) =>

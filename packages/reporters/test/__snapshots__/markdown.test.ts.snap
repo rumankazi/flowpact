@@ -3,7 +3,7 @@
 exports[`renderMarkdown > renders nested workflows grouped by severity, errors first 1`] = `
 "## wfc report
 
-<sub>wfc v0.1.0 · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **4 errors** · 7 warnings · 2 info
 
@@ -218,7 +218,7 @@ secrets:
 exports[`renderMarkdown > renders the incident report 1`] = `
 "## wfc report
 
-<sub>wfc v0.1.0 · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **1 error**
 
@@ -253,7 +253,7 @@ Matrix: \`{ name: windows }\`
 exports[`renderMarkdown contracts and suppressions > summarizes contract drift with breaking changes 1`] = `
 "## wfc report
 
-<sub>wfc v0.1.0 · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **3 errors**
 

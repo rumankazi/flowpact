@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Commit messages follow Conventional Commits, so release-please picks up runtime dependency updates as fixes.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      development:
+        dependency-type: development
+      production:
+        dependency-type: production
+    commit-message:
+      prefix: fix
+      prefix-development: chore
+      include: scope
