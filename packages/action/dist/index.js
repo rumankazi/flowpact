@@ -130612,7 +130612,7 @@ function loadProject(opts) {
 
 // ../core/src/version.ts
 var TOOL_NAME = "flowpact";
-var VERSION10 = "0.4.0";
+var VERSION10 = "0.5.0";
 var SCHEMA_VERSIONS = {
   config: 1,
   contract: 1,
