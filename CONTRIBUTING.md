@@ -31,7 +31,10 @@ difference from the live settings (**Settings diff**); merging applies them, and
 the UI. Release tags (`v*`) can only be created or moved by the release bot and repository admins.
 
 Dependencies are updated by Renovate (`renovate.json`) with Conventional Commit titles. When a runtime dependency
-changes, the release bot rebuilds the committed action bundle on the Renovate branch.
+changes, the release bot rebuilds the committed action bundle on the Renovate branch. Non-major updates (except 0.x
+minors) merge themselves once every required check passes: Renovate may skip the code owner review, not the checks.
+Nothing reaches users that way — a dependency fix only updates the release pull request, which needs approval. Actions
+are pinned to commit SHAs, with the version in a comment.
 
 ## Commit messages
 
