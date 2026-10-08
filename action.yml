@@ -71,7 +71,7 @@ inputs:
     required: false
     default: 'auto'
   impact:
-    description: 'Check the release impact of changes to published workflows and actions against the impact the pull request declares (title, labels or expected-impact): off, auto (on pull requests in repositories that publish workflows or actions) or on.'
+    description: 'Check the release impact of changes to published workflows and actions against the impact the pull request declares (title, labels or expected-impact): off, auto (on pull requests, or on any event when base-ref is set, in repositories that publish workflows or actions; never on pull_request_target) or on.'
     required: false
     default: 'off'
   expected-impact:
@@ -107,7 +107,7 @@ outputs:
   breaking:
     description: 'Number of breaking contract changes (check mode).'
   exit-code:
-    description: 'The exit code the CLI would return: 0, or 1 when findings reach fail-on.'
+    description: 'The exit code the CLI would return: 0, 1 when findings reach fail-on, or 2 when the action stopped before reporting (invalid input or config, no workflows found, unexpected error).'
   report-json:
     description: 'Absolute path of the JSON report, when report-json was set.'
   report-sarif:

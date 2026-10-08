@@ -94,7 +94,8 @@ consumers:
 | --- | --- |
 | `kind`, `path`, `name` | `workflow` or `action`, the repository path and the display name. |
 | `triggers` | Workflow events, sorted (workflows only). |
-| `interface.inputs` | Every `workflow_call` and `workflow_dispatch` input (or action input) with `type`, `required`, `default`, `description` and choice `options`. |
+| `interface.inputs` | Every `workflow_call` input (or action input) with `type`, `required`, `default`, `description` and choice `options`. |
+| `interface.dispatchInputs` | `workflow_dispatch` inputs, in the same form (workflows only). |
 | `interface.secrets` | `workflow_call` secrets and whether they are required. |
 | `interface.outputs` | `workflow_call` (or action) outputs with their description and value expression. |
 | `calls` | Reusable workflows this workflow calls, per job: what it passes in `with:` and `secrets:` (or `inherit`), `needs`, and the matrix shape (`combinations`, `keys`, `exact`). |
@@ -185,12 +186,13 @@ callers listed under `consumers` — including those in other repositories, whic
 | --- | --- |
 | Input removed | yes |
 | Input type changed (`string` → `number`, …) | yes |
-| Input becomes required without a default, or is added as required without a default | yes |
+| Input becomes required, or is added as required — for a `workflow_call` input even with a default (GitHub requires every caller to pass it); for action inputs only without one | yes |
 | Choice option removed | yes |
 | Secret removed, becomes required, or added as required | yes |
 | Output removed | yes |
 | `workflow_call` trigger removed | yes |
-| Optional input (or input with a default) added | no |
+| `workflow_dispatch` input removed, type changed, choice option removed, or required without a default (added or changed) | yes |
+| Optional input added (or, for actions and `workflow_dispatch`, a required input with a default) | no |
 | Input becomes optional, default or description changed, choice option added | no |
 | Secret becomes optional, optional secret added | no |
 | Output added, or its value or description changed | no |

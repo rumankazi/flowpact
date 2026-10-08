@@ -161,7 +161,7 @@
       "type": "object",
       "properties": {
         "publish": {
-          "description": "Files or globs of the units other repositories use. Default: every workflow with `workflow_call` and every action outside `.github/`.",
+          "description": "Files or globs of the units other repositories use. Default: every workflow with `workflow_call` except `_`-prefixed files, and the root `action.yml`.",
           "type": "array",
           "items": {
             "type": "string"

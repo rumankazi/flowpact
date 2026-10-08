@@ -58,13 +58,14 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 `rk-release-bot` GitHub App (so its pull requests and tags run the usual workflows):
 
 1. Every push to `main` updates a **release pull request** that bumps the version in every package, rebuilds the
-   action bundle and adds the changelog entry from the commits since the last release.
+   action bundle, moves the version references in the docs and READMEs to the new release line
+   (`scripts/sync-version-refs.mjs`) and adds the changelog entry from the commits since the last release.
 2. Merging it tags the release (`vX.Y.Z`) and creates the GitHub release.
 3. The release workflow then publishes `flowpact` to npm with provenance through npm trusted publishing (no
    token; only the very first publish of a new package name needs a short-lived `NPM_TOKEN` secret, because a trusted
    publisher can be configured only once the package exists), moves the floating tag used by
-   `uses: rumankazi/flowpact@v0.2` (before 1.0 one tag per minor line — `v0.2`, `v0.3` — because a 0.x minor may be
-   breaking; from 1.0 the major, `v1`), and smoke-tests the published package on Linux, macOS and Windows.
+   `uses: rumankazi/flowpact@v0.4` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
+   the major, `v1`), and smoke-tests the published package on Linux, macOS and Windows.
 
 If publishing fails after the tag exists, run the **Release** workflow manually with that tag; versions already on
 npm are skipped.

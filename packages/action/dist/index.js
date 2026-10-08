@@ -130677,7 +130677,7 @@ var configSchema = external_exports.object({
   ),
   impact: external_exports.object({
     publish: external_exports.array(external_exports.string()).optional().describe(
-      "Files or globs of the units other repositories use. Default: every workflow with `workflow_call` and every action outside `.github/`."
+      "Files or globs of the units other repositories use. Default: every workflow with `workflow_call` except `_`-prefixed files, and the root `action.yml`."
     ),
     declaredBy: external_exports.enum(["explicit", "title", "labels"]).optional().describe(
       "The authoritative source of the declared impact; others are advisory. Default: `explicit` when given, else `title`."
