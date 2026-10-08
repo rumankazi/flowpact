@@ -1,34 +1,150 @@
 ---
-title: Impact mode (proposal)
-description: A planned check for publishers of reusable workflows and actions — it compares the release impact a pull request declares with what its changes require, so consumers never get a breaking change as a patch.
+title: Impact mode
+description: For publishers of reusable workflows and actions — check that the release impact a pull request declares covers what its changes require, so consumers never get a breaking change as a patch.
 ---
 
-<Callout type="warn" title="Proposal — not implemented yet">
-This page is the design for an upcoming feature, published for transparency and feedback. Names, rule codes and
-options may change before it ships. Discuss it in a [GitHub issue](https://github.com/rumankazi/flowpact/issues).
-</Callout>
-
-## What it answers
-
-**Does the release impact a pull request declares cover what its workflow changes actually require?**
-
 Repositories that publish reusable workflows or actions version them, and consumers pin a floating tag (`@v1`). Some
-changes break those consumers without any error in the publishing repository — the classic one is renaming a job:
+changes break those consumers without any error in the publishing repository. The classic one is renaming a job:
 consumers' branch protection requires the check `ci / Test`, the job now reports `ci / Unit tests`, and their pull
-requests wait forever on _Expected — Waiting for status to be reported_. Released as a patch, nobody notices until the
-next consumer PR is stuck.
+requests wait forever on _Expected — Waiting for status to be reported_.
 
-Impact mode grades every change to what consumers can observe as **major, minor, patch or none**, compares it with the
-declared impact (for example the Conventional Commits PR title) and fails when the declared impact is too low.
+Impact mode compares the pull request with its base, grades every change to what consumers can observe as **major,
+minor, patch or none**, and fails when the declared impact — usually the Conventional Commits pull request title — is
+too low.
+
+```sh
+flowpact impact --base origin/main --title "fix: tidy the test job"
+```
+
+```text
+✖  ERROR  FP810 impact-under-declared
+  Declared patch (the title "fix: tidy the test job"), but the changes require major: check "… / Test" is now
+  "… / Unit tests"; consumers that require the old name wait forever
+
+Impact  declared patch (title "fix: tidy the test job")  ·  required MAJOR  ✖
+  major  .github/workflows/ci-reusable.yml  check "… / Test" is now "… / Unit tests"; …
+  baseline: origin/main (1a2b3c4)
+```
 
 ## What is graded
 
-Only **published** units: reusable workflows (`workflow_call`) and actions outside `.github/`, configurable with
-`impact.publish`. Workflows that only run the publishing repository's own CI, and internal reusable workflows and
-`.github/actions/**`, are not graded — renaming your own CI jobs is not a change your consumers can see.
+Only **published** units:
 
-Consumers' branch protection is not visible from the publishing repository, so **every check name a published
-reusable workflow produces is treated as one a consumer may require**: removing or renaming it is a major change.
+- every reusable workflow (`on: workflow_call`);
+- the repository's own action (`action.yml` at the root — what `uses: owner/repo@ref` runs);
+- the units listed in [`impact.publish`](#configuration) (for example `*/action.yml` in a repository of several
+  actions). Setting `impact.publish` replaces the defaults.
+
+Workflows that only run the repository's own CI, internal reusable workflows you leave out of `impact.publish`, and
+`.github/actions/**` are not graded: renaming your own CI jobs is not a change your consumers can see.
+
+| Change to a published unit | Required impact |
+| --- | --- |
+| A check name a reusable workflow reports is gone: job renamed, job id changed when there is no `name`, matrix key changed or value removed, `${{ }}` added to or removed from `name`, job or nested call removed | major |
+| A new check name (matrix value added, new job) | minor |
+| `workflow_call` input or secret removed, optional → required, new required input or secret, input type changed, choice option removed | major |
+| Output removed (callers silently read `''`) | major |
+| Optional input, secret or output added | minor |
+| Input default changed | minor |
+| Reusable workflow moved or deleted, or `workflow_call` removed; action moved or deleted | major |
+| A job requests a new or higher `permissions:` scope (callers that grant less fail when the run starts) | major |
+| Action `runs.using` changed (for example `node20` → `node24`) | major |
+| A new third-party action or workflow used inside a published unit (organization allow-lists and SHA-pinning policies apply to consumers) | minor |
+| Narrower permissions, descriptions, internal steps | none |
+
+Consumers' branch protection is not visible from the publishing repository, so every check name a published reusable
+workflow reports counts as one a consumer may require. Names are compared the way GitHub forms them — see
+[how check names are formed](#how-check-names-are-formed).
+
+## Where the declared impact comes from
+
+The declared impact must be what the release tool will read, so exactly one source is **authoritative**
+(`impact.declaredBy`):
+
+| Source | From | Means |
+| --- | --- | --- |
+| `explicit` | `--expect`, action input `expected-impact` | as given |
+| `title` (default) | `--title`, or the pull request title in GitHub Actions | `type!:` → major, `feat` → minor, `fix` / `perf` → patch, other types → none |
+| `labels` | `--labels`, or the pull request labels in GitHub Actions | `semver:major` / `semver:minor` / `semver:patch` / `semver:none` |
+
+- The **title** describes the squash commit, so it is the right source when pull requests are squash-merged with the
+  title as the commit message. A title that is not a Conventional Commit counts as _not declared_.
+- **Other sources are advisory.** A higher advisory declaration (a `semver:major` label on a `fix:` title) is an
+  error: the release tool would cut a patch.
+- **Release pull requests** (a release-please title `chore(main): release 0.3.0`, or the `autorelease: pending` label)
+  compare everything since the **last release tag** with the proposed version. Before 1.0, release-please's
+  `bump-minor-pre-major` is respected: `0.2.0` → `0.3.0` is a major release.
+- Without a declaration, flowpact reports the required impact (`FP813`) and does not fail.
+
+Over-declaring is never an error — a release may contain changes flowpact does not grade — and a `patch` change in a
+pull request that declares `none` does not fail either.
+
+## Findings
+
+| Code | Severity | Reported when |
+| --- | --- | --- |
+| [`FP810`](/docs/rules/fp810) `impact-under-declared` | error | The changes require more than declared (at least minor). |
+| [`FP811`](/docs/rules/fp811) `impact-declaration-conflict` | error | An advisory source declares more than the authoritative one. |
+| [`FP812`](/docs/rules/fp812) `impact-over-declared` | info | The declaration is bigger than the changes require. |
+| [`FP813`](/docs/rules/fp813) `impact-undeclared` | info | Nothing is declared; the required impact is reported. |
+| [`FP814`](/docs/rules/fp814) `impact-uncertain` | warning | A change depends on something flowpact cannot evaluate (a check name built from `vars` or the event, a runtime matrix). Not counted unless `impact.uncertain: fail`. |
+
+## Using it
+
+### GitHub Action
+
+```yaml
+on:
+  pull_request:
+    # edited / labeled: re-check when the title or the labels change
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  flowpact:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rumankazi/flowpact@v0.2
+        with:
+          impact: auto   # off (default) | auto | on
+```
+
+`auto` turns impact mode on for pull requests in repositories that publish workflows or actions. The action fetches
+the base commit (and, for release pull requests, the release tags) when the checkout is shallow, with a one-off
+authorization header — `persist-credentials: false` works, and `contents: read` is enough. The job summary gets an
+**Impact** section, and the outputs `required-impact`, `declared-impact` and `impact-ok` let later steps react.
+Use `pull_request`, not `pull_request_target`: the latter checks out the default branch, so flowpact refuses it.
+
+### CLI
+
+```sh
+flowpact impact --base origin/main --title "$PR_TITLE"     # only the impact verdict
+flowpact check --impact --base origin/main --expect minor  # everything check does, plus impact
+```
+
+| Option | Description |
+| --- | --- |
+| `--base <ref>` | Baseline (default: the pull request base in GitHub Actions, else `origin/HEAD`). It must be in the clone (`git fetch`). |
+| `--expect <level>` | Declared impact: `none`, `patch`, `minor` or `major`. |
+| `--title <text>` | Pull request title to read the declaration from. |
+| `--labels <a,b>` | Pull request labels. |
+
+`--format json` adds an `impact` section (baseline, required, declared, `ok` and every graded change) to the report.
+
+### Configuration
+
+```yaml title=".github/flowpact/flowpact.config.yml"
+impact:
+  publish: [.github/workflows/reusable-*.yml, '*/action.yml'] # what other repositories use
+  declaredBy: title                                            # explicit | title | labels
+  labels: { major: breaking, minor: enhancement }              # label names per level
+  types: { feat: minor, fix: patch, perf: patch, deps: patch } # Conventional Commits types
+  uncertain: warn                                              # warn | fail
+```
+
+The impact settings are read from the **base** of the pull request, so a pull request cannot relax its own check.
 
 ## How check names are formed
 
@@ -47,113 +163,3 @@ the captured names are flowpact's `fixtures/checknames-lab`, and a test requires
   read the caller's `with:` values.
 - A job skipped by its `if:` (or because a job it needs failed) reports **one** check with its raw, unexpanded name,
   and a skipped caller reports no ` / callee` checks at all.
-
-## What counts as what (first version)
-
-| Change to a published unit | Required impact |
-| --- | --- |
-| A check name removed or changed: job renamed, job id changed when there is no `name`, matrix key changed or value removed, `${{ }}` added to or removed from `name`, a callee job removed | major |
-| A job-level `if:` added to a matrix job or reusable caller (only the raw name is reported when skipped) | major |
-| New check names (matrix value added, new job) | minor |
-| `workflow_call` input or secret removed, optional → required, new required input or secret, input type changed, choice option removed | major |
-| Output removed (callers silently read `''`) | major |
-| Optional input, secret or output added | minor |
-| Input default changed | minor, with a behaviour-change warning |
-| Workflow file moved or deleted, `workflow_call` removed | major |
-| A job needs a new or higher `permissions:` scope (callers that grant less fail at startup) | major |
-| Action input removed, action output removed, new `required: true` input without a default | major |
-| Action `runs.using` changed (for example `node20` → `node24`), action moved or deleted | major |
-| New third-party `uses:` inside a published unit (organization allow-lists and SHA-pinning policies apply to consumers) | minor, with a warning |
-| Narrower permissions, internal step changes | none or patch |
-
-A `patch`-vs-`none` mismatch is a warning, not an error. Over-declaring (declaring major for a minor change) is
-reported as info only — a release may contain changes flowpact does not grade.
-
-## Where the declared impact comes from
-
-The declared impact must be what the release tool will actually read, so exactly one source is **authoritative**
-(`impact.declaredBy`):
-
-| Source | Read from | Maps to |
-| --- | --- | --- |
-| `explicit` | CLI `--expect`, action input `expected-impact` | as given |
-| `title` (default) | the pull request title in the event payload | `type!:` → major, `feat` → minor, `fix` / `perf` → patch, other types → none |
-| `labels` | `semver:major` / `semver:minor` / `semver:patch` / `semver:none` (configurable) | as given |
-| `commits` | every commit in the pull request (for merge-commit or rebase repositories) | the highest level |
-
-- The **title** describes the squash commit — valid when pull requests are squash-merged with the title as the commit
-  message. A title that is not a Conventional Commit counts as _not declared_, never as `none`.
-- **Other sources are advisory.** If an advisory source declares a _higher_ impact than the authoritative one (a
-  `semver:major` label on a `fix:` title), that is an error: the release tool would cut a patch.
-- A `BREAKING CHANGE:` footer in the pull request body counts only when the repository copies the body into the squash
-  commit.
-- **Release pull requests** (release-please) are detected and checked differently: the baseline is the last release
-  tag and the declared impact is the proposed version. Before 1.0, release-please's `bump-minor-pre-major` setting is
-  respected (a 0.x minor bump counts as breaking). If the bump is too small, flowpact suggests a `Release-As:` commit.
-- When nothing is declared, flowpact reports the required impact without failing.
-
-## Baseline
-
-flowpact analyses the **base** of the pull request straight from git (read-only, no shell) and the head from the working
-tree, with the same version of every rule on both sides, so an upgrade of flowpact never shows up as a change. Committed
-contracts are not used for impact.
-
-- Pull requests: the base commit (the first parent of the merge commit GitHub checks out). Release pull requests: the
-  last release tag.
-- The action fetches the missing commit or tags itself, also with `persist-credentials: false` (it uses a one-off
-  authorization header for that fetch; nothing is written to `.git/config`). `contents: read` is enough.
-- Policy settings (`impact.*`) are read from the **base** configuration, so a pull request cannot relax its own check.
-- `pull_request_target` is refused: it checks out the default branch, so it would compare the default branch with
-  itself. `merge_group` runs pass with an info note (impact was checked on the pull request). On `push` and tags, impact
-  runs only with an explicit `--expect`.
-
-## Findings (codes tentative)
-
-| Finding | Severity |
-| --- | --- |
-| Impact under-declared: the changes require more than declared | error |
-| Conflicting declaration: an advisory source declares more than the authoritative one | error |
-| Impact over-declared | info |
-| No impact declared (the required impact is reported) | info |
-| A change flowpact cannot fully resolve (for example a check name built from `needs` or `vars`) changed | warning |
-
-## Using it
-
-One action call does everything — lint, contracts and impact share a single analysis, one job summary and one set of
-annotations:
-
-```yaml
-on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
-
-jobs:
-  flowpact:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-      - uses: rumankazi/flowpact@v0.2
-        with:
-          mode: check
-          impact: auto   # off (default) | auto | on
-```
-
-`auto` turns impact on for pull requests in repositories that publish units. Outputs such as `required-impact`,
-`declared-impact` and `impact-ok` let later steps gate on impact separately; a separate required check for impact is
-a second step with `impact: on` and `fail-on: never` for the other findings.
-
-On the command line: `flowpact check --impact --base origin/main`, or `flowpact impact` as a shortcut. The impact verdict has
-its own JSON schema; existing report and contract schemas do not change.
-
-## Plan
-
-1. **Parsing:** job names as expressions, job-level `if`/`needs`, permissions and runner labels in the model.
-2. **Check names:** the naming rules above, verified in a test repository, with the published check names of each
-   reusable workflow available in `trace` and the JSON output.
-3. **Impact:** git baseline, published units, declared-impact sources, release pull requests, the verdict in every
-   output format, the action input and outputs.
-4. Later: GitHub Enterprise Server limits, duplicate check names.
-
-Not planned: grading code outside workflows and actions, or finding consumers in other repositories.

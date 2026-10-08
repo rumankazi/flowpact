@@ -1,6 +1,14 @@
 import { existsSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
-import { contractPatch, exitCodeFor } from '@flowpact/core';
+import {
+  contractPatch,
+  exitCodeFor,
+  githubEvent,
+  IMPACT_CODES,
+  type ImpactLevel,
+  ImpactSetupError,
+  prepareImpact,
+} from '@flowpact/core';
 import {
   type MarkdownOptions,
   renderJson,
@@ -68,7 +76,40 @@ export const reportArgs = {
     default: true,
     description: 'Validate against GitHub’s workflow schema (--no-schema to skip)',
   },
+  impact: {
+    type: 'boolean',
+    description:
+      'Also check the release impact of changes to published workflows and actions against the declared impact',
+  },
+  ...impactArgs(),
 } satisfies ArgsDef;
+
+/** Flags of impact mode (`--impact` on lint/check, and `flowpact impact`). */
+export function impactArgs() {
+  return {
+    base: {
+      type: 'string',
+      description:
+        'Baseline ref to compare with (default: the pull request base in GitHub Actions, else origin/HEAD)',
+      valueHint: 'ref',
+    },
+    expect: {
+      type: 'enum',
+      options: ['none', 'patch', 'minor', 'major'],
+      description: 'The declared impact (default: read from --title, --labels or the pull request)',
+    },
+    title: {
+      type: 'string',
+      description: 'Pull request title to read the declared impact from (Conventional Commits)',
+      valueHint: 'text',
+    },
+    labels: {
+      type: 'string',
+      description: 'Comma-separated pull request labels (semver:major, semver:minor, …)',
+      valueHint: 'a,b',
+    },
+  } satisfies ArgsDef;
+}
 
 type ReportFlags = {
   _: string[];
@@ -81,6 +122,11 @@ type ReportFlags = {
   'dump-graph'?: string | undefined;
   schema?: boolean | undefined;
   patch?: string | undefined;
+  impact?: boolean | undefined;
+  base?: string | undefined;
+  expect?: string | undefined;
+  title?: string | undefined;
+  labels?: string | undefined;
 };
 
 export type ReportArgs = ReportFlags & Parameters<typeof createContext>[0];
@@ -103,11 +149,39 @@ function markdownOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): MarkdownO
   return { repoUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`, sha: GITHUB_SHA };
 }
 
-/** Shared implementation of `flowpact lint` and `flowpact check`. */
+/** Resolves the baseline and the declaration for impact mode; setup problems are usage errors (exit 2). */
+function setupImpact(ctx: ReturnType<typeof createContext>, args: ReportArgs) {
+  try {
+    return prepareImpact(
+      ctx.root,
+      ctx.loaded.config,
+      {
+        ...(args.base ? { base: args.base } : {}),
+        ...(args.expect ? { expect: args.expect as ImpactLevel } : {}),
+        ...(args.title !== undefined ? { title: args.title } : {}),
+        ...(args.labels !== undefined
+          ? {
+              labels: args.labels
+                .split(',')
+                .map((l) => l.trim())
+                .filter(Boolean),
+            }
+          : {}),
+        ...(process.env.GITHUB_ACTIONS === 'true' ? { event: githubEvent() } : {}),
+      },
+      ctx.logger,
+    );
+  } catch (err) {
+    if (err instanceof ImpactSetupError) throw new UsageError(err.message);
+    throw err;
+  }
+}
+
+/** Shared implementation of `flowpact lint`, `flowpact check` and `flowpact impact`. */
 export async function runReport(
   args: ReportArgs,
   rawArgs: string[],
-  command: 'lint' | 'check',
+  command: 'lint' | 'check' | 'impact',
 ): Promise<number> {
   const ctx = createContext(args, rawArgs);
   printBanner(ctx, `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}`);
@@ -123,12 +197,23 @@ export async function runReport(
         .map((s) => s.trim())
         .filter(Boolean)
     : undefined;
+  const wantImpact = command === 'impact' || Boolean(args.impact);
+  let impact: ReturnType<typeof setupImpact> | undefined;
+  if (wantImpact) {
+    impact = setupImpact(ctx, args);
+    if ('skip' in impact) {
+      ctx.stderr(`impact: skipped (${impact.skip})`);
+      if (command === 'impact') return 0;
+    }
+  }
   const result = await runAnalysis(ctx, {
-    paths,
-    validateSchema: args.schema !== false,
+    paths: command === 'impact' ? [] : paths,
+    validateSchema: command === 'impact' ? false : args.schema !== false,
     checkContracts: command === 'check',
-    ...(only ? { only } : {}),
+    ...(command === 'impact' && !only ? { only: [...IMPACT_CODES] } : only ? { only } : {}),
+    ...(impact && 'options' in impact ? { impact: impact.options } : {}),
   });
+  if (impact && 'notes' in impact) for (const note of impact.notes) ctx.stderr(`impact: ${note}`);
   const missing = result.project.missingTargets ?? [];
   if (missing.length) {
     throw new UsageError(
@@ -140,7 +225,7 @@ export async function runReport(
       `None of the paths is a workflow (.github/workflows/*.yml) or an action (action.yml): ${(result.project.ignoredTargets ?? paths).join(', ')}`,
     );
   }
-  if (result.summary.workflows === 0 && result.summary.actions === 0) {
+  if (result.summary.workflows === 0 && result.summary.actions === 0 && command !== 'impact') {
     throw new UsageError(
       `No workflows found under ${displayPath(ctx.root)}/.github/workflows. Use --root to point at a repository.`,
     );

@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: What is shipped and what comes next — impact mode, an editor extension with a language server, then cross-repository resolution.
+description: What is shipped and what comes next — an editor extension with a language server, then cross-repository resolution.
 ---
 
 ## Shipped
@@ -8,7 +8,7 @@ description: What is shipped and what comes next — impact mode, an editor exte
 - **Data-flow engine:** workflows and local composite actions, nested reusable workflows, same-repository references.
 - **Exact matrix expansion** and per-combination evaluation; declared shapes for runtime-computed matrices
   (`matrixShapes`).
-- **46 rules** (`FP1xx`–`FP9xx`) with stable codes, docs pages and `flowpact explain`.
+- **51 rules** (`FP1xx`–`FP9xx`) with stable codes, docs pages and `flowpact explain`.
 - **[Contracts](/docs/contracts):** `flowpact generate` writes a deterministic lockfile per workflow and local action;
   `flowpact check` reports missing, outdated, orphaned and invalid contracts and breaking interface changes
   (`FP801`–`FP805`), with a `git apply`-able patch for anyone who cannot run the CLI.
@@ -19,15 +19,12 @@ description: What is shipped and what comes next — impact mode, an editor exte
 - **CLI:** `lint`, `check`, `generate`, `graph` (tree, Mermaid, DOT, JSON), `trace`, `explain`, `rules`; pretty, JSON,
   Markdown and SARIF output; debug logging.
 - **[Plugins](/docs/custom-rules):** organization-specific rules loaded from the config.
+- **[Impact mode](/docs/impact-mode):** for publishers of reusable workflows and actions — the release impact a pull
+  request declares (Conventional Commits title, labels or release version) is checked against what its changes
+  require, including the check names consumers' branch protection depends on (`FP810`–`FP814`).
 - Config file, contracts and reports with published JSON Schemas.
 
-## Next: impact mode
-
-For publishers of reusable workflows and actions: check that the release impact a pull request declares (for example
-its Conventional Commits title) covers what its changes require — a renamed job breaks consumers' required status
-checks and must be a major release. See the [proposal](/docs/impact-mode).
-
-## Then: VS Code extension and language server
+## Next: VS Code extension and language server
 
 flowpact already knows, for every expression in every workflow, which symbol it refers to and where that symbol is
 defined. A language server makes that available while editing, in VS Code and any other editor that speaks LSP:

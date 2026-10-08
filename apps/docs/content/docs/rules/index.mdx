@@ -84,6 +84,11 @@ Severity is configurable per rule; codes never change meaning. Plugin rules use 
 | [`FP803`](/docs/rules/fp803) | `breaking-interface-change` | 🔴 error | A change breaks the locked contract: an input became required, an input/secret/output was removed, or a type changed. |
 | [`FP804`](/docs/rules/fp804) | `orphan-contract` | 🔴 error | A contract file exists for a workflow or action that no longer exists. |
 | [`FP805`](/docs/rules/fp805) | `contract-invalid` | 🔴 error | A contract file cannot be read (invalid YAML or schema), usually because it was edited by hand or merged badly. |
+| [`FP810`](/docs/rules/fp810) | `impact-under-declared` | 🔴 error | The changes to published workflows or actions need a bigger release than the pull request declares. |
+| [`FP811`](/docs/rules/fp811) | `impact-declaration-conflict` | 🔴 error | Another source declares a bigger impact than the one the release tool reads. |
+| [`FP812`](/docs/rules/fp812) | `impact-over-declared` | 🔵 info | The pull request declares a bigger impact than its workflow and action changes require. |
+| [`FP813`](/docs/rules/fp813) | `impact-undeclared` | 🔵 info | No release impact is declared; flowpact reports the impact the changes require. |
+| [`FP814`](/docs/rules/fp814) | `impact-uncertain` | 🟡 warning | A change to a published unit depends on something flowpact cannot evaluate statically. |
 
 ## Config & overrides (`FP9xx`)
 

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
@@ -5,6 +6,7 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import * as core from '@actions/core';
 import {
   type AnalysisResult,
+  type AnalyzeOptions,
   analyze,
   bannerText,
   ConfigError,
@@ -14,14 +16,23 @@ import {
   createRegistry,
   exitCodeFor,
   type Finding,
+  githubEvent,
+  type ImpactLevel,
+  ImpactSetupError,
+  isPublished,
   type LoadedConfig,
+  type Logger,
   type LogLevel,
   type LogRecord,
   type LogSink,
   loadConfig,
   loadPlugins,
+  loadProject,
   neutralizeWorkflowCommands,
+  prepareImpact,
+  resolveCommit,
   resolveLogLevel,
+  type WfcConfig,
   writeContracts,
 } from '@flowpact/core';
 import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@flowpact/reporters';
@@ -44,6 +55,10 @@ export const DEFAULTS = {
   'artifact-name': 'flowpact-contracts',
   'retention-days': '7',
   plugins: 'auto',
+  impact: 'off',
+  'expected-impact': '',
+  'base-ref': '',
+  token: '${{ github.token }}',
   debug: 'false',
 } as const;
 
@@ -84,6 +99,9 @@ interface Inputs {
   retentionDays: number;
   /** Whether `plugins:` from the checked-out config may run. */
   plugins: boolean;
+  impact: 'off' | 'auto' | 'on';
+  expectedImpact?: ImpactLevel;
+  baseRef: string;
   debug: boolean;
 }
 
@@ -130,8 +148,93 @@ function readInputs(): Inputs {
     artifactName: input('artifact-name'),
     retentionDays: int('retention-days'),
     plugins: pluginsAllowed(oneOf('plugins', ['auto', 'true', 'false'])),
+    impact: oneOf('impact', ['off', 'auto', 'on']),
+    ...(input('expected-impact')
+      ? { expectedImpact: oneOf('expected-impact', ['none', 'patch', 'minor', 'major']) as ImpactLevel }
+      : {}),
+    baseRef: input('base-ref'),
     debug: bool('debug'),
   };
+}
+
+/**
+ * Makes `refs` available in a shallow checkout: fetched once, at depth 1, with a one-off authorization header passed
+ * through the environment (never written to .git/config, never in argv).
+ */
+function fetchMissing(root: string, refs: string[], token: string, logger: Logger): void {
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  if (token && !token.startsWith('${{')) {
+    const host = new URL(process.env.GITHUB_SERVER_URL || 'https://github.com').host;
+    Object.assign(env, {
+      GIT_CONFIG_COUNT: '1',
+      GIT_CONFIG_KEY_0: `http.https://${host}/.extraheader`,
+      GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString('base64')}`,
+    });
+  }
+  for (const ref of refs) {
+    try {
+      execFileSync('git', ['-C', root, 'fetch', '--no-tags', '--depth=1', 'origin', ref], {
+        env,
+        stdio: 'pipe',
+      });
+      logger.debug(`fetched ${ref}`);
+    } catch (err) {
+      logger.warn(`could not fetch ${ref}: ${(err as Error).message.split('\n')[0]}`);
+    }
+  }
+}
+
+const RELEASE_TITLE = /^chore(\([^)]*\))?: release\b/i;
+
+/** Impact mode's options for analyze(), or why it does not run. */
+function impactSetup(
+  root: string,
+  config: WfcConfig,
+  inputs: Inputs,
+  logger: Logger,
+): { options?: NonNullable<AnalyzeOptions['impact']>; note?: string } {
+  if (inputs.impact === 'off') return {};
+  const event = githubEvent();
+  const isPr = event?.name === 'pull_request' || event?.name === 'pull_request_target';
+  if (inputs.impact === 'auto') {
+    if (!isPr && !inputs.baseRef) return { note: 'impact: auto runs on pull requests' };
+    const project = loadProject({ root, logger });
+    const units = [...project.workflows.values(), ...project.actions.values()];
+    if (!units.some((u) => isPublished(u, config.impact))) {
+      return { note: 'impact: no published workflows or actions (see impact.publish)' };
+    }
+  }
+  const pr = event?.payload?.pull_request;
+  const base = inputs.baseRef || pr?.base?.sha;
+  const missing: string[] = [];
+  if (base) {
+    try {
+      resolveCommit(root, base);
+    } catch {
+      missing.push(base);
+    }
+  }
+  if (pr?.title && RELEASE_TITLE.test(pr.title)) missing.push('+refs/tags/v*:refs/tags/v*');
+  if (missing.length) fetchMissing(root, missing, core.getInput('token'), logger);
+  try {
+    const prepared = prepareImpact(
+      root,
+      config,
+      {
+        ...(inputs.baseRef ? { base: inputs.baseRef } : {}),
+        ...(inputs.expectedImpact ? { expect: inputs.expectedImpact } : {}),
+        ...(event ? { event } : {}),
+        ...(process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}),
+      },
+      logger,
+    );
+    if ('skip' in prepared) return { note: `impact: skipped (${prepared.skip})` };
+    for (const n of prepared.notes) logger.info(`impact: ${n}`);
+    return { options: prepared.options };
+  } catch (err) {
+    if (err instanceof ImpactSetupError) throw new InputError(`impact: ${err.message}`);
+    throw err;
+  }
 }
 
 function pluginsAllowed(value: 'auto' | 'true' | 'false'): boolean {
@@ -399,6 +502,11 @@ export async function run(): Promise<void> {
       core.warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
     }
 
+    const impact = await group('flowpact: impact baseline', async () =>
+      impactSetup(root, loaded.config, inputs, logger),
+    );
+    if (impact.note) core.info(impact.note);
+
     const result = await group(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry, logger);
@@ -413,6 +521,7 @@ export async function run(): Promise<void> {
         registry,
         checkContracts: inputs.mode === 'check',
         pluginsSkipped: loaded.config.plugins.length > 0 && !inputs.plugins,
+        ...(impact.options ? { impact: impact.options } : {}),
       });
     });
     if (result.unloadedRules?.length) {
@@ -500,6 +609,9 @@ export async function run(): Promise<void> {
     core.setOutput('report-sarif', reports.sarif ?? '');
     core.setOutput('patch', drift?.patch ?? '');
     core.setOutput('artifact-id', drift?.uploaded?.id ?? '');
+    core.setOutput('required-impact', result.impact?.verdict.required ?? '');
+    core.setOutput('declared-impact', result.impact?.verdict.declared?.level ?? '');
+    core.setOutput('impact-ok', result.impact ? String(result.impact.verdict.ok) : '');
 
     core.info(
       `flowpact ${inputs.mode}: ${plural(s.errors, 'error')}, ${plural(s.warnings, 'warning')}, ${s.infos} info, ${s.suppressed} suppressed · ${plural(s.workflows, 'workflow')} · ${result.durationMs} ms`,

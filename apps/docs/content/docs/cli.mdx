@@ -201,6 +201,19 @@ Symbols can be written in several ways:
 
 <Screenshot name="trace-up" alt="flowpact trace --up showing the matrix values feeding an input, with one combination missing" caption="Upstream: the input is fed by matrix.config, which one combination does not define." />
 
+## `flowpact impact`
+
+For publishers of reusable workflows and actions: checks that the release impact a pull request declares covers the
+changes to published units since its base. See [Impact mode](/docs/impact-mode).
+
+```sh
+flowpact impact --base origin/main --title "fix: tidy the test job"
+```
+
+It runs only the impact rules (`FP810`–`FP814`), so its exit code reflects only the verdict. `flowpact lint --impact`
+and `flowpact check --impact` add the verdict to everything else they report. Options: `--base`, `--expect`,
+`--title`, `--labels` and the output options of `lint`.
+
 ## `flowpact migrate`
 
 Moves a repository set up with **wfc** (flowpact before 0.2.0) to flowpact's layout:
