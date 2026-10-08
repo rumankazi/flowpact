@@ -2,7 +2,7 @@
   "name": "vscode-flowpact",
   "displayName": "flowpact",
   "description": "Diagnostics, hover traces and go to definition across GitHub Actions workflow calls: inputs, secrets, outputs and matrices checked as you type.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "publisher": "flowpact",
   "license": "MIT",
