@@ -1,7 +1,7 @@
 {
   "name": "workflow-contracts",
   "version": "0.1.0",
-  "description": "wfc \u2014 lint, trace and lock the data flow between your GitHub Actions workflows.",
+  "description": "wfc — lint, trace and lock the data flow between your GitHub Actions workflows.",
   "keywords": [
     "github-actions",
     "workflow",
@@ -27,7 +27,7 @@
   "author": "Ruman Kazi",
   "type": "module",
   "bin": {
-    "wfc": "./dist/index.js"
+    "wfc": "dist/index.js"
   },
   "files": [
     "dist",
