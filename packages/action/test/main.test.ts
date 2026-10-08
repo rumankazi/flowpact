@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -525,6 +534,18 @@ describe('review fixes', () => {
     const s = await action(workspace, { mode: 'check', 'working-directory': 'svc' });
     expect(s.uploads[0]!.name).toBe('flowpact-contracts-svc');
     expect(s.uploads[0]!.root).toContain('flowpact-contracts-artifact-flowpact-svc-svc');
+  });
+
+  it('writes the drift artifact to a fresh private folder outside the runner', async () => {
+    const { workspace, root } = repoFrom('deep-nesting', 'svc');
+    lockContracts(root);
+    addRequiredInput(root);
+    delete process.env.RUNNER_TEMP;
+    const a = (await action(workspace, { mode: 'check', 'working-directory': 'svc' })).uploads.at(-1)!.root;
+    const b = (await action(workspace, { mode: 'check', 'working-directory': 'svc' })).uploads.at(-1)!.root;
+    expect(a.startsWith(join(tmpdir(), 'flowpact-contracts-artifact-'))).toBe(true);
+    expect(a).not.toBe(b);
+    if (process.platform !== 'win32') expect(statSync(a).mode & 0o777).toBe(0o700);
   });
 
   it('shortens the job summary to stay within GitHub’s limit', async () => {
