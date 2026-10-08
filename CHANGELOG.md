@@ -4,6 +4,14 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.5.0](https://github.com/rumankazi/flowpact/compare/v0.4.0...v0.5.0) (2026-10-08)
+
+
+### Features
+
+* **core:** find symbols by source position for editors ([#34](https://github.com/rumankazi/flowpact/issues/34)) ([c8220d2](https://github.com/rumankazi/flowpact/commit/c8220d2ff48af010411c5a7594101fe985ba29b2))
+* **lsp:** add the language server and `flowpact lsp` ([#35](https://github.com/rumankazi/flowpact/issues/35)) ([17b422f](https://github.com/rumankazi/flowpact/commit/17b422f44c74d464657daba40fd89a0cc23e1c2d))
+
 ## [0.4.0](https://github.com/rumankazi/flowpact/compare/v0.3.2...v0.4.0) (2026-10-08)
 
 
