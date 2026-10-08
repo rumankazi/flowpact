@@ -54,6 +54,19 @@ describe('FP401 empty-binding-for-matrix-combo — the shipped-without-a-variant
     expect(f?.symbol).toBe(`${WF}/callee.yml#inputs.config`);
   });
 
+  it("is the same error when the callee writes default: '' (GitHub's value for a missing default)", () => {
+    const r = lint({
+      ...files('${{ matrix.config }}'),
+      [`${WF}/callee.yml`]: callee
+        .replace(
+          'config: { type: string, required: false }',
+          "config: { type: string, required: false, default: '' }",
+        )
+        .replace('runs-on: x', "runs-on: x\n    if: inputs.config != ''"),
+    });
+    expect(byCode(r, 'FP401').map((f) => `${f.severity} ${at(f)}`)).toEqual([`error ${WF}/tests.yml:13:19`]);
+  });
+
   it('is quiet with an explicit fallback or when every combination defines the key', () => {
     expect(byCode(lint(files("${{ matrix.config || 'default.json' }}")), 'FP401')).toEqual([]);
     expect(
@@ -131,20 +144,36 @@ describe('FP401 empty-binding-for-matrix-combo — the shipped-without-a-variant
     it('is quiet for an optional input whose default is empty (grafana build-go: "leave empty for non-ARM")', () => {
       expect(run("{ required: false, default: '' }")).toEqual([]);
       expect(run('{ required: false, default: }')).toEqual([]);
-      // Even when a condition reads it: the callee declares the empty value as its default.
-      expect(run("{ required: false, default: '' }", gated)).toEqual([]);
     });
 
     it('is quiet for an optional input without a default that no condition reads', () => {
       expect(run('{ required: false }')).toEqual([]);
     });
 
-    it('is an error when a condition in the callee reads an optional input without a default', () => {
-      const [f] = run('{ required: false }', gated);
+    it.each([
+      ['without a default', '{ required: false }'],
+      // GitHub gives a missing default as '' for a string: `default: ''` declares the same value.
+      ["with default: ''", "{ required: false, default: '' }"],
+      ['with default: (null)', '{ required: false, default: }'],
+    ])('is an error when a condition in the callee reads an optional input %s', (_name, decl) => {
+      const [f] = run(decl, gated);
       expect(f?.severity).toBe('error');
       expect(f?.related.at(-1)?.message).toBe(
         'this condition reads "arm", so the legs with an empty value take the other branch',
       );
+    });
+
+    it('is quiet when the condition only reads the input through a fallback (as FP105)', () => {
+      expect(run('{ required: false }', "if: (inputs.arm || 'all') == 'all'\n      run: echo arm")).toEqual(
+        [],
+      );
+      // A fallback elsewhere does not hide a condition that reads the value itself; that one is the related location.
+      const [f] = run(
+        '{ required: false }',
+        "if: (inputs.arm || 'all') == 'all'\n      run: echo arm\n      shell: bash\n    - if: inputs.arm\n      run: echo arm",
+      );
+      expect(f?.severity).toBe('error');
+      expect(f?.related.at(-1)?.loc.line).toBe(9);
     });
 
     it('is a warning when the empty value replaces a non-empty default', () => {
@@ -243,6 +272,8 @@ describe('FP402 matrix-key-missing-in-combo', () => {
       // cpython jit.yml
       ['= in [ ] (cpython)', 'if [ "${{ matrix.shard }}" = "true" ]; then echo; fi'],
       ['a comparison on the right', "test 'x' != '${{ matrix.shard }}' && echo"],
+      ['test as a command after &&', 'cd x && test -n "${{ matrix.shard }}" && echo ok'],
+      ['a negated test', 'if ! [ -z "${{ matrix.shard }}" ]; then echo; fi'],
     ])('%s', (_name, body) => {
       expect(script(body)).toEqual([control]);
     });
@@ -254,8 +285,26 @@ describe('FP402 matrix-key-missing-in-combo', () => {
         'a use after the test',
         'if [[ -z "${{ matrix.shard }}" ]]; then exit 0; fi\n./test --shard=${{ matrix.shard }}',
       ],
+      // `test` and `[` only start a test as a command, not as an argument of one.
+      ['cargo test -p', 'cargo test -p "${{ matrix.shard }}"'],
+      ['go test -v', 'go test -v "${{ matrix.shard }}"'],
+      ['npm test -w', 'npm test -w "${{ matrix.shard }}"'],
+      ['pnpm test -F', "pnpm test -F '${{ matrix.shard }}'"],
+      ['a flag compared after an argument named test', 'yarn test --filter="${{ matrix.shard }}" == x'],
+      ['[[ inside a string', 'echo "[[ start" && tar -x "${{ matrix.shard }}" && echo "done ]]"'],
+      ['a command after a closed [ ]', '[ -f x ] && cp -r "${{ matrix.shard }}" /dst ]'],
+      ['an argument named test before ]', 'docker run -e "${{ matrix.shard }}" img test -x ]'],
     ])('still flags %s', (_name, body) => {
       expect(script(body)).toEqual(['matrix.shard is undefined in 2 of 3 combinations of jobs.j', control]);
+    });
+
+    it('points at the read that is still unguarded, not at the test', () => {
+      const [f] = byCode(
+        w('run: |\n                  [[ -n "${{ matrix.shard }}" ]] && ./t --shard=${{ matrix.shard }}'),
+        'FP402',
+      );
+      // Column 22 is the read inside `[[ -n … ]]`; 61 the one after `--shard=`.
+      expect(at(f!)).toBe(`${WF}/w.yml:16:61`);
     });
   });
 });
@@ -311,7 +360,7 @@ describe('FP404 undefined-matrix-key', () => {
     expect(byCode(r, 'FP402')).toEqual([]);
   });
 
-  describe('reads that handle the empty value (envoy _check_build_openssl.yml)', () => {
+  describe('reads with a fallback that always applies (envoy _check_build_openssl.yml)', () => {
     const w = (value: string, extra = '') =>
       lint({
         [`${WF}/w.yml`]: yaml`
@@ -330,14 +379,15 @@ describe('FP404 undefined-matrix-key', () => {
       });
     const fp404 = (value: string, extra?: string) =>
       byCode(w(value, extra), 'FP404').map((f) => `${f.severity} ${f.loc.column} ${f.message}`);
+    const severities = (value: string, extra?: string) =>
+      byCode(w(value, extra), 'FP404').map((f) => f.severity);
 
     it.each([
       ['a fallback', '${{ matrix.docker-ci || false }}'],
       ['a fallback to another key', '${{ matrix.docker-ci || matrix.target }}'],
       ['a fallback to a runtime value', '${{ matrix.docker-ci || github.sha }}'],
-      ['a comparison', '${{ matrix.docker-ci != false && true || false }}'],
-      ['a guarded read', "${{ matrix.docker-ci == 'arm64' && format('-{0}', matrix.docker-ci) || '' }}"],
-      ['a quoted shell test', '[[ -z "${{ matrix.docker-ci }}" ]]'],
+      ['a fallback in parentheses, before another', "${{ (matrix.docker-ci || github.sha) || 'x' }}"],
+      ['a fallback inside a function', "${{ fromJSON(matrix.docker-ci || '1') }}"],
     ])('reports %s once, as info', (_name, value) => {
       const found = byCode(w(value), 'FP404');
       expect(found.map((f) => f.severity)).toEqual(['info']);
@@ -346,13 +396,29 @@ describe('FP404 undefined-matrix-key', () => {
       );
     });
 
+    // A comparison or test on a key no combination defines always gives the same answer: the mark of a typo.
     it.each([
       ['a plain read', '${{ matrix.docker-ci }}'],
       ['the fallback itself', '${{ github.event.inputs.ci || matrix.docker-ci }}'],
       ['a value built before the fallback', "${{ format('--ci={0}', matrix.docker-ci) || 'x' }}"],
       ['a read after a guard on something else', '${{ github.event.inputs.ci && matrix.docker-ci }}'],
+      ['an empty fallback', "--config=${{ matrix.docker-ci || '' }}"],
+      ['a fallback to another undefined key', '${{ matrix.docker-ci || matrix.docker-cd }}'],
+      ['a comparison (always false)', "--gpu=${{ matrix.docker-ci == 'true' }}"],
+      ['a comparison guarding a fallback (envoy)', '${{ matrix.docker-ci != false && true || false }}'],
+      ['a && guard (the flag is never set)', "${{ matrix.docker-ci && '--flag' }}"],
+      ['a negation', '${{ !matrix.docker-ci }}'],
+      ['a quoted shell test (always true)', '[[ -z "${{ matrix.docker-ci }}" ]]'],
     ])('keeps %s an error', (_name, value) => {
-      expect(byCode(w(value), 'FP404').map((f) => f.severity)).toEqual(['error']);
+      expect(severities(value).every((s) => s === 'error') && severities(value).length > 0).toBe(true);
+    });
+
+    it('keeps every read an error when the same key is also compared (envoy _publish_verify.yml)', () => {
+      expect(
+        fp404("${{ matrix.docker-ci == 'arm64' && format('-{0}', matrix.docker-ci) || '' }}").map(
+          (f) => f.split(' ')[0],
+        ),
+      ).toEqual(['error', 'error']);
     });
 
     it('keeps an error on every plain read when one read in the script is unhandled', () => {
@@ -361,13 +427,50 @@ describe('FP404 undefined-matrix-key', () => {
       ).toEqual(['error', 'error']);
     });
 
-    it('keeps a condition that can never be true an error (the step never runs), and reports others as info', () => {
-      expect(
-        fp404('x', "if: matrix.os == 'windows'\n                  ").map((f) => f.split(' ')[0]),
-      ).toEqual(['error']);
-      expect(fp404('x', 'if: matrix.skip != true\n                  ').map((f) => f.split(' ')[0])).toEqual([
-        'info',
-      ]);
+    it('keeps a fallback an error when the key is close to one the matrix defines', () => {
+      expect(severities("${{ matrix.targets || 'all' }}")).toEqual(['error']);
+    });
+
+    it('keeps conditions on the key errors, whether always true or never true', () => {
+      for (const condition of [
+        "matrix.os == 'windows'",
+        'matrix.skip != true',
+        "matrix.oss != 'windows'",
+        '${{ !matrix.skip }}',
+        "matrix.skip == 'true' || github.event_name == 'push'",
+      ])
+        expect(severities('x', `if: ${condition}\n                  `), condition).toEqual(['error']);
+      // A fallback that always applies is info in a condition too, unless the step then never runs.
+      expect(severities('x', "if: (matrix.os || 'linux') == 'linux'\n                  ")).toEqual(['info']);
+      expect(severities('x', 'if: matrix.skip || false\n                  ')).toEqual(['error']);
+    });
+
+    it('keeps an empty fallback passed to a callee an error', () => {
+      const r = lint({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            call:
+              strategy:
+                matrix:
+                  os: [linux, windows]
+              uses: ./.github/workflows/b.yml
+              with:
+                config: \${{ matrix.conf || '' }}
+        `,
+        [`${WF}/b.yml`]: yaml`
+          on:
+            workflow_call:
+              inputs:
+                config: { type: string, required: true }
+          jobs:
+            x:
+              runs-on: x
+              steps:
+                - run: echo \${{ inputs.config }}
+        `,
+      });
+      expect(byCode(r, 'FP404').map((f) => f.severity)).toEqual(['error']);
     });
 
     it('also applies to jobs without a matrix (airflow special-tests.yml keeps its error)', () => {

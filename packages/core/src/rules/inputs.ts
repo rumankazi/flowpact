@@ -1,16 +1,17 @@
-import { type ConditionUse, conditionUses, evaluateTemplate, type Json, UNKNOWN } from '../expressions';
+import { evaluateTemplate, type Json, UNKNOWN } from '../expressions';
 import { type ProjectIndex, sym, type Usage } from '../graph';
-import { type Binding, type ExprSite, type InputDecl, type LocatedRef, lookup, type UnitDecl } from '../ir';
+import { isPublished } from '../impact';
+import { type Binding, type InputDecl, lookup, type UnitDecl } from '../ir';
 import { defineRule, type RuleDefinition } from './types';
 import {
   chainRelated,
   chainTo,
   didYouMean,
-  isWholeExpression,
   listNames,
   quote,
   readsContextDynamically,
   refsOf,
+  useInCondition,
 } from './util';
 
 /**
@@ -275,12 +276,6 @@ function callersOf(index: ProjectIndex, unit: UnitDecl): Caller[] {
   }));
 }
 
-/** How a condition site uses a reference: only the value of a whole-expression `if:` decides by truthiness. */
-function useInCondition(site: ExprSite, ref: LocatedRef): ConditionUse | undefined {
-  const seg = site.segments.find((s) => s.refs.includes(ref));
-  return seg ? conditionUses(seg.expr, isWholeExpression(site)).get(ref.start) : undefined;
-}
-
 export const optionalInputInCondition = defineRule({
   code: 'FP105',
   name: 'optional-input-no-default-in-condition',
@@ -294,7 +289,7 @@ export const optionalInputInCondition = defineRule({
       'as `if: inputs.x` then takes the "false" branch silently, so jobs or steps are skipped and the run is still green.',
     fix:
       "Give the input an explicit `default`, make it `required: true`, or compare explicitly (`inputs.x != ''`, `inputs.x == 'yes'`). " +
-      "Not reported: comparisons with a constant, `contains()`-style tests, fallbacks (`inputs.x || 'default'`), and inputs every local caller passes.",
+      "Not reported: comparisons with a constant, `contains()`-style tests, fallbacks (`inputs.x || 'default'`), and inputs every local caller passes — unless the workflow can be dispatched or the unit is published (by default the root `action.yml` and reusable workflows whose file name does not start with `_`; see `impact.publish`), since callers in other repositories can still omit them.",
     examples: {
       bad: `inputs:
   variant: { type: string, required: false }
@@ -309,7 +304,13 @@ if: inputs.variant != ''`,
   check(ctx) {
     for (const unit of ctx.index.units()) {
       const callers = callersOf(ctx.index, unit);
+      // Every local caller passing an input proves nothing for a unit other repositories use (the root action.yml, a
+      // published reusable workflow: see `impact.publish`), nor for a workflow that can be dispatched without it.
+      const published = isPublished(unit, ctx.config.impact);
+      const callersDecide = callers.length > 0 && !(unit.kind === 'workflow' && unit.dispatch) && !published;
       const flagged: { input: InputDecl; usage: Usage; omitting: Caller[] }[] = [];
+      /** Per condition site, the inputs it reads by value that every local caller passes (so they are not flagged). */
+      const passedBySite = new Map<number, string[]>();
       for (const input of Object.values(declaredInputs(unit))) {
         // GitHub substitutes false for booleans and 0 for numbers; only strings become ''.
         if (input.required || input.hasDefault || input.type === 'boolean' || input.type === 'number')
@@ -330,30 +331,45 @@ if: inputs.variant != ''`,
           .map((x) => x.u);
         if (usages.length === 0) continue;
         const omitting = callers.filter((c) => !lookup(c.with, input.name));
-        // Every local caller passes it; a dispatched workflow can still be run without it.
-        if (callers.length > 0 && omitting.length === 0 && !(unit.kind === 'workflow' && unit.dispatch))
+        if (callersDecide && omitting.length === 0) {
+          for (const usage of usages) addName(passedBySite, usage.site.id, input.name);
           continue;
+        }
         for (const usage of usages) flagged.push({ input, usage, omitting });
       }
-      // One finding per input (each can be overridden on its own), naming the others the same condition depends on.
-      const namesBySite = new Map<number, string[]>();
-      for (const { input, usage } of flagged) {
-        const names = namesBySite.get(usage.site.id) ?? [];
-        if (!names.includes(input.name)) names.push(input.name);
-        namesBySite.set(usage.site.id, names);
-      }
+      // One finding per input (each can be overridden on its own), naming the other inputs the same condition reads:
+      // those reported too, and those every caller passes (why they are not reported).
+      const flaggedBySite = new Map<number, string[]>();
+      for (const { input, usage } of flagged) addName(flaggedBySite, usage.site.id, input.name);
       for (const { input, usage, omitting } of flagged) {
-        const others = (namesBySite.get(usage.site.id) ?? []).filter((n) => n !== input.name);
+        const others = (flaggedBySite.get(usage.site.id) ?? []).filter((n) => n !== input.name);
+        const passed = passedBySite.get(usage.site.id) ?? [];
+        const notes = [
+          ...(others.length
+            ? [
+                `so ${others.length > 1 ? 'are' : 'is'} ${others.map(quote).join(', ')}, read by the same condition`,
+              ]
+            : []),
+          ...(passed.length
+            ? [
+                `${passed.map(quote).join(', ')}, also read by this condition, ${passed.length > 1 ? 'are' : 'is'} passed by every caller`,
+              ]
+            : []),
+        ];
         ctx.report({
           message:
             `Condition reads optional input ${quote(input.name)}, which has no default and is '' when omitted` +
-            (others.length
-              ? ` (so ${others.length > 1 ? 'are' : 'is'} ${others.map(quote).join(', ')}, read by the same condition)`
-              : ''),
+            (notes.length ? ` (${notes.join('; ')})` : ''),
           loc: usage.ref.loc,
           symbol: sym.input(unit.path, input.name),
           related: [
-            { loc: input.loc, message: 'declared optional without a default' },
+            {
+              loc: input.loc,
+              message:
+                published && callers.length > 0 && omitting.length === 0
+                  ? 'declared optional without a default; every caller here passes it, but this unit is published (see `impact.publish`), so callers in other repositories can omit it'
+                  : 'declared optional without a default',
+            },
             ...omitting.slice(0, 3).map((c) => ({ loc: c.loc, message: `${c.label} omits it` })),
           ],
         });
@@ -361,6 +377,12 @@ if: inputs.variant != ''`,
     }
   },
 });
+
+function addName(bySite: Map<number, string[]>, site: number, name: string): void {
+  const names = bySite.get(site) ?? [];
+  if (!names.includes(name)) names.push(name);
+  bySite.set(site, names);
+}
 
 export const passthroughDropped = defineRule({
   code: 'FP106',

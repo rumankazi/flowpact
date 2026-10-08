@@ -1,4 +1,4 @@
-import { findTemplateSegments } from '../expressions';
+import { type ConditionUse, conditionUses, findTemplateSegments } from '../expressions';
 import type { CallSite, ProjectIndex } from '../graph';
 import type { ExprSite, LocatedRef, UnitDecl, WorkflowDecl } from '../ir';
 import { escapeControl } from '../text';
@@ -15,6 +15,12 @@ export function isWholeExpression(site: ExprSite): boolean {
     templated.length === 0 ||
     (templated.length === 1 && site.text.trim() === site.text.slice(templated[0]!.start, templated[0]!.end))
   );
+}
+
+/** How a condition site uses a reference: only the value of a whole-expression `if:` decides by truthiness. */
+export function useInCondition(site: ExprSite, ref: LocatedRef): ConditionUse | undefined {
+  const seg = site.segments.find((s) => s.refs.includes(ref));
+  return seg ? conditionUses(seg.expr, isWholeExpression(site)).get(ref.start) : undefined;
 }
 
 export function* refsOf(unit: UnitDecl): Generator<{ site: ExprSite; ref: LocatedRef }> {

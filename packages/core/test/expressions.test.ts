@@ -3,10 +3,10 @@ import {
   conditionUses,
   evaluate,
   evaluateTemplate,
+  fallbacksOf,
   findTemplateSegments,
   known,
   parseExpression,
-  possibleTaint,
   toNumber,
   toStr,
   truthy,
@@ -199,35 +199,40 @@ describe('evaluateTemplate', () => {
   });
 });
 
-describe('possibleTaint', () => {
-  // `matrix.k` is missing; everything else is only known at runtime.
-  const missing: ContextResolver = ({ context, path }) =>
-    context === 'matrix' && path[0] === 'k'
-      ? known(null, [{ kind: 'missing-matrix-key', key: 'k' }])
-      : undefined;
-  const taint = (src: string) => possibleTaint(parseExpression(src).ast!, missing).map((t) => t.key);
+describe('fallbacksOf', () => {
+  /** Each reference, marked when it is the subject of a fallback. */
+  const subjects = (src: string) => {
+    const p = parseExpression(src);
+    const byStart = fallbacksOf(p);
+    return p.refs.map((r) => `${r.context}.${r.path.join('.')}${byStart.has(r.start) ? ' ||' : ''}`);
+  };
+  /** The value of the `||` expression returned for `ref`, with every matrix key missing. */
+  const valueFor = (src: string, ref: string) => {
+    const p = parseExpression(src);
+    const r = p.refs.find((x) => `${x.context}.${x.path.join('.')}` === ref)!;
+    const node = fallbacksOf(p).get(r.start);
+    return node && evaluate(node, ({ context }) => (context === 'matrix' ? known(null) : undefined));
+  };
 
-  it.each([
-    'matrix.k',
-    'inputs.x || matrix.k',
-    'inputs.x && matrix.k',
-    "format('-{0}', matrix.k) || 'x'",
-    'fromJSON(inputs.x)[matrix.k]',
-    "(inputs.x || matrix.k) && 'ok' || matrix.k",
-  ])('reaches the value: %s', (src) => {
-    expect(taint(src)).toEqual(['k']);
+  it('finds the non-last operands of ||, through parentheses and nested ||', () => {
+    expect(subjects("matrix.a || 'x'")).toEqual(['matrix.a ||']);
+    expect(subjects('(matrix.a) || inputs.b || matrix.c')).toEqual([
+      'matrix.a ||',
+      'inputs.b ||',
+      'matrix.c',
+    ]);
+    // The whole `||` is returned, so a nested one does not hide the fallback after it.
+    expect(valueFor("(matrix.a || matrix.b) || 'x'", 'matrix.a')).toEqual(known('x'));
+    expect(valueFor("fromJSON(matrix.a || '1')", 'matrix.a')).toEqual(known('1'));
+    expect(valueFor("matrix.a || ''", 'matrix.a')).toEqual(known(''));
   });
 
-  it.each([
-    "matrix.k || 'x'",
-    'matrix.k || inputs.x',
-    "matrix.k && format('-{0}', matrix.k) || ''",
-    "matrix.k == 'arm64' && inputs.x || ''",
-    'matrix.k != inputs.x',
-    '!matrix.k',
-    'contains(matrix.k, inputs.x)',
-  ])('does not reach the value: %s', (src) => {
-    expect(taint(src)).toEqual([]);
+  it('leaves out reads that are not the subject of a fallback', () => {
+    expect(subjects("matrix.a == 'x' || 'y'")).toEqual(['matrix.a']);
+    expect(subjects("matrix.a && 'x' || 'y'")).toEqual(['matrix.a']);
+    expect(subjects("format('{0}', matrix.a) || 'x'")).toEqual(['matrix.a']);
+    expect(subjects("!matrix.a || 'x'")).toEqual(['matrix.a']);
+    expect(subjects('inputs.x || matrix.a')).toEqual(['inputs.x ||', 'matrix.a']);
   });
 });
 

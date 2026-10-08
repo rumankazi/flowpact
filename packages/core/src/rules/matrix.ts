@@ -1,10 +1,11 @@
 import {
   type ContextResolver,
   definitelyFalsy,
+  evaluate,
   evaluateTemplate,
+  fallbacksOf,
   findTemplateSegments,
   type Json,
-  possibleTaint,
   type TemplateSegment,
   UNKNOWN,
 } from '../expressions';
@@ -30,21 +31,27 @@ import {
 } from '../matrix';
 import type { Loc } from '../source';
 import { defineRule, type RelatedLocation, type RuleContext, type RuleDefinition } from './types';
-import { chainRelated, chainTo, isWholeExpression, quote } from './util';
+import { chainRelated, chainTo, didYouMean, isWholeExpression, quote, useInCondition } from './util';
 
 const hasMatrixRef = (site: ExprSite) =>
   site.segments.some((s) => s.refs.some((r) => r.context === 'matrix'));
 
-const readsKey = (seg: TemplateSegment, key: string) =>
+const readsKey = (seg: { expr: TemplateSegment['expr'] }, key: string) =>
   seg.expr.refs.some((r) => r.context === 'matrix' && r.path[0]?.toLowerCase() === key.toLowerCase());
 
-/** `[[`/`[`/`test` is open at the end of `before` and closed in `after` (both on the operand's line). */
+/**
+ * Where a shell test starts: `[[`, `[` or `test` as a command — at the start of the line, after `;`, `&`, `|`, `(` or
+ * `{`, or after `if`, `elif`, `while`, `until`, `then`, `do`, `else` or `!` — not as an argument (`cargo test -p`).
+ */
+const TEST_OPEN = /(?:^|[;&|({])\s*(?:(?:if|elif|while|until|then|do|else|!)\s+)*(\[\[|\[|test)(?=\s)/g;
+
+/** A shell test is open at the end of `before` and, for `[[`/`[`, closed in `after` (both on the operand's line). */
 function inShellTest(before: string, after: string): boolean {
-  if (before.lastIndexOf('[[') > before.lastIndexOf(']]') && after.includes(']]')) return true;
-  const open = [...before.matchAll(/(?:^|[\s;&|(!])(\[|test)\s/g)].at(-1);
+  const open = [...before.matchAll(TEST_OPEN)].at(-1);
   if (!open) return false;
   const rest = before.slice(open.index + open[0].length);
   if (open[1] === 'test') return !/[;&|]/.test(rest);
+  if (open[1] === '[[') return !rest.includes(']]') && /\s\]\](?:[\s;&|)]|$)/.test(after);
   return !/\s\](?:\s|$)/.test(rest) && /\s\](?:[\s;&|)]|$)/.test(after);
 }
 
@@ -72,23 +79,26 @@ function shellTestSegments(script: string, segments = findTemplateSegments(scrip
 }
 
 /**
- * For a `run:` script, the text that still degrades when `key` is empty: the script without the segments that only
- * test it in the shell. `undefined` when every read of `key` is such a test (the script handles the empty value).
+ * For a `run:` script, what still degrades when `key` is empty: the script without the `${{ }}` segments that only
+ * test it in the shell, and the indexes of those segments (in `site.segments`, which follow the script's order).
+ * `undefined` when every read of `key` is such a test (the script handles the empty value).
  */
-function unhandledText(site: ExprSite, key: string): string | undefined {
-  if (site.field !== 'step.run') return site.text;
+function unhandledReads(site: ExprSite, key: string): { text: string; tested: Set<number> } | undefined {
+  const all = { text: site.text, tested: new Set<number>() };
+  if (site.field !== 'step.run') return all;
   const segments = findTemplateSegments(site.text);
-  const tests = shellTestSegments(site.text, segments);
-  const handled = segments.filter((s, i) => tests.has(i) && readsKey(s, key));
-  if (handled.length === 0) return site.text;
-  if (handled.length === segments.filter((s) => readsKey(s, key)).length) return undefined;
+  const tested = new Set(
+    [...shellTestSegments(site.text, segments)].filter((i) => readsKey(segments[i]!, key)),
+  );
+  if (tested.size === 0) return all;
+  if (tested.size === segments.filter((s) => readsKey(s, key)).length) return undefined;
   let text = '';
   let at = 0;
-  for (const s of handled) {
-    text += site.text.slice(at, s.start);
-    at = s.end;
+  for (const i of [...tested].sort((a, b) => a - b)) {
+    text += site.text.slice(at, segments[i]!.start);
+    at = segments[i]!.end;
   }
-  return text + site.text.slice(at);
+  return { text: text + site.text.slice(at), tested };
 }
 
 /** True when an `if:` site is false for this combination whatever runtime state says (the step is skipped there). */
@@ -129,9 +139,11 @@ function affectedCombos(
   return { combos, keys: [...perKey.keys()], perKey };
 }
 
-function firstMatrixRefLoc(site: ExprSite, keys: string[]): Loc {
+/** The first read of one of `keys`, outside the segments in `skip` (indexes in `site.segments`). */
+function firstMatrixRefLoc(site: ExprSite, keys: string[], skip: Set<number> = new Set()): Loc {
   const lower = keys.map((k) => k.toLowerCase());
-  for (const seg of site.segments) {
+  for (const [i, seg] of site.segments.entries()) {
+    if (skip.has(i)) continue;
     for (const r of seg.refs)
       if (r.context === 'matrix' && lower.includes((r.path[0] ?? '').toLowerCase())) return r.loc;
   }
@@ -182,11 +194,11 @@ function* matrixJobs(ctx: RuleContext): Generator<{ wf: WorkflowDecl; job: JobDe
 
 /**
  * How serious an empty value is for the input that receives it:
- * - `error` when the input is required, unknown (e.g. a remote callee), or has no `default` and decides an `if:` in the
- *   callee: the legs with an empty value skip or change that work, like the incident flowpact was built for;
+ * - `error` when the input is required, unknown (e.g. a remote callee), or its default is empty (none, `''` or `~`) and
+ *   an `if:` in the callee reads it other than through a fallback: the legs with an empty value skip or change that
+ *   work, like the incident flowpact was built for;
  * - `warning` when the empty value replaces a non-empty `default`;
- * - `undefined` (not reported) for other optional inputs: with `default: ''` (or `default:`) the callee declares the
- *   empty value as its default, and without a default and a condition it handles it like an omitted input.
+ * - `undefined` (not reported) for other optional inputs: the callee handles the empty value like an omitted input.
  */
 function emptyInputImpact(
   index: ProjectIndex,
@@ -199,8 +211,10 @@ function emptyInputImpact(
     const shown = typeof value === 'string' ? quote(value) : JSON.stringify(value);
     return { severity: 'warning', related: [], note: `, which replaces the input's default ${shown}` };
   }
-  if ('default' in input) return undefined;
-  const condition = index.usagesOf(sym.input(callee.path, input.name)).find((u) => u.site.isCondition);
+  // A missing default is '' for a string, the same as `default: ''`. A fallback (`inputs.x || 'all'`) replaces it.
+  const condition = index
+    .usagesOf(sym.input(callee.path, input.name))
+    .find((u) => u.site.isCondition && useInCondition(u.site, u.ref) !== 'fallback');
   if (!condition) return undefined;
   return {
     severity: 'error',
@@ -227,8 +241,8 @@ export const emptyBindingForMatrixCombo = defineRule({
       'an empty input, so the callee may skip its real work (e.g. a test configuration) while the run stays green.',
     fix:
       "Define the key in every combination (add it to the `include` entry or a matrix dimension), or add an explicit fallback: `${{ matrix.key || 'default' }}`. " +
-      'Reported as an error when the input is required (or the callee is not in the repository) or when the input has no default and an `if:` in the callee reads it, and as a warning when the empty value replaces a non-empty `default`. ' +
-      "Not reported for other optional inputs (`default: ''`, or no default and no condition): the callee handles the empty value like an omitted input.",
+      "Reported as an error when the input is required (or the callee is not in the repository) or when its default is empty (none, or `default: ''`) and an `if:` in the callee reads it, and as a warning when the empty value replaces a non-empty `default`. " +
+      "Not reported for other optional inputs (an empty default that no condition reads, or reads only through a fallback such as `inputs.x || 'all'`): the callee handles the empty value like an omitted input.",
     examples: {
       bad: `strategy:
   matrix:
@@ -350,10 +364,10 @@ export const matrixKeyMissingInCombo = defineRule({
               read.set(r.path[0].toLowerCase(), r.path[0]);
         for (const key of read.values()) {
           // A script that only tests the value in the shell (`[[ -z "${{ matrix.k }}" ]]`) handles the empty case.
-          const text = unhandledText(site, key);
-          if (text === undefined) continue;
+          const unhandled = unhandledReads(site, key);
+          if (!unhandled) continue;
           const guards = guardsOf(job, site);
-          const { combos } = affectedCombos(site, exp, predicate, guards, key, text);
+          const { combos } = affectedCombos(site, exp, predicate, guards, key, unhandled.text);
           if (combos.length === 0) continue;
           // The count says how often the key is missing; combinations where the whole input is empty are FP401's.
           const all = WITH_FIELDS.has(site.field)
@@ -362,7 +376,7 @@ export const matrixKeyMissingInCombo = defineRule({
           const rest = all - combos.length;
           ctx.report({
             message: `matrix.${key} is undefined in ${all} of ${exp.combos.length} combinations of jobs.${job.id}${rest ? `; in ${rest} of them the whole input is empty (FP401)` : ''}`,
-            loc: firstMatrixRefLoc(site, [key]),
+            loc: firstMatrixRefLoc(site, [key], unhandled.tested),
             combos: combos.map((c) => comboLabel(c, exp.keys)),
             symbol: sym.matrix(wf.path, job.id, key),
             related: comboRelated(job, combos, [key]),
@@ -412,9 +426,10 @@ export const undefinedMatrixKey = defineRule({
   docs: {
     summary: 'An expression reads a matrix key that no combination defines (or the job has no matrix).',
     why:
-      'The value is always empty — almost certainly a typo or a key that was renamed in the matrix. Reads that handle ' +
-      "the empty value (`matrix.key || 'default'`, a comparison, a quoted shell test) are only info: the fallback " +
-      'always applies.',
+      'The value is always empty — almost certainly a typo or a key that was renamed in the matrix. A comparison or ' +
+      'test on it always gives the same answer, and a condition on it never changes. Only a read with a fallback that ' +
+      "is not empty (`matrix.key || 'default'`) is info, since the fallback always applies, unless the key is close " +
+      'to one the matrix defines.',
     fix: 'Fix the key name, add it to the matrix, or drop the read if the fallback is what you want.',
   },
   check(ctx) {
@@ -441,7 +456,7 @@ export const undefinedMatrixKey = defineRule({
             ? `matrix.${k} is not defined in any combination of jobs.${job.id} (keys: ${exp!.keys.join(', ') || 'none'})`
             : `jobs.${job.id} has no matrix, so matrix.${k} is always empty`;
           const related = job.matrix ? [{ loc: job.matrix.loc, message: 'matrix defined here' }] : [];
-          if (!readsEmptyValue(site, k, job, exp)) {
+          if (onlyFallbacks(site, k, job, exp)) {
             ctx.report({
               message: `${where}; the fallback always applies`,
               loc: refs[0]!.loc,
@@ -473,37 +488,37 @@ const unknownKey =
     ref.context === 'matrix' && ref.path[0]?.toLowerCase() === key ? UNKNOWN : resolve(ref);
 
 /**
- * Whether the always-empty value of `key` (defined in no combination) is used as it is. Not when every read handles
- * it — a fallback (`matrix.k || 'x'`), a comparison or `&&` guard, a quoted shell test — or the step never runs. A
- * condition uses it when it is false in every combination because of the key: the step it guards never runs.
+ * True when every read of `key`, which no combination defines, is a fallback that always applies: a non-last operand
+ * of `||` whose result is not empty (`matrix.k || 'x'`, `matrix.k || env.X`) in every combination where the site is
+ * evaluated. Any other read — plain, compared, negated, a `&&` guard, a shell test, `matrix.k || ''` — uses the
+ * always-empty value and gives the same answer in every run, the mark of a typo; so does a condition that is never
+ * true, and a key close to one the matrix defines (`matrix.oss || 'linux'` next to `os`).
  */
-function readsEmptyValue(
-  site: ExprSite,
-  key: string,
-  job: JobDecl,
-  exp: MatrixExpansion | undefined,
-): boolean {
+function onlyFallbacks(site: ExprSite, key: string, job: JobDecl, exp: MatrixExpansion | undefined): boolean {
+  if (exp && didYouMean(key, exp.keys)) return false;
   const lower = key.toLowerCase();
-  const combos = combosOf(exp);
-  if (site.isCondition) {
-    const ast = isWholeExpression(site) ? site.segments[0]!.expr.ast : undefined;
-    if (!ast) return true;
-    return combos.every((c) => {
+  const guards = guardsOf(job, site);
+  const combos = combosOf(exp).filter((c) => !guards.some((g) => skippedIn(g, c)));
+  if (site.isCondition && isWholeExpression(site)) {
+    const ast = site.segments[0]!.expr.ast;
+    if (!ast) return false;
+    const neverTrue = combos.every((c) => {
       const resolve = matrixResolver(c);
       return definitelyFalsy(ast, resolve) && !definitelyFalsy(ast, unknownKey(resolve, lower));
     });
+    if (neverTrue) return false;
   }
-  const text = unhandledText(site, key);
-  if (text === undefined) return false;
-  const segments = findTemplateSegments(text).filter((s) => readsKey(s, key));
-  const guards = guardsOf(job, site);
-  return combos.some((c) => {
-    if (guards.some((g) => skippedIn(g, c))) return false;
-    const resolve = matrixResolver(c);
-    return segments.some(
-      (s) => !s.expr.ast || possibleTaint(s.expr.ast, resolve).some((t) => t.key.toLowerCase() === lower),
-    );
-  });
+  for (const seg of site.segments) {
+    const reads = seg.refs.filter((r) => r.context === 'matrix' && r.path[0]?.toLowerCase() === lower);
+    if (reads.length === 0) continue;
+    const fallbacks = fallbacksOf(seg.expr);
+    for (const r of reads) {
+      const fallback = fallbacks.get(r.start);
+      if (!fallback) return false;
+      if (combos.some((c) => isEmptyValue(evaluate(fallback, matrixResolver(c))))) return false;
+    }
+  }
+  return true;
 }
 
 export const unusedMatrixShape = defineRule({

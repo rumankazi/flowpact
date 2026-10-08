@@ -525,61 +525,6 @@ function evalCall(e: FunctionCall, resolve: ContextResolver): EvalValue {
   }
 }
 
-/** Functions whose result is a boolean: a missing value only changes the answer, it does not end up in the value. */
-const BOOLEAN_FUNCTIONS = new Set([
-  'contains',
-  'startswith',
-  'endswith',
-  'success',
-  'failure',
-  'cancelled',
-  'always',
-]);
-
-/**
- * The taint that can end up in the value of `e`, also when parts of it are only known at runtime. `evaluate` stops at
- * the first unknown operand of `a || b`, so for `inputs.x || matrix.k` it cannot say that `matrix.k` becomes the value
- * whenever `inputs.x` is empty; this does. Operands that cannot be the value (a falsy `||` operand followed by another,
- * a `&&` guard) and boolean results (negations, comparisons, `contains()`) contribute nothing, as in `evaluate`.
- */
-export function possibleTaint(e: Expr, resolve: ContextResolver): Taint[] {
-  const v = evaluate(e, resolve);
-  if (v.known) return v.taint;
-  const merged = (parts: Taint[][]): Taint[] =>
-    mergeTaint(...parts.map((taint) => ({ known: false as const, taint })));
-  if (e instanceof Grouping) return possibleTaint(e.group, resolve);
-  if (e instanceof Unary || e instanceof Binary) return [];
-  if (e instanceof Logical) {
-    const isAnd = e.operator.type === TokenType.AND;
-    const parts: Taint[][] = [];
-    for (const [i, arg] of e.args.entries()) {
-      const last = i === e.args.length - 1;
-      const a = evaluate(arg, resolve);
-      if (!a.known) {
-        // It is the value when it decides (truthy for `||`); a falsy `&&` guard is not (see `evaluate`).
-        if (!isAnd || last) parts.push(possibleTaint(arg, resolve));
-        continue;
-      }
-      const decides = isAnd ? !truthy(a.value) : truthy(a.value);
-      if (decides) {
-        if (!isAnd || last) parts.push(a.taint);
-        break;
-      }
-      if (last) parts.push(a.taint);
-    }
-    return merged(parts);
-  }
-  if (e instanceof FunctionCall) {
-    if (BOOLEAN_FUNCTIONS.has(e.functionName.lexeme.toLowerCase())) return [];
-    return merged(e.args.map((a) => possibleTaint(a, resolve)));
-  }
-  if (e instanceof IndexAccess && !refChain(e, resolve)) {
-    const idx = e.index instanceof Star ? [] : possibleTaint(e.index, resolve);
-    return merged([possibleTaint(e.expr, resolve), idx]);
-  }
-  return v.taint;
-}
-
 /**
  * How a condition uses the value of a context reference:
  * - `truthiness`: the value decides the condition as it is (`inputs.x`, `!inputs.x`, `inputs.x && …`);
@@ -668,6 +613,50 @@ export function conditionUses(expr: ParsedExpression, whole = true): Map<number,
     }
   };
   visit(expr.ast, whole ? 'truthiness' : 'value');
+  return out;
+}
+
+/**
+ * The context references that are the subject of a fallback: a non-last operand of `a || b` (parentheses and nested
+ * `||` included), so an empty value is replaced by the operands after it. Keyed by the reference's start offset
+ * (`ExprRef.start`), with the whole `||` expression, whose value is what the read turns into. References that are not
+ * such an operand (the last one, a comparison's, a function argument's) are absent.
+ */
+export function fallbacksOf(expr: ParsedExpression): Map<number, Expr> {
+  const out = new Map<number, Expr>();
+  if (!expr.ast) return out;
+  const unwrap = (e: Expr): Expr => (e instanceof Grouping ? unwrap(e.group) : e);
+  const isOr = (e: Expr): e is Logical => e instanceof Logical && e.operator.type === TokenType.OR;
+  const operands = (e: Expr): Expr[] => {
+    const u = unwrap(e);
+    return isOr(u) ? u.args.flatMap(operands) : [u];
+  };
+  const refStart = (e: Expr): number | undefined => {
+    let cur = e;
+    while (cur instanceof IndexAccess) cur = cur.expr;
+    if (!(cur instanceof ContextAccess)) return undefined;
+    const t = cur.name as Tok;
+    return offsetOf(expr.source, t.range.start.line, t.range.start.column);
+  };
+  const visit = (e: Expr): void => {
+    const u = unwrap(e);
+    if (isOr(u)) {
+      const ops = operands(u);
+      for (const [i, op] of ops.entries()) {
+        const start = i < ops.length - 1 ? refStart(op) : undefined;
+        if (start !== undefined) out.set(start, u);
+        visit(op);
+      }
+    } else if (u instanceof IndexAccess) {
+      visit(u.expr);
+      if (!(u.index instanceof Literal) && !(u.index instanceof Star)) visit(u.index);
+    } else if (u instanceof Unary) visit(u.expr);
+    else if (u instanceof Binary) {
+      visit(u.left);
+      visit(u.right);
+    } else if (u instanceof Logical || u instanceof FunctionCall) for (const arg of u.args) visit(arg);
+  };
+  visit(expr.ast);
   return out;
 }
 
