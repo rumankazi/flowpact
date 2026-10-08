@@ -1,8 +1,8 @@
-import type { AnalysisResult, ContractPlan, Finding, Loc, Severity } from '@wfc/core';
+import type { AnalysisResult, ContractPlan, Finding, Loc, Severity } from '@flowpact/core';
 import { buildCallGraph, renderMermaid } from './graph';
 
 export interface MarkdownOptions {
-  /** Heading of the report. Default: `wfc report`. */
+  /** Heading of the report. Default: `flowpact report`. */
   title?: string;
   /**
    * Findings listed in full before the rest is summarized as "… N more". Default: 50. The same limit applies to
@@ -192,7 +192,7 @@ function renderContracts(plan: ContractPlan, opts: MarkdownOptions): string[] {
     );
   }
   if (opts.artifact) {
-    const patch = opts.artifact.patchFile ?? 'wfc-contracts.patch';
+    const patch = opts.artifact.patchFile ?? 'flowpact-contracts.patch';
     out.push('');
     if (opts.artifact.runId) {
       out.push('To update the locked contracts, apply the regenerated ones from this run:');
@@ -209,10 +209,10 @@ function renderContracts(plan: ContractPlan, opts: MarkdownOptions): string[] {
     out.push(`git apply --index ${patch}`);
     out.push('```');
     out.push('');
-    out.push(`Or run ${code('wfc generate')} locally and commit the result.`);
+    out.push(`Or run ${code('flowpact generate')} locally and commit the result.`);
   } else {
     out.push('');
-    out.push(`Run ${code('wfc generate')} and commit the result to update the locked contracts.`);
+    out.push(`Run ${code('flowpact generate')} and commit the result to update the locked contracts.`);
   }
   return out;
 }
@@ -222,7 +222,7 @@ export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {
   const s = result.summary;
   const m = result.meta;
   const out: string[] = [];
-  out.push(`## ${opts.title ?? 'wfc report'}`);
+  out.push(`## ${opts.title ?? 'flowpact report'}`);
   out.push('');
   out.push(
     `<sub>${m.tool} v${m.version} · config schema v${m.schemas.config} · contract schema v${m.schemas.contract} · report schema v${m.schemas.report} · ${result.durationMs} ms</sub>`,
@@ -254,7 +254,7 @@ export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {
   if (result.findings.length > shown) {
     out.push('');
     out.push(
-      `_… ${result.findings.length - shown} more ${result.findings.length - shown === 1 ? 'finding' : 'findings'} not shown — the JSON and SARIF reports (or \`wfc lint\` locally) list them all._`,
+      `_… ${result.findings.length - shown} more ${result.findings.length - shown === 1 ? 'finding' : 'findings'} not shown — the JSON and SARIF reports (or \`flowpact lint\` locally) list them all._`,
     );
   }
 

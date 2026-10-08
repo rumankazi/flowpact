@@ -13,8 +13,8 @@ import {
   resolveLogLevel,
   toolMeta,
   UnsafePathError,
-} from '@wfc/core';
-import { type RenderOptions, renderBanner } from '@wfc/reporters';
+} from '@flowpact/core';
+import { type RenderOptions, renderBanner } from '@flowpact/reporters';
 import type { ArgsDef } from 'citty';
 import pc from 'picocolors';
 
@@ -25,10 +25,10 @@ export const commonArgs = {
   root: { type: 'string', description: 'Repository root (default: current directory)', valueHint: 'dir' },
   config: {
     type: 'string',
-    description: 'Config file (default: .github/workflow-contracts/wfc.config.yml)',
+    description: 'Config file (default: .github/flowpact/flowpact.config.yml)',
     valueHint: 'file',
   },
-  debug: { type: 'boolean', description: 'Debug logging (also WFC_DEBUG=1)', alias: 'd' },
+  debug: { type: 'boolean', description: 'Debug logging (also FLOWPACT_DEBUG=1)', alias: 'd' },
   verbose: { type: 'boolean', description: 'Verbose logging; repeat for trace (-vv)', alias: 'v' },
   quiet: { type: 'boolean', description: 'Only print errors and the report', alias: 'q' },
   color: { type: 'boolean', description: 'Colorized output (use --no-color to disable)', default: true },
@@ -112,7 +112,7 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
   const render: RenderOptions = {
     color,
     width: Math.max(40, Math.min(140, columns || 100)),
-    hyperlinks: color && isTTY && env.WFC_NO_HYPERLINKS === undefined,
+    hyperlinks: color && isTTY && env.FLOWPACT_NO_HYPERLINKS === undefined,
     ascii: Boolean(flags.ascii),
   };
   const resolved = resolveLogLevel({
@@ -180,7 +180,7 @@ export async function guard(fn: () => Promise<number> | number): Promise<void> {
         `${c.red(c.bold('Config error'))}${err.file ? c.dim(` (${err.file})`) : ''}: ${err.message}\n`,
       );
       for (const i of err.issues) process.stderr.write(`  ${c.red('•')} ${i}\n`);
-      process.stderr.write(c.dim('  docs: https://rumankazi.github.io/wfc/docs/configuration\n'));
+      process.stderr.write(c.dim('  docs: https://rumankazi.github.io/flowpact/docs/configuration\n'));
       process.exitCode = EXIT.usage;
       return;
     }
@@ -189,9 +189,9 @@ export async function guard(fn: () => Promise<number> | number): Promise<void> {
       process.exitCode = EXIT.usage;
       return;
     }
-    process.stderr.write(`${c.red(c.bold('wfc crashed'))}: ${(err as Error).stack ?? String(err)}\n`);
+    process.stderr.write(`${c.red(c.bold('flowpact crashed'))}: ${(err as Error).stack ?? String(err)}\n`);
     process.stderr.write(
-      c.dim('Please report this at https://github.com/rumankazi/wfc/issues with the --debug output.\n'),
+      c.dim('Please report this at https://github.com/rumankazi/flowpact/issues with the --debug output.\n'),
     );
     process.exitCode = EXIT.internal;
   }

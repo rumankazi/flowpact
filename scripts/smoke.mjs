@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Smoke test for an installed wfc: runs the `wfc` command the way users do (npm's shim on PATH) against the fixtures
+// Smoke test for an installed flowpact: runs the `flowpact` command the way users do (npm's shim on PATH) against the fixtures
 // and checks exit codes and output shapes. No dependencies, so it runs against a tarball install or the npm registry.
 //
-//   node scripts/smoke.mjs [--bin wfc] [--version 0.1.0]
+//   node scripts/smoke.mjs [--bin flowpact] [--version 0.1.0]
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,14 +14,14 @@ const arg = (name, fallback) => {
   return i > 0 ? process.argv[i + 1] : fallback;
 };
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const BIN = arg('bin', 'wfc');
+const BIN = arg('bin', 'flowpact');
 const VERSION = arg(
   'version',
   JSON.parse(readFileSync(join(ROOT, 'packages/cli/package.json'), 'utf8')).version,
 );
 const fixture = (name) => join(ROOT, 'fixtures', name);
 
-function wfc(args, env = {}) {
+function flowpact(args, env = {}) {
   const r = spawnSync(BIN, args, {
     encoding: 'utf8',
     // npm installs a .cmd shim on Windows, which needs a shell.
@@ -59,62 +59,62 @@ const json = (r) => {
 };
 
 check('--version prints the banner with the expected version', () => {
-  const r = wfc(['--version']);
+  const r = flowpact(['--version']);
   expect(r.code === 0, 'exit code 0', r);
-  expect(r.stdout.startsWith(`wfc v${VERSION} `), `starts with "wfc v${VERSION} "`, r);
+  expect(r.stdout.startsWith(`flowpact v${VERSION} `), `starts with "flowpact v${VERSION} "`, r);
 });
 
 check('rules lists the built-in rules', () => {
-  const r = wfc(['rules']);
-  expect(r.code === 0 && r.stdout.includes('WFC401'), 'exit 0 and lists WFC401', r);
+  const r = flowpact(['rules']);
+  expect(r.code === 0 && r.stdout.includes('FP401'), 'exit 0 and lists FP401', r);
 });
 
 check('explain shows a rule', () => {
-  const r = wfc(['explain', 'WFC401']);
+  const r = flowpact(['explain', 'FP401']);
   expect(r.code === 0 && r.stdout.includes('empty-binding-for-matrix-combo'), 'exit 0 and names the rule', r);
 });
 
 check('lint passes a clean repository', () => {
-  const r = wfc(['lint', '--root', fixture('clean')]);
+  const r = flowpact(['lint', '--root', fixture('clean')]);
   expect(r.code === 0, 'exit code 0', r);
   expect(!/\u001b\[/.test(r.stdout), 'no ANSI escapes with NO_COLOR', r);
 });
 
 check('lint finds the matrix incident (JSON)', () => {
-  const r = wfc(['lint', '--root', fixture('incident-matrix'), '--format', 'json']);
+  const r = flowpact(['lint', '--root', fixture('incident-matrix'), '--format', 'json']);
   expect(r.code === 1, 'exit code 1', r);
   const report = json(r);
   expect(report.meta?.version === VERSION, `meta.version is ${VERSION}`, r);
   expect(
-    report.findings.some((f) => f.code === 'WFC401' && f.loc.file === '.github/workflows/tests.yml'),
-    'WFC401 in .github/workflows/tests.yml (POSIX path)',
+    report.findings.some((f) => f.code === 'FP401' && f.loc.file === '.github/workflows/tests.yml'),
+    'FP401 in .github/workflows/tests.yml (POSIX path)',
     r,
   );
 });
 
 check('lint writes SARIF', () => {
-  const r = wfc(['lint', '--root', fixture('incident-matrix'), '--format', 'sarif']);
+  const r = flowpact(['lint', '--root', fixture('incident-matrix'), '--format', 'sarif']);
   expect(r.code === 1 && json(r).version === '2.1.0', 'exit 1 and SARIF 2.1.0', r);
 });
 
 check('check reports contract drift', () => {
-  const r = wfc(['check', '--root', fixture('contracts-drift'), '--format', 'json']);
+  const r = flowpact(['check', '--root', fixture('contracts-drift'), '--format', 'json']);
   expect(r.code === 1, 'exit code 1', r);
   expect(
-    json(r).findings.some((f) => f.code.startsWith('WFC80')),
-    'a WFC80x finding',
+    json(r).findings.some((f) => f.code.startsWith('FP80')),
+    'a FP80x finding',
     r,
   );
 });
 
 check('generate, then check, round-trips and is deterministic', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'wfc-smoke-'));
+  const dir = mkdtempSync(join(tmpdir(), 'flowpact-smoke-'));
   cpSync(fixture('clean'), dir, { recursive: true });
-  const gen = wfc(['generate', '--root', dir]);
+  const gen = flowpact(['generate', '--root', dir]);
   expect(gen.code === 0, 'generate exits 0', gen);
-  const chk = wfc(['check', '--root', dir]);
+  const chk = flowpact(['check', '--root', dir]);
   expect(chk.code === 0, 'check exits 0 right after generate', chk);
-  const again = wfc(['generate', '--root', dir, '--dry-run']);
+  const again = flowpact(['generate', '--root', dir, '--dry-run']);
   expect(
     again.code === 0 && again.stdout.includes('Contracts are up to date'),
     'a second generate changes nothing',
@@ -123,7 +123,7 @@ check('generate, then check, round-trips and is deterministic', () => {
 });
 
 check('trace follows an input upstream (JSON)', () => {
-  const r = wfc([
+  const r = flowpact([
     'trace',
     'run-suite.yml:config',
     '--up',
@@ -137,12 +137,12 @@ check('trace follows an input upstream (JSON)', () => {
 });
 
 check('graph renders Mermaid', () => {
-  const r = wfc(['graph', '--root', fixture('deep-nesting'), '--format', 'mermaid']);
+  const r = flowpact(['graph', '--root', fixture('deep-nesting'), '--format', 'mermaid']);
   expect(r.code === 0 && r.stdout.startsWith('flowchart'), 'exit 0 and a flowchart', r);
 });
 
 check('usage errors exit 2', () => {
-  const r = wfc(['lint', '--format', 'xml']);
+  const r = flowpact(['lint', '--format', 'xml']);
   expect(r.code === 2, 'exit code 2', r);
 });
 
@@ -150,4 +150,4 @@ if (failures.length) {
   console.log(`\n${failures.length} smoke check(s) failed: ${failures.join(', ')}`);
   process.exit(1);
 }
-console.log(`\nall smoke checks passed (wfc ${VERSION}, ${process.platform}, node ${process.version})`);
+console.log(`\nall smoke checks passed (flowpact ${VERSION}, ${process.platform}, node ${process.version})`);

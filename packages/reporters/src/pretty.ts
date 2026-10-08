@@ -9,7 +9,7 @@ import {
   type Severity,
   type SourceFile,
   type ToolMeta,
-} from '@wfc/core';
+} from '@flowpact/core';
 import {
   box,
   createTheme,
@@ -217,7 +217,7 @@ export function renderSummary(result: AnalysisResult, opts: RenderOptions, infoH
     const k = result.contracts.counts;
     lines.push(
       result.contracts.drift
-        ? `${c.yellow('contracts:')} ${k.update} outdated, ${k.create} missing, ${k.delete} orphaned${result.contracts.breaking ? c.red(` ${sym.dot} ${result.contracts.breaking} breaking`) : ''} ${c.dim(`${sym.arrow} wfc generate`)}`
+        ? `${c.yellow('contracts:')} ${k.update} outdated, ${k.create} missing, ${k.delete} orphaned${result.contracts.breaking ? c.red(` ${sym.dot} ${result.contracts.breaking} breaking`) : ''} ${c.dim(`${sym.arrow} flowpact generate`)}`
         : c.green(`contracts: ${k.unchanged} up to date`),
     );
   }
@@ -234,7 +234,7 @@ export function renderSummary(result: AnalysisResult, opts: RenderOptions, infoH
     }
     if (codes.length > 10) lines.push(c.dim(`… ${codes.length - 10} more codes`));
     lines.push('');
-    lines.push(c.dim(`Explain any code: wfc explain <code>`));
+    lines.push(c.dim(`Explain any code: flowpact explain <code>`));
   }
   return box(t, 'Summary', lines, opts.width);
 }
@@ -265,7 +265,7 @@ export function renderRuleList(
     out.push(`  ${c.bold(r.code)}  ${sevText}  ${padEnd(r.name, nameW)}  ${c.dim(summary)}`);
   }
   out.push('');
-  out.push(c.dim(`${rules.length} rules. Run \`wfc explain <code>\` for details.`));
+  out.push(c.dim(`${rules.length} rules. Run \`flowpact explain <code>\` for details.`));
   return finalize(out.join('\n'), opts);
 }
 

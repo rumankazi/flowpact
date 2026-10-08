@@ -1,5 +1,5 @@
-import { resolveSymbols, type TraceDirection, trace } from '@wfc/core';
-import { renderTrace } from '@wfc/reporters';
+import { resolveSymbols, type TraceDirection, trace } from '@flowpact/core';
+import { renderTrace } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 import { runAnalysis } from '../analysis';
@@ -55,7 +55,7 @@ export const traceCommand = defineCommand({
           files.length
             ? `No symbol matches "${args.symbol}".\n${c.dim('Try a workflow file (to list its interface) such as:')}\n${files
                 .slice(0, 8)
-                .map((f) => `  wfc trace ${f}`)
+                .map((f) => `  flowpact trace ${f}`)
                 .join('\n')}`
             : `No symbol matches "${args.symbol}", and no workflow or action here declares inputs, secrets or outputs.`,
         );

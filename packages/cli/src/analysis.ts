@@ -5,7 +5,7 @@ import {
   createRegistry,
   loadPlugins,
   type RuleRegistry,
-} from '@wfc/core';
+} from '@flowpact/core';
 import type { CliContext } from './shared';
 
 /** Built-in rules plus the plugins listed in the config. */
@@ -29,7 +29,7 @@ export async function runAnalysis(
     ...(ctx.loaded.overrideLocs ? { overrideLocs: ctx.loaded.overrideLocs } : {}),
     logger: ctx.logger,
     registry,
-    ...(process.env.WFC_NOW ? { now: new Date(process.env.WFC_NOW) } : {}),
+    ...(process.env.FLOWPACT_NOW ? { now: new Date(process.env.FLOWPACT_NOW) } : {}),
     ...opts,
   });
 }

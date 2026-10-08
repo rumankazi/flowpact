@@ -1,7 +1,7 @@
 import { asset } from '@/lib/shared';
 
 /**
- * A terminal screenshot rendered from real `wfc` output (see scripts/gen-screenshots.ts).
+ * A terminal screenshot rendered from real `flowpact` output (see scripts/gen-screenshots.ts).
  * SVGs keep the text crisp at any zoom and stay in sync with the CLI.
  */
 export function Screenshot({ name, alt, caption }: { name: string; alt: string; caption?: string }) {

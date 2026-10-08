@@ -1,4 +1,4 @@
-import { bannerText, neutralizeWorkflowCommands, VERSION } from '@wfc/core';
+import { bannerText, neutralizeWorkflowCommands, VERSION } from '@flowpact/core';
 import { defineCommand, runCommand, runMain } from 'citty';
 import pc from 'picocolors';
 import { checkCommand } from './commands/check';
@@ -6,6 +6,7 @@ import { explainCommand } from './commands/explain';
 import { generateCommand } from './commands/generate';
 import { graphCommand } from './commands/graph';
 import { lintCommand } from './commands/lint';
+import { migrateCommand } from './commands/migrate';
 import { rulesCommand } from './commands/rules';
 import { traceCommand } from './commands/trace';
 import { colorEnabled } from './shared';
@@ -27,7 +28,7 @@ if (process.argv.includes('--version') || process.argv.includes('-V')) {
 
 const main = defineCommand({
   meta: {
-    name: 'wfc',
+    name: 'flowpact',
     version: VERSION,
     description: 'Lint, trace and lock the data flow between your GitHub Actions workflows',
   },
@@ -38,6 +39,7 @@ const main = defineCommand({
     trace: traceCommand,
     graph: graphCommand,
     explain: explainCommand,
+    migrate: migrateCommand,
     rules: rulesCommand,
   },
 });
@@ -62,7 +64,7 @@ async function run(): Promise<void> {
     const message = (err as Error).message.replace(/\u001B\[[\d;]*m/g, '');
     const sub = rawArgs.find((a) => !a.startsWith('-'));
     process.stderr.write(
-      `${c.red(c.bold('Error'))}: ${message}\n${c.dim(`Run \`wfc ${sub && code !== 'E_UNKNOWN_COMMAND' ? `${sub} ` : ''}--help\` for usage.`)}\n`,
+      `${c.red(c.bold('Error'))}: ${message}\n${c.dim(`Run \`flowpact ${sub && code !== 'E_UNKNOWN_COMMAND' ? `${sub} ` : ''}--help\` for usage.`)}\n`,
     );
     process.exitCode = 2;
   }

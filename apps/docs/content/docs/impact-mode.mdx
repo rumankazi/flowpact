@@ -5,14 +5,14 @@ description: A planned check for publishers of reusable workflows and actions �
 
 <Callout type="warn" title="Proposal — not implemented yet">
 This page is the design for an upcoming feature, published for transparency and feedback. Names, rule codes and
-options may change before it ships. Discuss it in a [GitHub issue](https://github.com/rumankazi/wfc/issues).
+options may change before it ships. Discuss it in a [GitHub issue](https://github.com/rumankazi/flowpact/issues).
 </Callout>
 
 ## What it answers
 
 **Does the release impact a pull request declares cover what its workflow changes actually require?**
 
-Repositories that publish reusable workflows or actions version them, and consumers pin a major tag (`@v1`). Some
+Repositories that publish reusable workflows or actions version them, and consumers pin a floating tag (`@v1`). Some
 changes break those consumers without any error in the publishing repository — the classic one is renaming a job:
 consumers' branch protection requires the check `ci / Test`, the job now reports `ci / Unit tests`, and their pull
 requests wait forever on _Expected — Waiting for status to be reported_. Released as a patch, nobody notices until the
@@ -47,7 +47,7 @@ Verified against GitHub's documentation and live check runs (including this repo
 
 Edge cases that are only partly verified (blank names, empty or numeric matrix values, values containing `,` or `)`,
 two jobs with the same name, case sensitivity of required checks) are being confirmed in a test repository that
-compares GitHub's real check names with wfc's computed ones, and re-runs on a schedule to catch changes on GitHub's
+compares GitHub's real check names with flowpact's computed ones, and re-runs on a schedule to catch changes on GitHub's
 side.
 
 ## What counts as what (first version)
@@ -69,7 +69,7 @@ side.
 | Narrower permissions, internal step changes | none or patch |
 
 A `patch`-vs-`none` mismatch is a warning, not an error. Over-declaring (declaring major for a minor change) is
-reported as info only — a release may contain changes wfc does not grade.
+reported as info only — a release may contain changes flowpact does not grade.
 
 ## Where the declared impact comes from
 
@@ -91,13 +91,13 @@ The declared impact must be what the release tool will actually read, so exactly
   commit.
 - **Release pull requests** (release-please) are detected and checked differently: the baseline is the last release
   tag and the declared impact is the proposed version. Before 1.0, release-please's `bump-minor-pre-major` setting is
-  respected (a 0.x minor bump counts as breaking). If the bump is too small, wfc suggests a `Release-As:` commit.
-- When nothing is declared, wfc reports the required impact without failing.
+  respected (a 0.x minor bump counts as breaking). If the bump is too small, flowpact suggests a `Release-As:` commit.
+- When nothing is declared, flowpact reports the required impact without failing.
 
 ## Baseline
 
-wfc analyses the **base** of the pull request straight from git (read-only, no shell) and the head from the working
-tree, with the same version of every rule on both sides, so an upgrade of wfc never shows up as a change. Committed
+flowpact analyses the **base** of the pull request straight from git (read-only, no shell) and the head from the working
+tree, with the same version of every rule on both sides, so an upgrade of flowpact never shows up as a change. Committed
 contracts are not used for impact.
 
 - Pull requests: the base commit (the first parent of the merge commit GitHub checks out). Release pull requests: the
@@ -117,7 +117,7 @@ contracts are not used for impact.
 | Conflicting declaration: an advisory source declares more than the authoritative one | error |
 | Impact over-declared | info |
 | No impact declared (the required impact is reported) | info |
-| A change wfc cannot fully resolve (for example a check name built from `needs` or `vars`) changed | warning |
+| A change flowpact cannot fully resolve (for example a check name built from `needs` or `vars`) changed | warning |
 
 ## Using it
 
@@ -130,13 +130,13 @@ on:
     types: [opened, edited, synchronize, reopened, labeled, unlabeled]
 
 jobs:
-  wfc:
+  flowpact:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: rumankazi/wfc@v0
+      - uses: rumankazi/flowpact@v0.2
         with:
           mode: check
           impact: auto   # off (default) | auto | on
@@ -146,7 +146,7 @@ jobs:
 `declared-impact` and `impact-ok` let later steps gate on impact separately; a separate required check for impact is
 a second step with `impact: on` and `fail-on: never` for the other findings.
 
-On the command line: `wfc check --impact --base origin/main`, or `wfc impact` as a shortcut. The impact verdict has
+On the command line: `flowpact check --impact --base origin/main`, or `flowpact impact` as a shortcut. The impact verdict has
 its own JSON schema; existing report and contract schemas do not change.
 
 ## Plan

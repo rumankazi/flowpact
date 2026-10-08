@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { createRegistry, DOCS_BASE_URL } from '@wfc/core';
+import { createRegistry, DOCS_BASE_URL } from '@flowpact/core';
 import { describe, expect, it } from 'vitest';
 import { indexPage, rulePage } from '../gen-rule-docs';
 
@@ -8,7 +8,7 @@ const RULES_DIR = join(import.meta.dirname, '../../apps/docs/content/docs/rules'
 const registry = createRegistry();
 
 describe('rule docs', () => {
-  const pages = readdirSync(RULES_DIR).filter((f) => /^wfc\d{3}\.mdx$/.test(f));
+  const pages = readdirSync(RULES_DIR).filter((f) => /^fp\d{3}\.mdx$/.test(f));
 
   it('has a page for every registered rule and a rule for every page', () => {
     expect(pages.sort()).toEqual(
@@ -36,7 +36,7 @@ describe('rule docs', () => {
   });
 
   it('published schemas match the code', async () => {
-    const { configJsonSchema, contractJsonSchema, reportJsonSchema } = await import('@wfc/core');
+    const { configJsonSchema, contractJsonSchema, reportJsonSchema } = await import('@flowpact/core');
     const pub = (n: string) =>
       JSON.parse(
         readFileSync(join(import.meta.dirname, `../../apps/docs/public/schemas/${n}/v1.json`), 'utf8'),

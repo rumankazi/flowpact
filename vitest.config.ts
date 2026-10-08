@@ -5,7 +5,7 @@ const src = (pkg: string) => fileURLToPath(new URL(`./packages/${pkg}/src/index.
 
 export default defineConfig({
   resolve: {
-    alias: { '@wfc/core': src('core'), '@wfc/reporters': src('reporters') },
+    alias: { '@flowpact/core': src('core'), '@flowpact/reporters': src('reporters') },
   },
   test: {
     include: ['packages/*/test/**/*.test.ts', 'scripts/test/**/*.test.ts'],

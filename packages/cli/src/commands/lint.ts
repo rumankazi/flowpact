@@ -1,7 +1,13 @@
 import { existsSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
-import { contractPatch, exitCodeFor } from '@wfc/core';
-import { type MarkdownOptions, renderJson, renderMarkdown, renderPretty, renderSarif } from '@wfc/reporters';
+import { contractPatch, exitCodeFor } from '@flowpact/core';
+import {
+  type MarkdownOptions,
+  renderJson,
+  renderMarkdown,
+  renderPretty,
+  renderSarif,
+} from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import { runAnalysis } from '../analysis';
 import {
@@ -46,7 +52,7 @@ export const reportArgs = {
   only: {
     type: 'string',
     description: 'Comma-separated rule codes or names to run',
-    valueHint: 'WFC401,...',
+    valueHint: 'FP401,...',
   },
   'include-graph': {
     type: 'boolean',
@@ -97,7 +103,7 @@ function markdownOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): MarkdownO
   return { repoUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`, sha: GITHUB_SHA };
 }
 
-/** Shared implementation of `wfc lint` and `wfc check`. */
+/** Shared implementation of `flowpact lint` and `flowpact check`. */
 export async function runReport(
   args: ReportArgs,
   rawArgs: string[],

@@ -17,7 +17,7 @@ exports[`renderGraphTree > renders nested workflows 1`] = `
 `;
 
 exports[`renderMermaid and renderDot > renders a Graphviz digraph 1`] = `
-"digraph wfc {
+"digraph flowpact {
   rankdir=LR;
   node [fontname="Helvetica", fontsize=11];
   edge [fontname="Helvetica", fontsize=9];

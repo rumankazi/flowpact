@@ -1,4 +1,11 @@
-import { expandMatrix, type JobDecl, type ProjectIndex, sym, type UnitDecl, type UsesRef } from '@wfc/core';
+import {
+  expandMatrix,
+  type JobDecl,
+  type ProjectIndex,
+  sym,
+  type UnitDecl,
+  type UsesRef,
+} from '@flowpact/core';
 import { createTheme, finalize, type RenderOptions, safe, type Theme } from './theme';
 
 export type CallGraphNodeKind = 'workflow' | 'action' | 'remote' | 'missing' | 'invalid';
@@ -6,7 +13,7 @@ export type CallGraphNodeKind = 'workflow' | 'action' | 'remote' | 'missing' | '
 export interface CallGraphNode {
   /**
    * Unit path for local workflows/actions, `remote:<uses>` for remote workflows, the target path when missing or when
-   * a job calls a file outside `.github/workflows` (`invalid`, WFC606).
+   * a job calls a file outside `.github/workflows` (`invalid`, FP606).
    */
   id: string;
   kind: CallGraphNodeKind;
@@ -25,7 +32,7 @@ export interface CallGraphEdge {
   matrix?: number;
   /** The call passes every secret with `secrets: inherit`. */
   inherits?: boolean;
-  /** The called workflow exists but has no `on.workflow_call` (WFC609). */
+  /** The called workflow exists but has no `on.workflow_call` (FP609). */
   notReusable?: boolean;
 }
 
@@ -95,7 +102,7 @@ export function buildCallGraph(index: ProjectIndex): CallGraph {
       if (job.uses) {
         let to: string | undefined;
         if (job.uses.kind === 'local-workflow' && invalidCalls.has(`${wf.path}#${job.id}`)) {
-          // A job-level call to a file outside .github/workflows (WFC606): drawn, so graph and findings agree.
+          // A job-level call to a file outside .github/workflows (FP606): drawn, so graph and findings agree.
           to = job.uses.target ?? job.uses.raw;
           if (!nodes.has(to) || nodes.get(to)!.kind === 'missing')
             nodes.set(to, { id: to, kind: 'invalid', label: job.uses.raw });
@@ -210,7 +217,7 @@ export function renderDot(graph: CallGraph): string {
     invalid: 'shape=box, style="filled,dashed", fillcolor="#fee2e2", color="#dc2626", fontcolor="#991b1b"',
   };
   const lines = [
-    'digraph wfc {',
+    'digraph flowpact {',
     '  rankdir=LR;',
     '  node [fontname="Helvetica", fontsize=11];',
     '  edge [fontname="Helvetica", fontsize=9];',

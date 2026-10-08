@@ -3,7 +3,7 @@ import { createMDX } from 'fumadocs-mdx/next';
 const withMDX = createMDX();
 
 // GitHub Pages serves the site from /<repo>; local `next dev` serves from /.
-const basePath = process.env.DOCS_BASE_PATH ?? (process.env.NODE_ENV === 'production' ? '/wfc' : '');
+const basePath = process.env.DOCS_BASE_PATH ?? (process.env.NODE_ENV === 'production' ? '/flowpact' : '');
 
 /** @type {import('next').NextConfig} */
 const config = {

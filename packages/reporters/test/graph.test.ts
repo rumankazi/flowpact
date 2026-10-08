@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { analyze } from '@wfc/core';
+import { analyze } from '@flowpact/core';
 import {
   buildCallGraph,
   edgeLabel,
@@ -7,7 +7,7 @@ import {
   renderDot,
   renderGraphTree,
   renderMermaid,
-} from '@wfc/reporters';
+} from '@flowpact/reporters';
 import { describe, expect, it } from 'vitest';
 
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
@@ -115,14 +115,14 @@ describe('renderMermaid and renderDot', () => {
   it('renders a Graphviz digraph', () => {
     const out = renderDot(graphOf('cycles'));
     expect(out).toMatchSnapshot();
-    expect(out).toMatch(/^digraph wfc \{\n/);
+    expect(out).toMatch(/^digraph flowpact \{\n/);
     expect(out.trimEnd().endsWith('}')).toBe(true);
   });
 });
 
 describe('calls to workflows that are not reusable (review #23)', () => {
   it('keeps the edge and marks it', async () => {
-    const { analyze, memoryFileSystem } = await import('@wfc/core');
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
     const r = analyze({
       root: '/v',
       fs: memoryFileSystem({

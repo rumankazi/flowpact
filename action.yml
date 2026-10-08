@@ -1,4 +1,4 @@
-name: 'wfc — workflow contracts'
+name: 'flowpact'
 description: 'Lint the data flow between GitHub Actions workflows and check their locked contracts, with annotations and SARIF.'
 author: 'Ruman Kazi'
 branding:
@@ -7,7 +7,7 @@ branding:
 
 inputs:
   mode:
-    description: '`lint` analyzes workflows and local actions. `check` also compares them with the locked contracts in `.github/workflow-contracts/`.'
+    description: '`lint` analyzes workflows and local actions. `check` also compares them with the locked contracts in `.github/flowpact/`.'
     required: false
     default: 'lint'
   paths:
@@ -19,7 +19,7 @@ inputs:
     required: false
     default: '.'
   config:
-    description: 'Path to the wfc config file, relative to working-directory. Empty uses `.github/workflow-contracts/wfc.config.yml` when it exists.'
+    description: 'Path to the flowpact config file, relative to working-directory. Empty uses `.github/flowpact/flowpact.config.yml` when it exists.'
     required: false
     default: ''
   fail-on:
@@ -59,9 +59,9 @@ inputs:
     required: false
     default: 'true'
   artifact-name:
-    description: 'Name of the contract drift artifact. Defaults to wfc-contracts, or wfc-contracts-<working-directory> when working-directory is set. Must be unique per run (set it for matrix jobs).'
+    description: 'Name of the contract drift artifact. Defaults to flowpact-contracts, or flowpact-contracts-<working-directory> when working-directory is set. Must be unique per run (set it for matrix jobs).'
     required: false
-    default: 'wfc-contracts'
+    default: 'flowpact-contracts'
   retention-days:
     description: 'Days to keep the contract drift artifact (0 uses the repository default).'
     required: false
@@ -71,7 +71,7 @@ inputs:
     required: false
     default: 'auto'
   debug:
-    description: 'Print wfc debug logs (also enabled by re-running the job with debug logging).'
+    description: 'Print flowpact debug logs (also enabled by re-running the job with debug logging).'
     required: false
     default: 'false'
 

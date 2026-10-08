@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportSchema, VERSION } from '@wfc/core';
+import { reportSchema, VERSION } from '@flowpact/core';
 import { execa } from 'execa';
 import { describe, expect, it } from 'vitest';
 
@@ -13,7 +13,7 @@ const fixture = (name: string) => join(ROOT, 'fixtures', name);
 const SCRUB = [
   'NO_COLOR',
   'FORCE_COLOR',
-  'WFC_DEBUG',
+  'FLOWPACT_DEBUG',
   'RUNNER_DEBUG',
   'ACTIONS_STEP_DEBUG',
   'CI',
@@ -21,7 +21,7 @@ const SCRUB = [
 ];
 
 /** Runs the built CLI with a controlled environment (no inherited color/debug settings). */
-const wfc = (args: string[], env: Record<string, string> = { NO_COLOR: '1' }) => {
+const flowpact = (args: string[], env: Record<string, string> = { NO_COLOR: '1' }) => {
   const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !SCRUB.includes(k)));
   return execa('node', [BIN, ...args], {
     reject: false,
@@ -33,31 +33,38 @@ const wfc = (args: string[], env: Record<string, string> = { NO_COLOR: '1' }) =>
   });
 };
 
-describe('wfc lint', () => {
+describe('flowpact lint', () => {
   it('finds the incident, prints the banner to stderr and exits 1', async () => {
-    const r = await wfc(['lint', '--root', fixture('incident-matrix')]);
+    const r = await flowpact(['lint', '--root', fixture('incident-matrix')]);
     expect(r.exitCode).toBe(1);
     expect(r.stderr).toContain(
-      `wfc  v${VERSION}  config schema v1 · contract schema v1 · report schema v1 · node v`,
+      `flowpact  v${VERSION}  config schema v1 · contract schema v1 · report schema v1 · node v`,
     );
-    expect(r.stdout).toContain('WFC401 empty-binding-for-matrix-combo');
+    expect(r.stdout).toContain('FP401 empty-binding-for-matrix-combo');
     expect(r.stdout).toContain('{ name: windows }');
-    expect(r.stdout).toContain('https://rumankazi.github.io/wfc/docs/rules/wfc401');
+    expect(r.stdout).toContain('https://rumankazi.github.io/flowpact/docs/rules/fp401');
     expect(r.stdout).not.toMatch(/\u001B\[/);
   });
 
   it('exits 0 on a clean repository', async () => {
-    const r = await wfc(['lint', '--root', fixture('clean')]);
+    const r = await flowpact(['lint', '--root', fixture('clean')]);
     expect(r.exitCode).toBe(0);
     expect(r.stdout).toContain('No problems found');
   });
 
   it('emits schema-valid JSON on stdout with --format json', async () => {
-    const r = await wfc(['lint', '--root', fixture('deep-nesting'), '--format', 'json', '--include-graph']);
+    const r = await flowpact([
+      'lint',
+      '--root',
+      fixture('deep-nesting'),
+      '--format',
+      'json',
+      '--include-graph',
+    ]);
     const json = JSON.parse(r.stdout);
     expect(reportSchema.safeParse(json).success).toBe(true);
     expect(json.meta).toMatchObject({
-      tool: 'wfc',
+      tool: 'flowpact',
       version: VERSION,
       schemas: { config: 1, contract: 1, report: 1 },
     });
@@ -66,8 +73,8 @@ describe('wfc lint', () => {
   });
 
   it('writes reports to files (.json as JSON, anything else as plain text)', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wfc-out-'));
-    const r1 = await wfc([
+    const dir = mkdtempSync(join(tmpdir(), 'flowpact-out-'));
+    const r1 = await flowpact([
       'lint',
       '--root',
       fixture('composite-actions'),
@@ -78,25 +85,25 @@ describe('wfc lint', () => {
     expect(
       reportSchema.safeParse(JSON.parse(readFileSync(join(dir, 'out/report.json'), 'utf8'))).success,
     ).toBe(true);
-    await wfc(['lint', '--root', fixture('composite-actions'), '-o', join(dir, 'report.txt')], {
+    await flowpact(['lint', '--root', fixture('composite-actions'), '-o', join(dir, 'report.txt')], {
       FORCE_COLOR: '1',
     });
     const txt = readFileSync(join(dir, 'report.txt'), 'utf8');
-    expect(txt).toContain('WFC102 unknown-input');
+    expect(txt).toContain('FP102 unknown-input');
     expect(txt).not.toMatch(/\u001B/);
   });
 
   it('honours --fail-on and --only', async () => {
     const root = fixture('dynamic-matrix');
-    expect((await wfc(['lint', '--root', root, '--only', 'WFC402'])).exitCode).toBe(0);
-    expect((await wfc(['lint', '--root', root, '--only', 'WFC402', '--fail-on', 'warning'])).exitCode).toBe(
-      1,
-    );
-    expect((await wfc(['lint', '--root', root, '--fail-on', 'never'])).exitCode).toBe(0);
+    expect((await flowpact(['lint', '--root', root, '--only', 'FP402'])).exitCode).toBe(0);
+    expect(
+      (await flowpact(['lint', '--root', root, '--only', 'FP402', '--fail-on', 'warning'])).exitCode,
+    ).toBe(1);
+    expect((await flowpact(['lint', '--root', root, '--fail-on', 'never'])).exitCode).toBe(0);
   });
 
   it('reports on selected paths only', async () => {
-    const r = await wfc([
+    const r = await flowpact([
       'lint',
       '--root',
       fixture('deep-nesting'),
@@ -109,14 +116,14 @@ describe('wfc lint', () => {
   });
 
   it('colors output when forced and logs every stage with --debug', async () => {
-    const r = await wfc(['lint', '--root', fixture('incident-matrix'), '--debug'], { FORCE_COLOR: '1' });
+    const r = await flowpact(['lint', '--root', fixture('incident-matrix'), '--debug'], { FORCE_COLOR: '1' });
     expect(r.stdout).toMatch(/\u001B\[31m/);
     for (const msg of [
       'cli context',
       'discovered 3 workflow(s)',
       'graph built',
       'matrix expanded',
-      'WFC401 empty-binding-for-matrix-combo',
+      'FP401 empty-binding-for-matrix-combo',
       'analysis finished',
     ]) {
       expect(r.stderr).toContain(msg);
@@ -124,76 +131,76 @@ describe('wfc lint', () => {
   });
 
   it('enables debug logging from the environment', async () => {
-    const r = await wfc(['lint', '--root', fixture('clean')], { NO_COLOR: '1', WFC_DEBUG: '1' });
+    const r = await flowpact(['lint', '--root', fixture('clean')], { NO_COLOR: '1', FLOWPACT_DEBUG: '1' });
     expect(r.stderr).toContain('debug');
   });
 
   it('is quiet with -q and writes the graph with --dump-graph', async () => {
-    const out = join(mkdtempSync(join(tmpdir(), 'wfc-g-')), 'graph.json');
-    const r = await wfc(['lint', '--root', fixture('clean'), '-q', '--dump-graph', out]);
+    const out = join(mkdtempSync(join(tmpdir(), 'flowpact-g-')), 'graph.json');
+    const r = await flowpact(['lint', '--root', fixture('clean'), '-q', '--dump-graph', out]);
     expect(r.stderr).toBe('');
     expect(JSON.parse(readFileSync(out, 'utf8')).edges.length).toBeGreaterThan(0);
   });
 
   it('applies the repository config file', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-cfg-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-cfg-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
-    mkdirSync(join(root, '.github/workflow-contracts'), { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
     writeFileSync(
       join(root, '.github/workflows/a.yml'),
       'on:\n  workflow_dispatch:\n    inputs:\n      dead: {}\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
     );
-    writeFileSync(join(root, '.github/workflow-contracts/wfc.config.yml'), 'rules:\n  unused-input: error\n');
-    const r = await wfc(['lint', '--root', root]);
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'rules:\n  unused-input: error\n');
+    const r = await flowpact(['lint', '--root', root]);
     expect(r.exitCode).toBe(1);
-    expect(r.stderr).toContain('config .github/workflow-contracts/wfc.config.yml');
-    writeFileSync(join(root, '.github/workflow-contracts/wfc.config.yml'), 'rules:\n  unused-inptu: error\n');
-    const bad = await wfc(['lint', '--root', root]);
+    expect(r.stderr).toContain('config .github/flowpact/flowpact.config.yml');
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'rules:\n  unused-inptu: error\n');
+    const bad = await flowpact(['lint', '--root', root]);
     expect(bad.exitCode).toBe(2);
     expect(bad.stderr).toContain('Config error');
     expect(bad.stderr).toContain('did you mean unused-input?');
   });
 
   it('exits 2 when there is nothing to analyze', async () => {
-    const r = await wfc(['lint', '--root', mkdtempSync(join(tmpdir(), 'wfc-empty-'))]);
+    const r = await flowpact(['lint', '--root', mkdtempSync(join(tmpdir(), 'flowpact-empty-'))]);
     expect(r.exitCode).toBe(2);
     expect(r.stderr).toContain('No workflows found');
   });
 });
 
-describe('wfc trace', () => {
+describe('flowpact trace', () => {
   it('prints the JSON envelope for a workflow without an interface', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-plain-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-plain-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
     writeFileSync(
       join(root, '.github/workflows/plain.yml'),
       'on: push\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
     );
-    const r = await wfc(['trace', 'plain.yml', '--root', root, '-q', '--format', 'json']);
+    const r = await flowpact(['trace', 'plain.yml', '--root', root, '-q', '--format', 'json']);
     expect(r.exitCode).toBe(0);
     expect(JSON.parse(r.stdout)).toEqual({ query: 'plain.yml', direction: 'down', traces: [] });
   });
 
   it('never prints a line that GitHub would run as a workflow command', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-cmd-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-cmd-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
     writeFileSync(
       join(root, '.github/workflows/w.yml'),
       `on:\n  workflow_dispatch:\n    inputs:\n      "${'a'.repeat(70)} ::error title=wrap::pwned": {}\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n`,
     );
-    const r = await wfc(['lint', '--root', root]);
+    const r = await flowpact(['lint', '--root', root]);
     expect(r.stdout).toContain('pwned');
     expect(`${r.stdout}\n${r.stderr}`).not.toMatch(/^\s*::/m);
     const file = join(root, 'report.txt');
-    await wfc(['lint', '--root', root, '--output', file]);
+    await flowpact(['lint', '--root', root, '--output', file]);
     expect(readFileSync(file, 'utf8')).not.toMatch(/^\s*::/m);
   });
 
   it('refuses to write a contract through a symlink, before writing anything', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-gen-sym-'));
-    const outside = mkdtempSync(join(tmpdir(), 'wfc-gen-out-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-gen-sym-'));
+    const outside = mkdtempSync(join(tmpdir(), 'flowpact-gen-out-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
-    mkdirSync(join(root, '.github/workflow-contracts/workflows'), { recursive: true });
+    mkdirSync(join(root, '.github/flowpact/contracts/workflows'), { recursive: true });
     for (const n of ['a', 'ci', 'z'])
       writeFileSync(
         join(root, `.github/workflows/${n}.yml`),
@@ -202,22 +209,28 @@ describe('wfc trace', () => {
     writeFileSync(join(outside, 'victim.txt'), 'keep\n');
     symlinkSync(
       join(outside, 'victim.txt'),
-      join(root, '.github/workflow-contracts/workflows/ci.contract.yml'),
+      join(root, '.github/flowpact/contracts/workflows/ci.contract.yml'),
     );
-    const r = await wfc(['generate', '--root', root]);
+    const r = await flowpact(['generate', '--root', root]);
     expect(r.exitCode).toBe(2);
     expect(r.stderr).toContain('Not writing contracts');
     expect(r.stderr).not.toContain('crashed');
     expect(r.stdout).not.toContain('Wrote');
     expect(readFileSync(join(outside, 'victim.txt'), 'utf8')).toBe('keep\n');
-    expect(existsSync(join(root, '.github/workflow-contracts/workflows/a.contract.yml'))).toBe(false);
+    expect(existsSync(join(root, '.github/flowpact/contracts/workflows/a.contract.yml'))).toBe(false);
   });
 
   it('traces down and up', async () => {
-    const down = await wfc(['trace', 'tests.yml#inputs.suite', '--root', fixture('incident-matrix'), '-q']);
+    const down = await flowpact([
+      'trace',
+      'tests.yml#inputs.suite',
+      '--root',
+      fixture('incident-matrix'),
+      '-q',
+    ]);
     expect(down.exitCode).toBe(0);
     expect(down.stdout).toContain('.github/workflows/run-suite.yml#inputs.suite');
-    const up = await wfc([
+    const up = await flowpact([
       'trace',
       'run-suite.yml:config',
       '--up',
@@ -229,7 +242,7 @@ describe('wfc trace', () => {
   });
 
   it('lists the whole interface for a bare workflow and supports JSON', async () => {
-    const r = await wfc([
+    const r = await flowpact([
       'trace',
       'publish.yml',
       '--root',
@@ -250,35 +263,35 @@ describe('wfc trace', () => {
   });
 
   it('suggests workflows for unknown symbols', async () => {
-    const r = await wfc(['trace', 'nope.yml:x', '--root', fixture('clean'), '-q']);
+    const r = await flowpact(['trace', 'nope.yml:x', '--root', fixture('clean'), '-q']);
     expect(r.exitCode).toBe(2);
-    expect(r.stderr).toContain('wfc trace .github/workflows/test.yml');
-    expect(r.stderr).not.toContain('wfc trace .github/workflows/ci.yml');
+    expect(r.stderr).toContain('flowpact trace .github/workflows/test.yml');
+    expect(r.stderr).not.toContain('flowpact trace .github/workflows/ci.yml');
   });
 });
 
-describe('wfc explain / rules / --version', () => {
+describe('flowpact explain / rules / --version', () => {
   it('explains a rule by code or name', async () => {
-    const r = await wfc(['explain', 'empty-binding-for-matrix-combo']);
-    expect(r.stdout).toContain('WFC401');
+    const r = await flowpact(['explain', 'empty-binding-for-matrix-combo']);
+    expect(r.stdout).toContain('FP401');
     expect(r.stdout).toContain('✓ fixed');
-    expect((await wfc(['explain', 'WFC999'])).exitCode).toBe(2);
+    expect((await flowpact(['explain', 'FP999'])).exitCode).toBe(2);
   });
 
   it('lists rules as text and JSON', async () => {
-    expect((await wfc(['rules'])).stdout).toContain('WFC608');
-    const json = JSON.parse((await wfc(['rules', '--format', 'json'])).stdout);
-    expect(json.find((r: { code: string }) => r.code === 'WFC604')).toMatchObject({
+    expect((await flowpact(['rules'])).stdout).toContain('FP608');
+    const json = JSON.parse((await flowpact(['rules', '--format', 'json'])).stdout);
+    expect(json.find((r: { code: string }) => r.code === 'FP604')).toMatchObject({
       severity: 'off',
       defaultSeverity: 'off',
     });
   });
 
   it('prints version and schema versions', async () => {
-    const r = await wfc(['--version']);
+    const r = await flowpact(['--version']);
     expect(r.stdout.trim()).toMatch(
       new RegExp(
-        `^wfc v${VERSION.replace(/\./g, '\\.')} · config schema v1 · contract schema v1 · report schema v1 · node v`,
+        `^flowpact v${VERSION.replace(/\./g, '\\.')} · config schema v1 · contract schema v1 · report schema v1 · node v`,
       ),
     );
   });
@@ -291,9 +304,9 @@ describe('wfc explain / rules / --version', () => {
 
 describe('plugins in rules / explain', () => {
   it('lists and explains plugin rules and accepts severities for them', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-plugin-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-plugin-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
-    mkdirSync(join(root, '.github/workflow-contracts'), { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
     writeFileSync(
       join(root, '.github/workflows/a.yml'),
       'on: push\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
@@ -305,15 +318,15 @@ describe('plugins in rules / explain', () => {
         check() {} };\n`,
     );
     writeFileSync(
-      join(root, '.github/workflow-contracts/wfc.config.yml'),
+      join(root, '.github/flowpact/flowpact.config.yml'),
       'plugins: [./acme.mjs]\nrules:\n  acme-rule: warning\n',
     );
-    const rules = await wfc(['rules', '--root', root, '--format', 'json']);
+    const rules = await flowpact(['rules', '--root', root, '--format', 'json']);
     expect(rules.exitCode).toBe(0);
     expect(JSON.parse(rules.stdout).find((r: { code: string }) => r.code === 'ACME601')).toMatchObject({
       severity: 'warning',
     });
-    const explain = await wfc(['explain', 'ACME601', '--root', root]);
+    const explain = await flowpact(['explain', 'ACME601', '--root', root]);
     expect(explain.stdout).toContain('https://example.com/acme601');
   });
 });
@@ -321,32 +334,32 @@ describe('plugins in rules / explain', () => {
 describe('review fixes', () => {
   it('exits 2 for argument errors, unknown --only rules and missing paths', async () => {
     const root = fixture('broken');
-    const notADir = join(mkdtempSync(join(tmpdir(), 'wfc-notdir-')), 'file');
+    const notADir = join(mkdtempSync(join(tmpdir(), 'flowpact-notdir-')), 'file');
     writeFileSync(notADir, 'x');
     const cases = [
       ['lint', '--format', 'xml'],
       ['lint', '--fail-on', 'bogus'],
       ['frob'],
       ['explain'],
-      ['lint', '--root', root, '--only', 'WFC9999'],
+      ['lint', '--root', root, '--only', 'FP9999'],
       ['lint', '--root', root, '.github/workflow/schema.yml'],
       ['lint', '--root', root, 'README.md'],
       ['trace', 'x.yml', '--depth', '0', '--root', root],
-      ['generate', '--root', mkdtempSync(join(tmpdir(), 'wfc-empty-gen-'))],
+      ['generate', '--root', mkdtempSync(join(tmpdir(), 'flowpact-empty-gen-'))],
       // Under a regular file: fails on every OS (a path in /proc can make Node's recursive mkdir loop on Linux).
       ['lint', '--root', fixture('clean'), '-o', join(notADir, 'sub', 'report.json')],
     ];
     // Independent processes: run them together so slow CI runners stay well within the timeout.
-    const results = await Promise.all(cases.map((args) => wfc(args)));
+    const results = await Promise.all(cases.map((args) => flowpact(args)));
     expect(results.map((r, i) => ({ args: cases[i], code: r.exitCode }))).toEqual(
       cases.map((args) => ({ args, code: 2 })),
     );
-    const typo = await wfc(['lint', '--root', root, '--only', 'unused-inptu']);
+    const typo = await flowpact(['lint', '--root', root, '--only', 'unused-inptu']);
     expect(typo.stderr).toContain('did you mean unused-input?');
   }, 120_000);
 
   it('only treats real workflows and actions under a directory argument as targets', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-dirs-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-dirs-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
     mkdirSync(join(root, '.github/ISSUE_TEMPLATE'), { recursive: true });
     writeFileSync(
@@ -355,34 +368,34 @@ describe('review fixes', () => {
     );
     writeFileSync(join(root, '.github/dependabot.yml'), 'version: 2\nupdates: []\n');
     writeFileSync(join(root, '.github/ISSUE_TEMPLATE/bug.yml'), 'name: Bug\nbody: []\n');
-    const r = await wfc(['lint', '--root', root, '.github']);
+    const r = await flowpact(['lint', '--root', root, '.github']);
     expect(r.exitCode).toBe(0);
   });
 
   it('FORCE_COLOR=0 disables colors', async () => {
-    const r = await wfc(['lint', '--root', fixture('incident-matrix')], { FORCE_COLOR: '0' });
+    const r = await flowpact(['lint', '--root', fixture('incident-matrix')], { FORCE_COLOR: '0' });
     expect(r.stdout).not.toMatch(/\u001B\[/);
   });
 
   it('neutralizes control characters taken from workflow YAML', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'wfc-ctl-'));
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-ctl-'));
     mkdirSync(join(root, '.github/workflows'), { recursive: true });
     writeFileSync(
       join(root, '.github/workflows/c.yml'),
-      'on: push\njobs:\n  call:\n    uses: ./.github/workflows/r.yml\n    with:\n      "x\\n::warning title=wfc::All good\\e[2K": 1\n',
+      'on: push\njobs:\n  call:\n    uses: ./.github/workflows/r.yml\n    with:\n      "x\\n::warning title=flowpact::All good\\e[2K": 1\n',
     );
     writeFileSync(
       join(root, '.github/workflows/r.yml'),
       'on:\n  workflow_call:\n    inputs:\n      a: {}\njobs:\n  j:\n    runs-on: x\n    steps:\n      - run: echo ${{ inputs.a }}\n',
     );
-    const r = await wfc(['lint', '--root', root]);
+    const r = await flowpact(['lint', '--root', root]);
     expect(r.stdout).not.toMatch(/^\s*::warning/m);
     expect(r.stdout).not.toContain('\u001B[2K');
     expect(r.stdout).toContain('\\x1b[2K');
   });
 
   it('trace explains a workflow without an interface', async () => {
-    const r = await wfc(['trace', 'ci.yml', '--root', fixture('clean')]);
+    const r = await flowpact(['trace', 'ci.yml', '--root', fixture('clean')]);
     expect(r.exitCode).toBe(0);
     expect(r.stdout).toContain('declares no inputs, secrets or outputs');
   });
@@ -390,21 +403,21 @@ describe('review fixes', () => {
 
 describe('review round 2 (CLI)', () => {
   it('FORCE_COLOR=0 also disables colors in error messages', async () => {
-    const r = await wfc(['lint', '--format', 'xml'], { FORCE_COLOR: '0' });
+    const r = await flowpact(['lint', '--format', 'xml'], { FORCE_COLOR: '0' });
     expect(r.exitCode).toBe(2);
     expect(r.stderr).not.toMatch(/\u001B\[/);
   });
 
-  it('`wfc lint .` reports on the whole repository', async () => {
-    const r = await wfc(['lint', '.', '--root', fixture('incident-matrix')]);
+  it('`flowpact lint .` reports on the whole repository', async () => {
+    const r = await flowpact(['lint', '.', '--root', fixture('incident-matrix')]);
     expect(r.exitCode).toBe(1);
-    expect(r.stdout).toContain('WFC401');
+    expect(r.stdout).toContain('FP401');
   });
 
   it('trace JSON has the same shape for one or many matches', async () => {
     const one = JSON.parse(
       (
-        await wfc([
+        await flowpact([
           'trace',
           'tests.yml#inputs.suite',
           '--root',

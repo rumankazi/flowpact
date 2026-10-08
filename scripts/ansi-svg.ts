@@ -1,5 +1,5 @@
 /**
- * Minimal ANSI → SVG renderer for documentation screenshots. Supports the SGR codes wfc emits
+ * Minimal ANSI → SVG renderer for documentation screenshots. Supports the SGR codes flowpact emits
  * (bold, dim, underline, 8/16 foreground and background colors) and strips OSC 8 hyperlinks.
  */
 const PALETTE: Record<number, string> = {

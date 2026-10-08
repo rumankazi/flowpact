@@ -7,5 +7,5 @@ apps/docs/public/schemas/** linguist-generated=true
 apps/docs/public/screenshots/** linguist-generated=true
 
 # Contracts are compared byte for byte; keep LF everywhere.
-.github/workflow-contracts/** text eol=lf
-fixtures/**/.github/workflow-contracts/** text eol=lf
+.github/flowpact/** text eol=lf
+fixtures/**/.github/flowpact/** text eol=lf

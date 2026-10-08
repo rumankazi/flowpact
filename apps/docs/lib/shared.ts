@@ -1,13 +1,13 @@
 import { createGetUrl } from 'fumadocs-core/source';
 
-export const appName = 'wfc';
+export const appName = 'flowpact';
 export const docsRoute = '/docs';
 export const docsContentRoute = '/llms.mdx/docs';
 export const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export const gitConfig = {
   user: 'rumankazi',
-  repo: 'wfc',
+  repo: 'flowpact',
   branch: 'main',
   /** Where the MDX sources live inside the repository. */
   contentDir: 'apps/docs/content/docs',

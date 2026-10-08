@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { analyze, createRegistry, reportSchema, sym, toolMeta, trace } from '@wfc/core';
+import { analyze, createRegistry, reportSchema, sym, toolMeta, trace } from '@flowpact/core';
 import {
   codeFrame,
   createTheme,
@@ -11,7 +11,7 @@ import {
   renderRuleList,
   renderTrace,
   wrap,
-} from '@wfc/reporters';
+} from '@flowpact/reporters';
 import { describe, expect, it } from 'vitest';
 
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
@@ -29,7 +29,7 @@ describe('renderPretty', () => {
     expect(out).toMatchSnapshot();
     expect(out).toContain('23 │       config: ${{ matrix.config }}');
     expect(out).toContain('━━━━━━━━━━━━━');
-    expect(out).toContain('docs    https://rumankazi.github.io/wfc/docs/rules/wfc401');
+    expect(out).toContain('docs    https://rumankazi.github.io/flowpact/docs/rules/fp401');
   });
 
   it('renders every fixture without throwing and keeps lines within width', () => {
@@ -48,14 +48,14 @@ describe('renderPretty', () => {
 
   it('can hide info findings but still counts them', () => {
     const out = renderPretty(result('cycles'), { ...plain, hideInfo: true });
-    expect(out).not.toContain('WFC603 remote-unverified\n');
+    expect(out).not.toContain('FP603 remote-unverified\n');
     expect(out).toContain('1 info (hidden)');
   });
 
   it('emits ANSI colors and OSC 8 hyperlinks only when asked', () => {
     const colored = renderPretty(result('incident-matrix'), { color: true, width: 100, hyperlinks: true });
     expect(colored).toMatch(/\u001B\[31m/);
-    expect(colored).toContain('\u001B]8;;https://rumankazi.github.io/wfc/docs/rules/wfc401\u0007');
+    expect(colored).toContain('\u001B]8;;https://rumankazi.github.io/flowpact/docs/rules/fp401\u0007');
     expect(renderPretty(result('incident-matrix'), plain)).not.toMatch(/\u001B/);
   });
 
@@ -69,7 +69,7 @@ describe('banner', () => {
   it('shows tool version and every schema version', () => {
     const b = renderBanner(toolMeta(), plain, 'root /x');
     expect(b).toMatch(
-      /^ wfc {2}v\d+\.\d+\.\d+ {2}config schema v1 · contract schema v1 · report schema v1 · node v/,
+      /^ flowpact {2}v\d+\.\d+\.\d+ {2}config schema v1 · contract schema v1 · report schema v1 · node v/,
     );
     expect(b).toContain('root /x');
   });
@@ -117,12 +117,12 @@ describe('rules and explain', () => {
     expect(out).toContain('Graph structure');
   });
   it('explains a rule with examples and docs link', () => {
-    const rule = registry.get('WFC401')!;
+    const rule = registry.get('FP401')!;
     const out = renderExplain(rule, registry.docsUrl(rule), 'warning', plain);
     expect(out).toContain('configured: warning');
     expect(out).toContain('✗ problem');
     expect(out).toContain('✓ fixed');
-    expect(out).toContain('https://rumankazi.github.io/wfc/docs/rules/wfc401');
+    expect(out).toContain('https://rumankazi.github.io/flowpact/docs/rules/fp401');
   });
 });
 

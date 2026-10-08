@@ -33,13 +33,13 @@ jobs:
       - run: pnpm build
       - run: pnpm coverage
       - name: Dogfood — lint this repository's workflows
-        run: node packages/cli/dist/index.js lint --fail-on warning --output wfc-report.json
+        run: node packages/cli/dist/index.js lint --fail-on warning --output flowpact-report.json
       - if: always() && matrix.node == '24'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reports
           path: |
-            wfc-report.json
+            flowpact-report.json
             coverage/
 
   docs:
@@ -72,19 +72,19 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter workflow-contracts build
+      - run: pnpm --filter flowpact build
       - name: Pack the CLI and check the tarball
         shell: bash
         working-directory: packages/cli
         run: |
           node ../../scripts/check-pack.mjs
           tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP")
-          # The package has no dependencies, so linking the unpacked tarball gives users' `wfc` command (the npm shim)
+          # The package has no dependencies, so linking the unpacked tarball gives users' `flowpact` command (the npm shim)
           # without downloading anything. Relative paths keep Windows drive letters away from tar.
           cd "$RUNNER_TEMP"
-          mkdir -p wfc-package
-          tar -xzf "$tarball" -C wfc-package
-          cd wfc-package/package
+          mkdir -p flowpact-package
+          tar -xzf "$tarball" -C flowpact-package
+          cd flowpact-package/package
           npm link --ignore-scripts --no-audit --no-fund
       - run: node scripts/smoke.mjs
 
@@ -99,12 +99,12 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @wfc/action build
+      - run: pnpm --filter @flowpact/action build
       - name: Compare with the committed bundle
         run: |
           if [ -n "$(git status --porcelain packages/action/dist)" ]; then
             git status --short packages/action/dist
-            echo "::error::packages/action/dist is out of date. Run 'pnpm --filter @wfc/action build' and commit the result."
+            echo "::error::packages/action/dist is out of date. Run 'pnpm --filter @flowpact/action build' and commit the result."
             exit 1
           fi
 
@@ -116,19 +116,19 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: wfc
+      - name: flowpact
         uses: ./
         with:
           mode: lint
           fail-on: warning
-          report-sarif: wfc.sarif
+          report-sarif: flowpact.sarif
       - name: Upload SARIF to code scanning
         # Pull requests from forks get a read-only token, so only upload for this repository's own refs.
         if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
-          sarif_file: wfc.sarif
-          category: wfc
+          sarif_file: flowpact.sarif
+          category: flowpact
 
   action-smoke:
     # The committed action bundle against fixtures with known results: outputs, reports and the drift artifact.
@@ -153,7 +153,7 @@ jobs:
           working-directory: fixtures/contracts-drift
           fail-on: never
           annotations: false
-          artifact-name: wfc-contracts-smoke-${{ github.run_attempt }}
+          artifact-name: flowpact-contracts-smoke-${{ github.run_attempt }}
           retention-days: 1
       - name: Check the outputs
         env:
@@ -164,7 +164,7 @@ jobs:
         run: |
           set -x
           test "$INCIDENT_ERRORS" -ge 1
-          jq -e '.findings | any(.code == "WFC401")' incident.json
+          jq -e '.findings | any(.code == "FP401")' incident.json
           test "$DRIFT" = true
           test -s "$PATCH"
           test -n "$ARTIFACT_ID"

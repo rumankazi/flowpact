@@ -7,8 +7,8 @@ import {
   memoryFileSystem,
   parseConfig,
   VERSION,
-} from '@wfc/core';
-import { renderSarif } from '@wfc/reporters';
+} from '@flowpact/core';
+import { renderSarif } from '@flowpact/reporters';
 import { describe, expect, it } from 'vitest';
 
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
@@ -27,10 +27,10 @@ describe('renderSarif', () => {
     expect(sarif.version).toBe('2.1.0');
     expect(sarif.runs).toHaveLength(1);
     expect(sarif.runs[0].tool.driver).toMatchObject({
-      name: 'wfc',
+      name: 'flowpact',
       version: VERSION,
       semanticVersion: VERSION,
-      informationUri: 'https://rumankazi.github.io/wfc',
+      informationUri: 'https://rumankazi.github.io/flowpact',
     });
   });
 
@@ -39,17 +39,17 @@ describe('renderSarif', () => {
     const rules = parse(r).runs[0].tool.driver.rules;
     const enabled = r.rules.filter((x) => x.severity !== 'off');
     expect(rules.map((x: Sarif) => x.id)).toEqual(enabled.map((x) => x.code).sort());
-    const wfc101 = rules.find((x: Sarif) => x.id === 'WFC101');
-    const def = createRegistry().get('WFC101')!;
-    expect(wfc101).toMatchObject({
+    const fp101 = rules.find((x: Sarif) => x.id === 'FP101');
+    const def = createRegistry().get('FP101')!;
+    expect(fp101).toMatchObject({
       name: 'missing-required-input',
       shortDescription: { text: def.docs.summary },
-      helpUri: 'https://rumankazi.github.io/wfc/docs/rules/wfc101',
+      helpUri: 'https://rumankazi.github.io/flowpact/docs/rules/fp101',
       defaultConfiguration: { level: 'error' },
       properties: { tags: ['inputs'] },
     });
-    expect(wfc101.help.text).toContain(def.docs.why);
-    expect(wfc101.help.markdown).toContain(`**Fix:** ${def.docs.fix}`);
+    expect(fp101.help.text).toContain(def.docs.why);
+    expect(fp101.help.markdown).toContain(`**Fix:** ${def.docs.fix}`);
     for (const rule of rules) expect(['error', 'warning', 'note']).toContain(rule.defaultConfiguration.level);
   });
 
@@ -65,7 +65,7 @@ describe('renderSarif', () => {
       expect(ids[res.ruleIndex]).toBe(res.ruleId);
       expect(res.level).toBe(level[f.severity]);
       expect(res.message.text).toBe(f.message);
-      expect(res.partialFingerprints['wfc/v1']).toBe(f.fingerprint);
+      expect(res.partialFingerprints['flowpact/v1']).toBe(f.fingerprint);
       expect(res.locations[0].physicalLocation).toEqual({
         artifactLocation: { uri: f.loc.file, uriBaseId: '%SRCROOT%' },
         region: {
@@ -100,7 +100,7 @@ describe('renderSarif', () => {
       validateSchema: false,
       config: parseConfig({
         overrides: [
-          { rule: 'WFC104', file: '.github/workflows/ci.yml', reason: 'Still read by an external script' },
+          { rule: 'FP104', file: '.github/workflows/ci.yml', reason: 'Still read by an external script' },
         ],
       }),
     });
@@ -109,10 +109,10 @@ describe('renderSarif', () => {
     const suppressed = run.results.filter((x: Sarif) => x.suppressions);
     expect(suppressed).toHaveLength(1);
     expect(suppressed[0]).toMatchObject({
-      ruleId: 'WFC104',
+      ruleId: 'FP104',
       suppressions: [{ kind: 'external', justification: 'Still read by an external script' }],
     });
-    expect(run.tool.driver.rules.map((x: Sarif) => x.id)).toContain('WFC104');
+    expect(run.tool.driver.rules.map((x: Sarif) => x.id)).toContain('FP104');
   });
 
   it('falls back to finding docs for plugin rules', () => {

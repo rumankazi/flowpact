@@ -21598,8 +21598,8 @@ var require_readdir_glob = __commonJS({
           useStat = true;
         }
         const filename = dir2 + "/" + name;
-        const relative4 = filename.slice(1);
-        const absolute = path4 + "/" + relative4;
+        const relative5 = filename.slice(1);
+        const absolute = path4 + "/" + relative5;
         let stats = null;
         if (useStat || followSymlinks) {
           stats = await stat2(absolute, followSymlinks);
@@ -21611,12 +21611,12 @@ var require_readdir_glob = __commonJS({
           stats = { isDirectory: () => false };
         }
         if (stats.isDirectory()) {
-          if (!shouldSkip(relative4)) {
-            yield { relative: relative4, absolute, stats };
+          if (!shouldSkip(relative5)) {
+            yield { relative: relative5, absolute, stats };
             yield* exploreWalkAsync(filename, path4, followSymlinks, useStat, shouldSkip, false);
           }
         } else {
-          yield { relative: relative4, absolute, stats };
+          yield { relative: relative5, absolute, stats };
         }
       }
     }
@@ -21686,11 +21686,11 @@ var require_readdir_glob = __commonJS({
         }
         setTimeout(() => this._next(), 0);
       }
-      _shouldSkipDirectory(relative4) {
-        return this.skipMatchers.some((m) => m.match(relative4));
+      _shouldSkipDirectory(relative5) {
+        return this.skipMatchers.some((m) => m.match(relative5));
       }
-      _fileMatches(relative4, isDirectory2) {
-        const file2 = relative4 + (isDirectory2 ? "/" : "");
+      _fileMatches(relative5, isDirectory2) {
+        const file2 = relative5 + (isDirectory2 ? "/" : "");
         return (this.matchers.length === 0 || this.matchers.some((m) => m.match(file2))) && !this.ignoreMatchers.some((m) => m.match(file2)) && (!this.options.nodir || !isDirectory2);
       }
       _next() {
@@ -21699,16 +21699,16 @@ var require_readdir_glob = __commonJS({
             if (!obj.done) {
               const isDirectory2 = obj.value.stats.isDirectory();
               if (this._fileMatches(obj.value.relative, isDirectory2)) {
-                let relative4 = obj.value.relative;
+                let relative5 = obj.value.relative;
                 let absolute = obj.value.absolute;
                 if (this.options.mark && isDirectory2) {
-                  relative4 += "/";
+                  relative5 += "/";
                   absolute += "/";
                 }
                 if (this.options.stat) {
-                  this.emit("match", { relative: relative4, absolute, stat: obj.value.stats });
+                  this.emit("match", { relative: relative5, absolute, stat: obj.value.stats });
                 } else {
-                  this.emit("match", { relative: relative4, absolute });
+                  this.emit("match", { relative: relative5, absolute });
                 }
               }
               this._next(this.iterator);
@@ -24684,7 +24684,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join7(s) {
+      BufferList.prototype.join = function join8(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -40421,10 +40421,10 @@ var require_ignore = __commonJS({
       ignored(p) {
         const fullpath = p.fullpath();
         const fullpaths = `${fullpath}/`;
-        const relative4 = p.relative() || ".";
-        const relatives = `${relative4}/`;
+        const relative5 = p.relative() || ".";
+        const relatives = `${relative5}/`;
         for (const m of this.relative) {
-          if (m.match(relative4) || m.match(relatives))
+          if (m.match(relative5) || m.match(relatives))
             return true;
         }
         for (const m of this.absolute) {
@@ -40435,9 +40435,9 @@ var require_ignore = __commonJS({
       }
       childrenIgnored(p) {
         const fullpath = p.fullpath() + "/";
-        const relative4 = (p.relative() || ".") + "/";
+        const relative5 = (p.relative() || ".") + "/";
         for (const m of this.relativeChildren) {
-          if (m.match(relative4))
+          if (m.match(relative5))
             return true;
         }
         for (const m of this.absoluteChildren) {
@@ -58700,9 +58700,9 @@ var require_cronstrue = __commonJS({
 });
 
 // src/main.ts
-import { mkdirSync as mkdirSync2, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
+import { mkdirSync as mkdirSync3, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join6, posix as posix2, relative as relative3, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname4, join as join7, posix as posix2, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -125333,7 +125333,7 @@ function createLogger2(options = {}) {
   const level = options.level ?? "info";
   const sink = options.sink ?? { write() {
   } };
-  const scope = options.scope ?? "wfc";
+  const scope = options.scope ?? "flowpact";
   const log3 = (lvl, message, data) => {
     if (ORDER[lvl] > ORDER[level]) return;
     sink.write({ level: lvl, scope, message, ...data ? { data } : {}, time: Date.now() });
@@ -125371,9 +125371,9 @@ var silentLogger = createLogger2({ level: "silent" });
 function resolveLogLevel(opts, env = process.env) {
   if (opts.quiet) return "error";
   if ((opts.verbose ?? 0) >= 2) return "trace";
-  const envDebug = truthy(env.WFC_DEBUG) || truthy(env.RUNNER_DEBUG) || truthy(env.ACTIONS_STEP_DEBUG);
+  const envDebug = truthy(env.FLOWPACT_DEBUG) || truthy(env.RUNNER_DEBUG) || truthy(env.ACTIONS_STEP_DEBUG);
   if (opts.debug || (opts.verbose ?? 0) >= 1 || envDebug)
-    return env.WFC_DEBUG === "trace" ? "trace" : "debug";
+    return env.FLOWPACT_DEBUG === "trace" ? "trace" : "debug";
   return "info";
 }
 function truthy(v) {
@@ -130527,14 +130527,14 @@ function loadProject(opts) {
 }
 
 // ../core/src/version.ts
-var TOOL_NAME = "wfc";
+var TOOL_NAME = "flowpact";
 var VERSION10 = "0.1.1";
 var SCHEMA_VERSIONS = {
   config: 1,
   contract: 1,
   report: 1
 };
-var DOCS_BASE_URL = "https://rumankazi.github.io/wfc";
+var DOCS_BASE_URL = "https://rumankazi.github.io/flowpact";
 var schemaUrl = (name) => `${DOCS_BASE_URL}/schemas/${name}/v${SCHEMA_VERSIONS[name]}.json`;
 var ruleDocsUrl = (code2) => `${DOCS_BASE_URL}/docs/rules/${code2.toLowerCase()}`;
 function toolMeta() {
@@ -130552,18 +130552,20 @@ function bannerText(meta3 = toolMeta()) {
 }
 
 // ../core/src/config.ts
-var CONFIG_DIR = ".github/workflow-contracts";
-var CONFIG_FILES = ["wfc.config.yml", "wfc.config.yaml"];
+var CONFIG_DIR = ".github/flowpact";
+var CONFIG_FILES = ["flowpact.config.yml", "flowpact.config.yaml"];
+var LEGACY_CONFIG_DIR = ".github/workflow-contracts";
+var LEGACY_CONFIG_FILES = ["wfc.config.yml", "wfc.config.yaml"];
 var severitySettingSchema = external_exports.enum(["error", "warning", "info", "off"]);
 var overrideSchema = external_exports.object({
-  rule: external_exports.string().min(1).describe("Rule code (WFC104) or name (unused-input) to suppress."),
+  rule: external_exports.string().min(1).describe("Rule code (FP104) or name (unused-input) to suppress."),
   target: external_exports.string().optional().describe(
     "Symbol the finding is about, e.g. `.github/workflows/ci.yml#inputs.legacy`. Supports `*` and `**`."
   ),
   file: external_exports.string().optional().describe("Repo-relative file path, prefix or glob the finding is located in."),
   reason: external_exports.string().min(10).describe("Why this finding is accepted. Required, at least 10 characters."),
   expires: external_exports.iso.date().optional().describe(
-    "YYYY-MM-DD (UTC). After the end of this day the finding is reported again, together with WFC901."
+    "YYYY-MM-DD (UTC). After the end of this day the finding is reported again, together with FP901."
   ),
   owner: external_exports.string().optional().describe("Who owns the exception, e.g. `@platform-team`.")
 }).strict().refine((o) => o.target !== void 0 || o.file !== void 0, {
@@ -130575,10 +130577,10 @@ var configSchema = external_exports.object({
   repository: external_exports.string().regex(/^[\w.-]+\/[\w.-]+$/).optional().describe(
     "owner/repo of this repository. Lets `uses: owner/repo/.github/workflows/x.yml@ref` resolve locally."
   ),
-  rules: external_exports.record(external_exports.string(), severitySettingSchema).default({}).describe("Severity per rule, keyed by code (WFC401) or name (empty-binding-for-matrix-combo)."),
+  rules: external_exports.record(external_exports.string(), severitySettingSchema).default({}).describe("Severity per rule, keyed by code (FP401) or name (empty-binding-for-matrix-combo)."),
   limits: external_exports.object({
-    nestingDepth: external_exports.number().int().positive().default(10).describe("Maximum workflows in one call chain, counting the top-level workflow (WFC602)."),
-    maxInputs: external_exports.number().int().positive().default(30).describe("Inputs on one workflow_call interface before WFC605 suggests grouping them.")
+    nestingDepth: external_exports.number().int().positive().default(10).describe("Maximum workflows in one call chain, counting the top-level workflow (FP602)."),
+    maxInputs: external_exports.number().int().positive().default(30).describe("Inputs on one workflow_call interface before FP605 suggests grouping them.")
   }).strict().prefault({}).describe("Thresholds used by structure rules."),
   ignore: external_exports.array(external_exports.string()).default([]).describe("Repo-relative path prefixes or globs (`*`, `**`) whose findings are suppressed."),
   overrides: external_exports.array(overrideSchema).default([]).describe("Accepted findings, each with a reason and an optional expiry date."),
@@ -130586,7 +130588,7 @@ var configSchema = external_exports.object({
     external_exports.string().regex(/^[^#]+#[^#]+$/, "use `<workflow path>#<job id>`"),
     external_exports.object({ keys: external_exports.array(external_exports.string()).min(1) }).strict()
   ).default({}).describe(
-    "Declared keys of runtime-computed matrices, keyed by `<workflow path>#<job id>`. Lets wfc verify `matrix.*` reads (WFC404) instead of reporting WFC403."
+    "Declared keys of runtime-computed matrices, keyed by `<workflow path>#<job id>`. Lets flowpact verify `matrix.*` reads (FP404) instead of reporting FP403."
   ),
   plugins: external_exports.array(external_exports.string()).default([]).describe(
     "Repo-relative JavaScript modules (.js/.mjs) exporting extra rules (default export: rule or array of rules)."
@@ -130603,7 +130605,10 @@ var ConfigError = class extends Error {
   issues;
 };
 function loadConfig(root, explicit) {
-  const candidates = explicit ? [explicit] : CONFIG_FILES.map((f) => join4(root, CONFIG_DIR, f));
+  const candidates = explicit ? [explicit] : [
+    ...CONFIG_FILES.map((f) => join4(root, CONFIG_DIR, f)),
+    ...LEGACY_CONFIG_FILES.map((f) => join4(root, LEGACY_CONFIG_DIR, f))
+  ];
   for (const abs of candidates) {
     const full = explicit && !abs.startsWith("/") ? join4(process.cwd(), abs) : abs;
     if (!existsSync6(full)) {
@@ -130612,14 +130617,15 @@ function loadConfig(root, explicit) {
     }
     const rel = relative2(root, full).split("\\").join("/");
     if (!explicit && !insideRepository(root, full)) {
-      throw new ConfigError(`${rel} links outside the repository; wfc does not read it`, rel);
+      throw new ConfigError(`${rel} links outside the repository; flowpact does not read it`, rel);
     }
     const text2 = readFileSync3(full, "utf8");
-    return { ...parseConfigText(text2, rel), file: rel, text: text2 };
+    const legacy = !explicit && rel.startsWith(`${LEGACY_CONFIG_DIR}/`);
+    return { ...parseConfigText(text2, rel), file: rel, text: text2, ...legacy ? { legacy } : {} };
   }
   return { config: defaultConfig() };
 }
-function parseConfigText(text2, file2 = "wfc.config.yml") {
+function parseConfigText(text2, file2 = "flowpact.config.yml") {
   const lineCounter = new import_yaml4.LineCounter();
   const lines = text2.split(/\r?\n/);
   const doc = (0, import_yaml4.parseDocument)(text2, { lineCounter, prettyErrors: false });
@@ -131211,7 +131217,7 @@ var ProjectIndex = class {
   usersOf(actionPath) {
     return this.actionUses.filter((u) => u.action.path === actionPath);
   }
-  /** The reusable workflow a job calls. Workflows without `on.workflow_call` are not callable (see WFC609). */
+  /** The reusable workflow a job calls. Workflows without `on.workflow_call` are not callable (see FP609). */
   calleeOf(job) {
     const wf = this.targetOf(job);
     return wf?.call ? wf : void 0;
@@ -131718,8 +131724,21 @@ function declaredMatrix(keys) {
 }
 
 // ../core/src/contracts.ts
-var CONTRACTS_DIR = CONFIG_DIR;
-var CONTRACT_HEADER = "# Generated by wfc \u2014 do not edit by hand. Run `wfc generate` to update.\n# Docs: https://rumankazi.github.io/wfc/docs/contracts\n";
+var CONTRACTS_DIR = `${CONFIG_DIR}/contracts`;
+var LEGACY_CONTRACTS_DIR = LEGACY_CONFIG_DIR;
+var hasContracts = (fs8, dir2) => fs8.walk(dir2).some((f) => f.endsWith(".contract.yml"));
+var LEGACY_HEADER = /^# Generated by wfc — do not edit by hand\. Run `wfc generate` to update\.\r?\n# Docs: https:\/\/rumankazi\.github\.io\/wfc\/docs\/contracts\r?\n/;
+var LEGACY_SCHEMA_LINE = /^\$schema: https:\/\/rumankazi\.github\.io\/wfc\/schemas\/contract\/(v\d+)\.json$/m;
+function normalizeContractText(text2) {
+  return text2.replace(/\r\n/g, "\n").replace(LEGACY_HEADER, CONTRACT_HEADER).replace(
+    LEGACY_SCHEMA_LINE,
+    (_2, v) => `$schema: https://rumankazi.github.io/flowpact/schemas/contract/${v}.json`
+  );
+}
+function contractsDirFor(fs8) {
+  return !hasContracts(fs8, CONTRACTS_DIR) && hasContracts(fs8, LEGACY_CONTRACTS_DIR) ? LEGACY_CONTRACTS_DIR : CONTRACTS_DIR;
+}
+var CONTRACT_HEADER = "# Generated by flowpact \u2014 do not edit by hand. Run `flowpact generate` to update.\n# Docs: https://rumankazi.github.io/flowpact/docs/contracts\n";
 var contractInputSchema = external_exports.object({
   type: external_exports.string().optional(),
   required: external_exports.boolean(),
@@ -131898,8 +131917,8 @@ function buildContract(index2, unit) {
 function serializeContract(c) {
   return `${CONTRACT_HEADER}${(0, import_yaml5.stringify)(c, { lineWidth: 0, indent: 2, defaultStringType: "PLAIN", singleQuote: true })}`;
 }
-function contractFileFor(unit, taken = /* @__PURE__ */ new Set()) {
-  const fileOf = (base2) => `${CONTRACTS_DIR}/${base2}.contract.yml`;
+function contractFileFor(unit, taken = /* @__PURE__ */ new Set(), dir2 = CONTRACTS_DIR) {
+  const fileOf = (base2) => `${dir2}/${base2}.contract.yml`;
   let base;
   if (unit.kind === "workflow") {
     base = `workflows/${unit.path.split("/").pop().replace(/\.ya?ml$/i, "")}`;
@@ -132061,7 +132080,7 @@ function diffContracts(before, after) {
 }
 function readContracts(fs8) {
   const out = /* @__PURE__ */ new Map();
-  for (const file2 of fs8.walk(CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort()) {
+  for (const file2 of [...fs8.walk(CONTRACTS_DIR), ...fs8.walk(LEGACY_CONTRACTS_DIR)].filter((f) => f.endsWith(".contract.yml")).sort()) {
     const text2 = fs8.read(file2) ?? "";
     try {
       const parsed = contractSchema.safeParse((0, import_yaml5.parse)(text2));
@@ -132080,6 +132099,7 @@ function readContracts(fs8) {
   return out;
 }
 function planContracts(index2, fs8) {
+  const dir2 = contractsDirFor(fs8);
   const existing = readContracts(fs8);
   const entries2 = [];
   const units = index2.units().sort((a, b) => byCodePoint(a.path, b.path));
@@ -132092,7 +132112,7 @@ function planContracts(index2, fs8) {
   const expected = /* @__PURE__ */ new Map();
   const taken = new Set(lockedFile.values());
   for (const unit of units) {
-    const file2 = lockedFile.get(unit.path) ?? contractFileFor(unit, taken);
+    const file2 = lockedFile.get(unit.path) ?? contractFileFor(unit, taken, dir2);
     taken.add(file2);
     expected.set(file2, unit);
   }
@@ -132129,7 +132149,7 @@ function planContracts(index2, fs8) {
       entries2.push({ file: file2, status: "create", unit: unit.path, after, changes: [] });
       continue;
     }
-    if (prev.text.replace(/\r\n/g, "\n") === after) {
+    if (normalizeContractText(prev.text) === after) {
       entries2.push({ file: file2, status: "unchanged", unit: unit.path, before: prev.text, after, changes: [] });
       continue;
     }
@@ -132162,7 +132182,8 @@ function planContracts(index2, fs8) {
     skipped,
     drift: entries2.some((e) => e.status !== "unchanged"),
     counts,
-    breaking: entries2.reduce((n, e) => n + e.changes.filter((c) => c.breaking).length, 0)
+    breaking: entries2.reduce((n, e) => n + e.changes.filter((c) => c.breaking).length, 0),
+    ...dir2 === LEGACY_CONTRACTS_DIR ? { legacyDir: true } : {}
   };
 }
 function contractPatch(plan) {
@@ -132328,7 +132349,14 @@ function editDistance(a, b) {
   }
   return dp[x.length][y.length];
 }
+function renamedCode(name) {
+  const m = /^WFC(\d{3})$/i.exec(name.trim());
+  return m ? `FP${m[1]}` : void 0;
+}
+var RENAMED_CODE_HINT = "rule codes were renamed from WFC to FP in 0.2.0; `flowpact migrate` updates the config";
 function didYouMean(name, candidates) {
+  const renamed = renamedCode(name);
+  if (renamed && candidates.includes(renamed)) return renamed;
   const norm = (s) => s.toLowerCase().replace(/[-_]/g, "");
   let best;
   for (const c of candidates) {
@@ -132375,14 +132403,14 @@ function* entries(ctx, status) {
     yield { entry, ...unit ? { unit } : {} };
   }
 }
-var GENERATE = "Run `wfc generate` and commit the updated contracts. In CI, the wfc action (check mode) attaches the regenerated contracts and a `git apply`-able patch to the run \u2014 see its job summary.";
+var GENERATE = "Run `flowpact generate` and commit the updated contracts. In CI, the flowpact action (check mode) attaches the regenerated contracts and a `git apply`-able patch to the run \u2014 see its job summary.";
 var contractMissing = defineRule({
-  code: "WFC801",
+  code: "FP801",
   name: "contract-missing",
   category: "contracts",
   defaultSeverity: "error",
   docs: {
-    summary: "A workflow or local action has no contract in `.github/workflow-contracts/` (check mode).",
+    summary: "A workflow or local action has no contract in `.github/flowpact/` (check mode).",
     why: "Without a locked contract, changes to its interface and wiring are not visible in review and cannot be checked.",
     fix: GENERATE
   },
@@ -132397,7 +132425,7 @@ var contractMissing = defineRule({
   }
 });
 var contractOutdated = defineRule({
-  code: "WFC802",
+  code: "FP802",
   name: "contract-outdated",
   category: "contracts",
   defaultSeverity: "error",
@@ -132424,14 +132452,14 @@ var contractOutdated = defineRule({
   }
 });
 var breakingInterfaceChange = defineRule({
-  code: "WFC803",
+  code: "FP803",
   name: "breaking-interface-change",
   category: "contracts",
   defaultSeverity: "error",
   docs: {
     summary: "A change breaks the locked contract: an input became required, an input/secret/output was removed, or a type changed.",
     why: "Callers written against the locked interface will fail (unknown or missing input) or silently read empty outputs. In large pipelines those callers may live in other repositories or rarely-run branches.",
-    fix: "Update every caller first (wfc lists the known consumers), then regenerate the contract. If the change is intended, `wfc generate` records it and the diff makes the break explicit in review.",
+    fix: "Update every caller first (flowpact lists the known consumers), then regenerate the contract. If the change is intended, `flowpact generate` records it and the diff makes the break explicit in review.",
     examples: {
       bad: `# contract: input "channel" optional
 on:
@@ -132439,7 +132467,7 @@ on:
     inputs:
       channel: { type: string, required: true }   # now required`,
       good: `# keep it optional with a default (a required workflow_call input ignores its default),
-# or update all callers first, then: wfc generate
+# or update all callers first, then: flowpact generate
       channel: { type: string, required: false, default: stable }`
     }
   },
@@ -132465,14 +132493,14 @@ on:
   }
 });
 var orphanContract = defineRule({
-  code: "WFC804",
+  code: "FP804",
   name: "orphan-contract",
   category: "contracts",
   defaultSeverity: "error",
   docs: {
     summary: "A contract file exists for a workflow or action that no longer exists.",
     why: "If the workflow was removed or renamed, anything still calling it (including other repositories) breaks \u2014 the stale contract is the last record of that interface.",
-    fix: "Confirm nothing depends on the removed workflow, then run `wfc generate` to delete the contract."
+    fix: "Confirm nothing depends on the removed workflow, then run `flowpact generate` to delete the contract."
   },
   check(ctx) {
     for (const { entry } of entries(ctx, ["delete"])) {
@@ -132486,14 +132514,14 @@ var orphanContract = defineRule({
   }
 });
 var contractInvalid = defineRule({
-  code: "WFC805",
+  code: "FP805",
   name: "contract-invalid",
   category: "contracts",
   defaultSeverity: "error",
   docs: {
     summary: "A contract file cannot be read (invalid YAML or schema), usually because it was edited by hand or merged badly.",
     why: "An unreadable contract cannot be compared, so drift and breaking changes go unnoticed.",
-    fix: "Contracts are generated: resolve the merge by running `wfc generate` instead of editing the file."
+    fix: "Contracts are generated: resolve the merge by running `flowpact generate` instead of editing the file."
   },
   check(ctx) {
     for (const { entry } of entries(ctx, ["update", "delete"])) {
@@ -132531,7 +132559,7 @@ var GITHUB_ENV_HINTS = {
   RUNNER_ARCH: "runner.arch"
 };
 var undefinedEnvRef = defineRule({
-  code: "WFC501",
+  code: "FP501",
   name: "undefined-env-ref",
   category: "expressions",
   defaultSeverity: "warning",
@@ -132577,7 +132605,7 @@ var undefinedEnvRef = defineRule({
   }
 });
 var expressionParseError = defineRule({
-  code: "WFC502",
+  code: "FP502",
   name: "expression-parse-error",
   category: "expressions",
   defaultSeverity: "error",
@@ -132610,7 +132638,7 @@ var expressionParseError = defineRule({
   }
 });
 var schemaViolation = defineRule({
-  code: "WFC503",
+  code: "FP503",
   name: "schema-violation",
   category: "expressions",
   defaultSeverity: "error",
@@ -132626,7 +132654,7 @@ var schemaViolation = defineRule({
   }
 });
 var contextNotAvailable = defineRule({
-  code: "WFC505",
+  code: "FP505",
   name: "context-not-available",
   category: "expressions",
   defaultSeverity: "error",
@@ -132746,7 +132774,7 @@ function refLocFor(sites, e, name) {
   return site?.loc;
 }
 var yamlSyntaxError = defineRule({
-  code: "WFC504",
+  code: "FP504",
   name: "yaml-syntax-error",
   category: "expressions",
   defaultSeverity: "error",
@@ -132797,7 +132825,7 @@ function declaredInputs(unit) {
   return { ...unit.dispatch?.inputs ?? {}, ...unit.call?.inputs ?? {} };
 }
 var missingRequiredInput = defineRule({
-  code: "WFC101",
+  code: "FP101",
   name: "missing-required-input",
   category: "inputs",
   defaultSeverity: "error",
@@ -132852,7 +132880,7 @@ var missingRequiredInput = defineRule({
   }
 });
 var unknownInput = defineRule({
-  code: "WFC102",
+  code: "FP102",
   name: "unknown-input",
   category: "inputs",
   defaultSeverity: "error",
@@ -132897,7 +132925,7 @@ function jsonKind(v) {
   return typeof v;
 }
 var inputTypeMismatch = defineRule({
-  code: "WFC103",
+  code: "FP103",
   name: "input-type-mismatch",
   category: "inputs",
   defaultSeverity: "error",
@@ -132934,7 +132962,7 @@ var inputTypeMismatch = defineRule({
   }
 });
 var unusedInput = defineRule({
-  code: "WFC104",
+  code: "FP104",
   name: "unused-input",
   category: "inputs",
   defaultSeverity: "warning",
@@ -132973,7 +133001,7 @@ if: inputs.legacy-flag`
   }
 });
 var optionalInputInCondition = defineRule({
-  code: "WFC105",
+  code: "FP105",
   name: "optional-input-no-default-in-condition",
   category: "inputs",
   defaultSeverity: "warning",
@@ -133025,7 +133053,7 @@ if: inputs.variant == 'gpu'`,
   }
 });
 var passthroughDropped = defineRule({
-  code: "WFC106",
+  code: "FP106",
   name: "passthrough-dropped",
   category: "inputs",
   defaultSeverity: "info",
@@ -133052,7 +133080,7 @@ var passthroughDropped = defineRule({
   }
 });
 var optionalForwardedToRequired = defineRule({
-  code: "WFC107",
+  code: "FP107",
   name: "optional-forwarded-to-required",
   category: "inputs",
   defaultSeverity: "warning",
@@ -133103,7 +133131,7 @@ jobs:
   }
 });
 var undefinedInputRef = defineRule({
-  code: "WFC108",
+  code: "FP108",
   name: "undefined-input-ref",
   category: "inputs",
   defaultSeverity: "error",
@@ -133229,7 +133257,7 @@ function* matrixJobs(ctx) {
   }
 }
 var emptyBindingForMatrixCombo = defineRule({
-  code: "WFC401",
+  code: "FP401",
   name: "empty-binding-for-matrix-combo",
   category: "matrix",
   defaultSeverity: "error",
@@ -133307,7 +133335,7 @@ with:
 var SKIP_FIELDS = /* @__PURE__ */ new Set(["job.strategy"]);
 var WITH_FIELDS = /* @__PURE__ */ new Set(["job.with", "step.with"]);
 var matrixKeyMissingInCombo = defineRule({
-  code: "WFC402",
+  code: "FP402",
   name: "matrix-key-missing-in-combo",
   category: "matrix",
   defaultSeverity: "warning",
@@ -133336,7 +133364,7 @@ var matrixKeyMissingInCombo = defineRule({
           const all = WITH_FIELDS.has(site.field) ? affectedCombos(site, exp, () => true, guards, key).combos.length : combos.length;
           const rest = all - combos.length;
           ctx.report({
-            message: `matrix.${key} is undefined in ${all} of ${exp.combos.length} combinations of jobs.${job.id}${rest ? `; in ${rest} of them the whole input is empty (WFC401)` : ""}`,
+            message: `matrix.${key} is undefined in ${all} of ${exp.combos.length} combinations of jobs.${job.id}${rest ? `; in ${rest} of them the whole input is empty (FP401)` : ""}`,
             loc: firstMatrixRefLoc(site, [key]),
             combos: combos.map((c) => comboLabel(c, exp.keys)),
             symbol: sym.matrix(wf.path, job.id, key),
@@ -133348,14 +133376,14 @@ var matrixKeyMissingInCombo = defineRule({
   }
 });
 var dynamicMatrixUnverified = defineRule({
-  code: "WFC403",
+  code: "FP403",
   name: "dynamic-matrix-unverified",
   category: "matrix",
   defaultSeverity: "info",
   docs: {
-    summary: "The matrix is computed at runtime, so wfc cannot check that every combination defines the keys it reads.",
+    summary: "The matrix is computed at runtime, so flowpact cannot check that every combination defines the keys it reads.",
     why: "Dynamic matrices (`fromJSON(...)`) hide the same empty-value failure mode as static ones, but no tool can see it.",
-    fix: 'Declare the keys in the config (`matrixShapes: { "<workflow>#<job>": { keys: [os, config] } }`) so wfc can verify reads, prefer a static matrix, or validate the generated JSON in the job that produces it.'
+    fix: 'Declare the keys in the config (`matrixShapes: { "<workflow>#<job>": { keys: [os, config] } }`) so flowpact can verify reads, prefer a static matrix, or validate the generated JSON in the job that produces it.'
   },
   check(ctx) {
     for (const { wf, job, exp } of matrixJobs(ctx)) {
@@ -133377,7 +133405,7 @@ var dynamicMatrixUnverified = defineRule({
   }
 });
 var undefinedMatrixKey = defineRule({
-  code: "WFC404",
+  code: "FP404",
   name: "undefined-matrix-key",
   category: "matrix",
   defaultSeverity: "error",
@@ -133412,7 +133440,7 @@ var undefinedMatrixKey = defineRule({
   }
 });
 var unusedMatrixShape = defineRule({
-  code: "WFC405",
+  code: "FP405",
   name: "unused-matrix-shape",
   category: "matrix",
   defaultSeverity: "warning",
@@ -133431,7 +133459,7 @@ var unusedMatrixShape = defineRule({
       ctx.report({
         message: `matrixShapes entry ${quote(key)} is not used: ${reason}`,
         loc: {
-          file: ctx.configFile ?? ".github/workflow-contracts/wfc.config.yml",
+          file: ctx.configFile ?? ".github/flowpact/flowpact.config.yml",
           line: 1,
           column: 1,
           endLine: 1,
@@ -133443,7 +133471,7 @@ var unusedMatrixShape = defineRule({
   }
 });
 var matrixTooLarge = defineRule({
-  code: "WFC406",
+  code: "FP406",
   name: "matrix-too-large",
   category: "matrix",
   defaultSeverity: "error",
@@ -133457,7 +133485,7 @@ var matrixTooLarge = defineRule({
       const n = exp.truncated ? exp.minJobs ?? 0 : exp.exact ? exp.combos.length : 0;
       if (n <= GITHUB_MATRIX_LIMIT) continue;
       ctx.report({
-        message: exp.truncated ? `jobs.${job.id} expands to at least ${n} matrix jobs (GitHub allows ${GITHUB_MATRIX_LIMIT}); wfc did not list them` : `jobs.${job.id} expands to ${n} matrix jobs (GitHub allows ${GITHUB_MATRIX_LIMIT})`,
+        message: exp.truncated ? `jobs.${job.id} expands to at least ${n} matrix jobs (GitHub allows ${GITHUB_MATRIX_LIMIT}); flowpact did not list them` : `jobs.${job.id} expands to ${n} matrix jobs (GitHub allows ${GITHUB_MATRIX_LIMIT})`,
         loc: job.matrix.loc,
         symbol: sym.job(wf.path, job.id)
       });
@@ -133484,7 +133512,7 @@ function stepsInScope(unit, jobId) {
   return jobId ? unit.jobs[jobId]?.steps ?? [] : [];
 }
 var undefinedOutputRef = defineRule({
-  code: "WFC301",
+  code: "FP301",
   name: "undefined-output-ref",
   category: "outputs",
   defaultSeverity: "error",
@@ -133583,7 +133611,7 @@ var undefinedOutputRef = defineRule({
   }
 });
 var outputRefWithoutNeeds = defineRule({
-  code: "WFC302",
+  code: "FP302",
   name: "output-ref-without-needs",
   category: "outputs",
   defaultSeverity: "error",
@@ -133621,7 +133649,7 @@ var outputRefWithoutNeeds = defineRule({
   }
 });
 var unusedOutput = defineRule({
-  code: "WFC303",
+  code: "FP303",
   name: "unused-output",
   category: "outputs",
   defaultSeverity: "warning",
@@ -133675,7 +133703,7 @@ var unusedOutput = defineRule({
   }
 });
 var stepOutputNeverWritten = defineRule({
-  code: "WFC304",
+  code: "FP304",
   name: "step-output-never-written",
   category: "outputs",
   defaultSeverity: "warning",
@@ -133723,10 +133751,10 @@ var outputRules = [
 
 // ../core/src/rules/overrides.ts
 var EXPIRY_WARNING_DAYS = 14;
-var configLoc = (loc) => loc ?? { file: ".github/workflow-contracts/wfc.config.yml", line: 1, column: 1, endLine: 1, endColumn: 1 };
+var configLoc = (loc) => loc ?? { file: ".github/flowpact/flowpact.config.yml", line: 1, column: 1, endLine: 1, endColumn: 1 };
 var describe3 = (o) => `${o.rule} on ${o.target ?? o.file}`;
 var overrideExpired = defineRule({
-  code: "WFC901",
+  code: "FP901",
   name: "override-expired",
   category: "config",
   defaultSeverity: "error",
@@ -133757,7 +133785,7 @@ var overrideExpired = defineRule({
   }
 });
 var overrideUnused = defineRule({
-  code: "WFC902",
+  code: "FP902",
   name: "override-unused",
   category: "config",
   defaultSeverity: "warning",
@@ -133765,7 +133793,7 @@ var overrideUnused = defineRule({
   docs: {
     summary: "An override matches no finding \u2014 the problem was fixed, or the target is misspelled.",
     why: "Stale overrides hide future problems at the same target and make the exception list untrustworthy.",
-    fix: "Delete the override, or correct its `rule` / `target` / `file` (use the `symbol` shown in JSON output or `wfc lint --format json`)."
+    fix: "Delete the override, or correct its `rule` / `target` / `file` (use the `symbol` shown in JSON output or `flowpact lint --format json`)."
   },
   check(ctx) {
     for (const u of ctx.overrides ?? []) {
@@ -133778,7 +133806,7 @@ var overrideUnused = defineRule({
   }
 });
 var overrideExpiringSoon = defineRule({
-  code: "WFC903",
+  code: "FP903",
   name: "override-expiring-soon",
   category: "config",
   defaultSeverity: "info",
@@ -133799,12 +133827,38 @@ var overrideExpiringSoon = defineRule({
     }
   }
 });
-var overrideRules = [overrideExpired, overrideUnused, overrideExpiringSoon];
+var legacyLocation = defineRule({
+  code: "FP904",
+  name: "legacy-location",
+  category: "config",
+  defaultSeverity: "info",
+  docs: {
+    summary: "The config or the contracts are still in the location wfc used before it was renamed to flowpact.",
+    why: "flowpact still reads `.github/workflow-contracts/wfc.config.yml` and the contracts in `.github/workflow-contracts/` while `.github/flowpact/` has none, so nothing breaks. New repositories and the docs use `.github/flowpact/`, and rule codes in the old config still use the `WFC` prefix, which flowpact rejects.",
+    fix: "Run `flowpact migrate`: it moves the config to `.github/flowpact/flowpact.config.yml` and the contracts to `.github/flowpact/contracts/`, renames `WFC` rule codes to `FP`, and updates schema URLs. Commit the result."
+  },
+  check(ctx) {
+    const file2 = ctx.legacyFiles?.[0];
+    if (!file2) return;
+    ctx.report({
+      message: `flowpact files are still in the pre-0.2.0 location .github/workflow-contracts/ (${ctx.legacyFiles.join(", ")})`,
+      loc: { file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 },
+      symbol: ".github/workflow-contracts"
+    });
+  }
+});
+var overrideRules = [
+  overrideExpired,
+  overrideUnused,
+  overrideExpiringSoon,
+  legacyLocation
+];
 
 // ../core/src/rules/registry.ts
 var CODE_PATTERN = /^([A-Z][A-Z0-9]{1,9}?)(\d)(\d{2})$/;
 var NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-var BUILTIN_PREFIX = "WFC";
+var BUILTIN_PREFIX = "FP";
+var LEGACY_PREFIX = "WFC";
 var RuleRegistryError = class extends Error {
 };
 var RuleRegistry = class {
@@ -133814,7 +133868,7 @@ var RuleRegistry = class {
     const m = CODE_PATTERN.exec(rule.code);
     if (!m) {
       throw new RuleRegistryError(
-        `Invalid rule code "${rule.code}": expected <PREFIX><category digit><2 digits>, e.g. WFC401 or ACME101`
+        `Invalid rule code "${rule.code}": expected <PREFIX><category digit><2 digits>, e.g. FP401 or ACME101`
       );
     }
     const [, prefix2, cat] = m;
@@ -133823,10 +133877,8 @@ var RuleRegistry = class {
     if (opts.builtin && prefix2 !== BUILTIN_PREFIX) {
       throw new RuleRegistryError(`Built-in rule ${rule.code} must use the ${BUILTIN_PREFIX} prefix`);
     }
-    if (!opts.builtin && prefix2 === BUILTIN_PREFIX) {
-      throw new RuleRegistryError(
-        `Rule ${rule.code}: the ${BUILTIN_PREFIX} prefix is reserved for built-in rules`
-      );
+    if (!opts.builtin && (prefix2 === BUILTIN_PREFIX || prefix2 === LEGACY_PREFIX)) {
+      throw new RuleRegistryError(`Rule ${rule.code}: the ${prefix2} prefix is reserved for built-in rules`);
     }
     if (!opts.builtin && !rule.docsUrl)
       throw new RuleRegistryError(`Rule ${rule.code}: plugin rules must set docsUrl`);
@@ -133843,7 +133895,7 @@ var RuleRegistry = class {
     this.byName.set(rule.name, rule);
     return this;
   }
-  /** Looks a rule up by code (`WFC401`, case-insensitive) or name (`empty-binding-for-matrix-combo`). */
+  /** Looks a rule up by code (`FP401`, case-insensitive) or name (`empty-binding-for-matrix-combo`). */
   get(codeOrName) {
     return this.byCode.get(codeOrName.toUpperCase()) ?? this.byName.get(codeOrName.toLowerCase());
   }
@@ -133875,7 +133927,7 @@ function secretsNeededBy(index2, wf, seen = /* @__PURE__ */ new Set()) {
   return out;
 }
 var missingRequiredSecret = defineRule({
-  code: "WFC201",
+  code: "FP201",
   name: "missing-required-secret",
   category: "secrets",
   defaultSeverity: "error",
@@ -133912,7 +133964,7 @@ secrets:
   }
 });
 var unknownSecret = defineRule({
-  code: "WFC202",
+  code: "FP202",
   name: "unknown-secret",
   category: "secrets",
   defaultSeverity: "error",
@@ -133943,7 +133995,7 @@ var unknownSecret = defineRule({
   }
 });
 var unusedSecret = defineRule({
-  code: "WFC203",
+  code: "FP203",
   name: "unused-secret",
   category: "secrets",
   defaultSeverity: "warning",
@@ -133973,12 +134025,12 @@ var unusedSecret = defineRule({
   }
 });
 var secretsInherit = defineRule({
-  code: "WFC204",
+  code: "FP204",
   name: "secrets-inherit",
   category: "secrets",
   defaultSeverity: "info",
   docs: {
-    summary: "`secrets: inherit` hands every repository secret to the callee; wfc lists what is actually needed.",
+    summary: "`secrets: inherit` hands every repository secret to the callee; flowpact lists what is actually needed.",
     why: "Inherit makes the secret flow invisible: nobody can tell from the caller which secrets reach which job, and every nested workflow gets all of them.",
     fix: "Replace `secrets: inherit` with an explicit `secrets:` mapping of the secrets listed in the message.",
     examples: {
@@ -134007,7 +134059,7 @@ ${needed.map((n) => `  ${escapeControl(n)}: \${{ secrets.${escapeControl(n)} }}`
   }
 });
 var undeclaredSecretRef = defineRule({
-  code: "WFC205",
+  code: "FP205",
   name: "undeclared-secret-ref",
   category: "secrets",
   defaultSeverity: "error",
@@ -134048,7 +134100,7 @@ var secretRules = [
 
 // ../core/src/rules/structure.ts
 var callCycle = defineRule({
-  code: "WFC601",
+  code: "FP601",
   name: "call-cycle",
   category: "structure",
   defaultSeverity: "error",
@@ -134140,7 +134192,7 @@ function callComponents(paths, byCaller) {
   return components;
 }
 var nestingDepth = defineRule({
-  code: "WFC602",
+  code: "FP602",
   name: "nesting-depth",
   category: "structure",
   defaultSeverity: "error",
@@ -134214,13 +134266,13 @@ var nestingDepth = defineRule({
   }
 });
 var remoteUnverified = defineRule({
-  code: "WFC603",
+  code: "FP603",
   name: "remote-unverified",
   category: "structure",
   defaultSeverity: "info",
   docs: {
     summary: "A job calls a reusable workflow in another repository; its interface is not verified.",
-    why: "wfc analyzes this repository only, so inputs, secrets and outputs of the remote workflow are taken on trust.",
+    why: "flowpact analyzes this repository only, so inputs, secrets and outputs of the remote workflow are taken on trust.",
     fix: "Nothing to fix. If the workflow lives in this repository, set `repository: owner/repo` in the config so it resolves locally."
   },
   check(ctx) {
@@ -134237,7 +134289,7 @@ var remoteUnverified = defineRule({
   }
 });
 var needsWithoutData = defineRule({
-  code: "WFC604",
+  code: "FP604",
   name: "needs-without-data",
   category: "structure",
   defaultSeverity: "off",
@@ -134271,7 +134323,7 @@ var needsWithoutData = defineRule({
   }
 });
 var largeInterface = defineRule({
-  code: "WFC605",
+  code: "FP605",
   name: "large-interface",
   category: "structure",
   defaultSeverity: "info",
@@ -134293,7 +134345,7 @@ var largeInterface = defineRule({
   }
 });
 var missingLocalTarget = defineRule({
-  code: "WFC606",
+  code: "FP606",
   name: "missing-local-target",
   category: "structure",
   defaultSeverity: "error",
@@ -134320,7 +134372,7 @@ var missingLocalTarget = defineRule({
   }
 });
 var unreferencedReusableWorkflow = defineRule({
-  code: "WFC607",
+  code: "FP607",
   name: "unreferenced-reusable-workflow",
   category: "structure",
   defaultSeverity: "info",
@@ -134341,7 +134393,7 @@ var unreferencedReusableWorkflow = defineRule({
   }
 });
 var undefinedNeedsJob = defineRule({
-  code: "WFC608",
+  code: "FP608",
   name: "undefined-needs-job",
   category: "structure",
   defaultSeverity: "error",
@@ -134367,7 +134419,7 @@ var undefinedNeedsJob = defineRule({
   }
 });
 var calleeNotReusable = defineRule({
-  code: "WFC609",
+  code: "FP609",
   name: "callee-not-reusable",
   category: "structure",
   defaultSeverity: "error",
@@ -134443,8 +134495,9 @@ function triageUnknown(registry2, key, path4, allowUnknown, out) {
     key,
     registry2.all().flatMap((r) => [r.code, r.name])
   );
-  const issue3 = `${path4}: unknown rule${guess ? ` (did you mean ${guess}?)` : ` "${key}"`}`;
-  if (allowUnknown && !guess && !/^WFC/i.test(key)) out.tolerated.push(issue3);
+  const hint = renamedCode(key) ? ` \u2014 ${RENAMED_CODE_HINT}` : "";
+  const issue3 = `${path4}: unknown rule${guess ? ` (did you mean ${guess}?${hint})` : ` "${key}"`}`;
+  if (allowUnknown && !guess && !/^(FP|WFC)\d/i.test(key)) out.tolerated.push(issue3);
   else out.hard.push(issue3);
 }
 var SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
@@ -134535,7 +134588,8 @@ function analyze(opts) {
       void 0,
       unknownOnly.map((o) => {
         const guess = didYouMean(o, names);
-        return `${o}: unknown rule${guess ? ` (did you mean ${guess}?)` : ""}`;
+        const hint = renamedCode(o) ? ` \u2014 ${RENAMED_CODE_HINT}` : "";
+        return `${o}: unknown rule${guess ? ` (did you mean ${guess}?${hint})` : ""}`;
       })
     );
   }
@@ -134555,6 +134609,12 @@ function analyze(opts) {
       { breaking: contracts.breaking }
     );
   }
+  const layoutFs = opts.fs ?? nodeFileSystem(opts.root);
+  const legacyContracts = layoutFs.walk(LEGACY_CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort();
+  const legacyFiles = [
+    ...opts.configFile?.startsWith(`${LEGACY_CONFIG_DIR}/`) ? [opts.configFile] : [],
+    ...legacyContracts.slice(0, 1)
+  ];
   const runRules = (phase, extra) => {
     const out = [];
     for (const rule of registry2.all()) {
@@ -134572,6 +134632,7 @@ function analyze(opts) {
         matrix: matrix2,
         ...opts.configFile ? { configFile: opts.configFile } : {},
         ...contracts ? { contracts } : {},
+        ...legacyFiles.length ? { legacyFiles } : {},
         ...extra,
         report: (input3) => out.push(toFinding(rule, severity, input3, registry2))
       };
@@ -134775,8 +134836,21 @@ function exitCodeFor(summary2, failOn) {
   return 0;
 }
 
+// ../core/src/migrate.ts
+import {
+  existsSync as existsSync8,
+  lstatSync as lstatSync3,
+  mkdirSync as mkdirSync2,
+  readdirSync as readdirSync2,
+  readFileSync as readFileSync4,
+  rmdirSync,
+  rmSync as rmSync2,
+  writeFileSync as writeFileSync2
+} from "fs";
+import { dirname as dirname3, join as join6, relative as relative3 } from "path";
+
 // ../core/src/plugins.ts
-import { existsSync as existsSync8 } from "fs";
+import { existsSync as existsSync9 } from "fs";
 import { isAbsolute as isAbsolute2, resolve as resolve3 } from "path";
 import { pathToFileURL } from "url";
 var isRule = (v) => typeof v === "object" && v !== null && typeof v.code === "string" && typeof v.check === "function";
@@ -134784,7 +134858,7 @@ async function loadPlugins(root, config2, registry2, logger7 = silentLogger) {
   const loaded = [];
   for (const spec of config2.plugins) {
     const abs = isAbsolute2(spec) ? spec : resolve3(root, spec);
-    if (!existsSync8(abs))
+    if (!existsSync9(abs))
       throw new ConfigError(`Plugin not found: ${spec}`, void 0, [`plugins: ${abs} does not exist`]);
     let mod;
     try {
@@ -134923,7 +134997,7 @@ function toJsonReport(result, opts = {}) {
         drift: result.contracts.drift,
         breaking: result.contracts.breaking,
         counts: result.contracts.counts,
-        // File contents are omitted; use `wfc generate --dry-run` or the patch for those.
+        // File contents are omitted; use `flowpact generate --dry-run` or the patch for those.
         entries: result.contracts.entries.map(({ before: _b, after: _a3, ...e }) => e)
       }
     } : {},
@@ -135227,7 +135301,7 @@ function renderContracts(plan, opts) {
     );
   }
   if (opts.artifact) {
-    const patch = opts.artifact.patchFile ?? "wfc-contracts.patch";
+    const patch = opts.artifact.patchFile ?? "flowpact-contracts.patch";
     out.push("");
     if (opts.artifact.runId) {
       out.push("To update the locked contracts, apply the regenerated ones from this run:");
@@ -135244,10 +135318,10 @@ function renderContracts(plan, opts) {
     out.push(`git apply --index ${patch}`);
     out.push("```");
     out.push("");
-    out.push(`Or run ${code("wfc generate")} locally and commit the result.`);
+    out.push(`Or run ${code("flowpact generate")} locally and commit the result.`);
   } else {
     out.push("");
-    out.push(`Run ${code("wfc generate")} and commit the result to update the locked contracts.`);
+    out.push(`Run ${code("flowpact generate")} and commit the result to update the locked contracts.`);
   }
   return out;
 }
@@ -135255,7 +135329,7 @@ function renderMarkdown(result, opts = {}) {
   const s = result.summary;
   const m = result.meta;
   const out = [];
-  out.push(`## ${opts.title ?? "wfc report"}`);
+  out.push(`## ${opts.title ?? "flowpact report"}`);
   out.push("");
   out.push(
     `<sub>${m.tool} v${m.version} \xB7 config schema v${m.schemas.config} \xB7 contract schema v${m.schemas.contract} \xB7 report schema v${m.schemas.report} \xB7 ${result.durationMs} ms</sub>`
@@ -135286,7 +135360,7 @@ function renderMarkdown(result, opts = {}) {
   if (result.findings.length > shown) {
     out.push("");
     out.push(
-      `_\u2026 ${result.findings.length - shown} more ${result.findings.length - shown === 1 ? "finding" : "findings"} not shown \u2014 the JSON and SARIF reports (or \`wfc lint\` locally) list them all._`
+      `_\u2026 ${result.findings.length - shown} more ${result.findings.length - shown === 1 ? "finding" : "findings"} not shown \u2014 the JSON and SARIF reports (or \`flowpact lint\` locally) list them all._`
     );
   }
   if (result.contracts) {
@@ -135390,7 +135464,7 @@ function renderSarif(result) {
         physicalLocation: physicalLocation(r.loc)
       }))
     } : {},
-    partialFingerprints: { "wfc/v1": f.fingerprint },
+    partialFingerprints: { "flowpact/v1": f.fingerprint },
     ..."override" in f ? { suppressions: [{ kind: "external", status: "accepted", justification: f.override.reason }] } : {},
     properties: {
       ...f.combos?.length ? { combos: f.combos } : {},
@@ -135435,15 +135509,15 @@ var DEFAULTS2 = {
   "report-sarif": "",
   "report-markdown": "",
   "upload-contracts": "true",
-  "artifact-name": "wfc-contracts",
+  "artifact-name": "flowpact-contracts",
   "retention-days": "7",
   plugins: "auto",
   debug: "false"
 };
 var UNTRUSTED_EVENTS = /* @__PURE__ */ new Set(["pull_request_target", "workflow_run"]);
 var SUMMARY_LIMIT = 1e6;
-var PATCH_FILE = "wfc-contracts.patch";
-var ARTIFACT_DIR = "wfc-contracts";
+var PATCH_FILE = "flowpact-contracts.patch";
+var ARTIFACT_DIR = "flowpact-contracts";
 var InputError = class extends Error {
 };
 function input2(name) {
@@ -135574,9 +135648,9 @@ function sarifInWorkspace(sarif, prefix2) {
 }
 function writeReport(workspace, file2, content) {
   const abs = resolve4(workspace, file2);
-  mkdirSync2(dirname3(abs), { recursive: true });
-  writeFileSync2(abs, content);
-  const shown = toPosix2(relative3(workspace, abs));
+  mkdirSync3(dirname4(abs), { recursive: true });
+  writeFileSync3(abs, content);
+  const shown = toPosix2(relative4(workspace, abs));
   info(`wrote ${shown.startsWith("..") ? abs : shown}`);
   return abs;
 }
@@ -135585,7 +135659,7 @@ function artifactReadme(plan, artifactName, runId) {
   return [
     "# Regenerated workflow contracts",
     "",
-    `wfc check found that the locked contracts no longer match the workflows (${plan.counts.create} new, ${plan.counts.update} changed, ${plan.counts.delete} removed, ${plural3(plan.breaking, "breaking change")}).`,
+    `flowpact check found that the locked contracts no longer match the workflows (${plan.counts.create} new, ${plan.counts.update} changed, ${plan.counts.delete} removed, ${plural3(plan.breaking, "breaking change")}).`,
     "",
     `This artifact holds \`${PATCH_FILE}\`, a patch that brings the contracts up to date, and, in this`,
     `folder, the regenerated contract files themselves (removed contracts are only in the patch).`,
@@ -135599,29 +135673,29 @@ function artifactReadme(plan, artifactName, runId) {
     "```",
     "",
     "Review the changes (breaking ones are listed in the job summary), then commit them.",
-    "If you can run wfc locally, `wfc generate` produces the same files.",
+    "If you can run flowpact locally, `flowpact generate` produces the same files.",
     ""
   ].join("\n");
 }
 async function driftArtifact(plan, prefix2, inputs, runId) {
-  const dir2 = join6(
+  const dir2 = join7(
     process.env.RUNNER_TEMP || tmpdir(),
-    `wfc-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? "wfc")}-${slug(prefix2)}`
+    `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? "flowpact")}-${slug(prefix2)}`
   );
-  rmSync2(dir2, { recursive: true, force: true });
-  mkdirSync2(dir2, { recursive: true });
+  rmSync3(dir2, { recursive: true, force: true });
+  mkdirSync3(dir2, { recursive: true });
   const repoPlan = {
     ...plan,
     entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix2, e.file) }))
   };
-  const patch = join6(dir2, PATCH_FILE);
-  writeFileSync2(patch, contractPatch(repoPlan));
-  const contracts = writeContracts(dir2, repoPlan, join6(dir2, ARTIFACT_DIR));
-  writeFileSync2(join6(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
+  const patch = join7(dir2, PATCH_FILE);
+  writeFileSync3(patch, contractPatch(repoPlan));
+  const contracts = writeContracts(dir2, repoPlan, join7(dir2, ARTIFACT_DIR));
+  writeFileSync3(join7(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
   const files = [
     patch,
-    join6(dir2, ARTIFACT_DIR, "README.md"),
-    ...contracts.map((f) => join6(dir2, ARTIFACT_DIR, f))
+    join7(dir2, ARTIFACT_DIR, "README.md"),
+    ...contracts.map((f) => join7(dir2, ARTIFACT_DIR, f))
   ];
   info(`wrote ${PATCH_FILE} and ${plural3(contracts.length, "contract file")} to ${dir2}`);
   const out = { dir: dir2, patch };
@@ -135642,11 +135716,11 @@ async function driftArtifact(plan, prefix2, inputs, runId) {
 function failureMessage(result, inputs, drift) {
   const s = result.summary;
   const counted = inputs.failOn === "warning" ? `${plural3(s.errors, "error")} and ${plural3(s.warnings, "warning")}` : plural3(s.errors, "error");
-  let message = `wfc found ${counted}`;
+  let message = `flowpact found ${counted}`;
   const plan = result.contracts;
   if (plan?.drift) {
     message += `; the workflow contracts drifted (${plural3(plan.breaking, "breaking change")})`;
-    message += drift?.uploaded ? ` \u2014 apply ${PATCH_FILE} from the ${inputs.artifactName} artifact (see the job summary) or run wfc generate` : " \u2014 run wfc generate and commit the result";
+    message += drift?.uploaded ? ` \u2014 apply ${PATCH_FILE} from the ${inputs.artifactName} artifact (see the job summary) or run flowpact generate` : " \u2014 run flowpact generate and commit the result";
   }
   return `${message}.`;
 }
@@ -135666,7 +135740,7 @@ function summaryWithinLimit(result, opts) {
     }
   }
   warning("The job summary is too large even when shortened; see the report files instead.");
-  return `## wfc ${opts.title ?? ""}
+  return `## flowpact ${opts.title ?? ""}
 
 The report is too large for a job summary. Use the \`report-json\` or \`report-sarif\` inputs.
 `;
@@ -135692,17 +135766,17 @@ async function run() {
     info(bannerText());
     const workspace = resolve4(process.env.GITHUB_WORKSPACE || process.cwd());
     const root = resolve4(workspace, inputs.workingDirectory);
-    const rel = toPosix2(relative3(workspace, root));
+    const rel = toPosix2(relative4(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
     const loaded = loadConfig(root, inputs.config ? resolve4(root, inputs.config) : void 0);
     info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
     if (!getInput("artifact-name").trim() && prefix2)
-      inputs.artifactName = `wfc-contracts-${slug(prefix2)}`;
+      inputs.artifactName = `flowpact-contracts-${slug(prefix2)}`;
     if (loaded.config.plugins.length && !inputs.plugins) {
       const why = getInput("plugins").trim().toLowerCase() === "false" ? "the plugins input is false" : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
       warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
     }
-    const result = await group2(`wfc ${inputs.mode}: analyze`, async () => {
+    const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry2 = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry2, logger7);
       return analyze({
@@ -135744,10 +135818,10 @@ async function run() {
     if (inputs.annotations) for (const f of result.findings) annotate(f, prefix2);
     const runId = process.env.GITHUB_RUN_ID || void 0;
     const plan = result.contracts;
-    const drift = plan?.drift ? await group2("wfc: contract drift artifact", () => driftArtifact(plan, prefix2, inputs, runId)) : void 0;
+    const drift = plan?.drift ? await group2("flowpact: contract drift artifact", () => driftArtifact(plan, prefix2, inputs, runId)) : void 0;
     const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_SHA } = process.env;
     const markdownOptions = {
-      title: `wfc ${inputs.mode}`,
+      title: `flowpact ${inputs.mode}`,
       maxFindings: inputs.maxFindings,
       includeGraph: inputs.summaryGraph,
       ...GITHUB_SERVER_URL && GITHUB_REPOSITORY && GITHUB_SHA ? (
@@ -135769,7 +135843,7 @@ async function run() {
     }
     const reports = {};
     if (inputs.reportJson || inputs.reportSarif || inputs.reportMarkdown) {
-      await group2("wfc: reports", () => {
+      await group2("flowpact: reports", () => {
         if (inputs.reportJson) reports.json = writeReport(workspace, inputs.reportJson, renderJson(result));
         if (inputs.reportSarif)
           reports.sarif = writeReport(
@@ -135794,7 +135868,7 @@ async function run() {
     setOutput("patch", drift?.patch ?? "");
     setOutput("artifact-id", drift?.uploaded?.id ?? "");
     info(
-      `wfc ${inputs.mode}: ${plural3(s.errors, "error")}, ${plural3(s.warnings, "warning")}, ${s.infos} info, ${s.suppressed} suppressed \xB7 ${plural3(s.workflows, "workflow")} \xB7 ${result.durationMs} ms`
+      `flowpact ${inputs.mode}: ${plural3(s.errors, "error")}, ${plural3(s.warnings, "warning")}, ${s.infos} info, ${s.suppressed} suppressed \xB7 ${plural3(s.workflows, "workflow")} \xB7 ${result.durationMs} ms`
     );
     if (exitCode !== 0) setFailed(failureMessage(result, inputs, drift));
   } catch (err) {

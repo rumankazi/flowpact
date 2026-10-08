@@ -1,0 +1,81 @@
+---
+title: Migrating from wfc
+description: flowpact was called wfc before 0.2.0. What changed, and how to move a repository over in one command.
+---
+
+flowpact was called **wfc** up to 0.1.x. Version 0.2.0 renamed the tool; the engine, rules and contracts are the same.
+
+## What changed
+
+| | wfc (0.1.x) | flowpact (0.2.0+) |
+| --- | --- | --- |
+| npm package | `workflow-contracts` | `flowpact` |
+| Command | `wfc` | `flowpact` |
+| GitHub Action | `rumankazi/wfc@v0` | `rumankazi/flowpact@v0.2` (one tag per minor line before 1.0) |
+| Rule codes | `WFC101` … `WFC903` | `FP101` … `FP903` (same numbers) |
+| Config | `.github/workflow-contracts/wfc.config.yml` | `.github/flowpact/flowpact.config.yml` |
+| Contracts | `.github/workflow-contracts/{workflows,actions}/` | `.github/flowpact/contracts/{workflows,actions}/` |
+| Environment variables | `WFC_DEBUG`, `WFC_NO_HYPERLINKS` | `FLOWPACT_DEBUG`, `FLOWPACT_NO_HYPERLINKS` |
+| Contract drift artifact | `wfc-contracts` | `flowpact-contracts` |
+| Docs and schemas | `rumankazi.github.io/wfc` (no longer served) | `rumankazi.github.io/flowpact` |
+| SARIF | tool `wfc`, rule IDs `WFCnnn` | tool `flowpact`, rule IDs `FPnnn` |
+
+## Move a repository over
+
+<Steps>
+<Step>
+### Install flowpact
+
+```sh
+npm uninstall --global workflow-contracts
+npm install --global flowpact
+```
+
+In `package.json`, replace the `workflow-contracts` dev dependency with `flowpact`, and `wfc` in scripts with
+`flowpact`.
+</Step>
+<Step>
+### Move the config and contracts
+
+```sh
+flowpact migrate
+```
+
+It moves the config and the contracts to `.github/flowpact/`, renames `WFC` codes in the config (`rules`, `overrides`)
+to `FP`, and updates the schema URLs and contract headers. Symlinks and unknown files are listed and left for you to move.
+Until you run it, flowpact still reads the old location (contracts written by wfc count as up to date) and reports
+[`FP904`](/docs/rules/fp904) as a reminder; a `WFC` code in the old config, however, is a config error.
+</Step>
+<Step>
+### Update the workflow
+
+```yaml
+- uses: rumankazi/flowpact@v0.2   # was rumankazi/wfc@v0
+```
+
+`v0` stays on wfc 0.1.1, and GitHub redirects the old repository name, so an unchanged workflow keeps running wfc
+0.1.1 exactly as before — switch when you are ready. If a
+later step downloads the contract drift artifact by name, use `flowpact-contracts`.
+</Step>
+<Step>
+### Check and commit
+
+```sh
+flowpact check
+git add -A .github && git commit -m "chore: migrate from wfc to flowpact"
+```
+</Step>
+</Steps>
+
+## Code scanning
+
+If you upload flowpact's SARIF to code scanning, the tool name and rule IDs changed, so findings show up as new alerts and
+the old `wfc` alerts are never updated again. Use the new category (`category: flowpact`) and remove the old
+configuration under **Security → Code scanning → Tool status**, which closes its alerts.
+
+## Rule codes
+
+Old codes are not accepted any more: `--only WFC401`, `flowpact explain WFC401` or `rules: { WFC104: off }` fail with
+a suggestion of the new code (`did you mean FP401?`). `flowpact migrate` renames them in the config; replace them by
+hand in scripts and documentation. Rule **names** (`unused-input`, …) did not change, so configs that use names keep
+working.

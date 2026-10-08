@@ -23,8 +23,8 @@ import {
   neutralizeWorkflowCommands,
   resolveLogLevel,
   writeContracts,
-} from '@wfc/core';
-import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@wfc/reporters';
+} from '@flowpact/core';
+import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@flowpact/reporters';
 
 /** Input defaults; `action.yml` declares the same values (a test keeps them in sync). */
 export const DEFAULTS = {
@@ -41,7 +41,7 @@ export const DEFAULTS = {
   'report-sarif': '',
   'report-markdown': '',
   'upload-contracts': 'true',
-  'artifact-name': 'wfc-contracts',
+  'artifact-name': 'flowpact-contracts',
   'retention-days': '7',
   plugins: 'auto',
   debug: 'false',
@@ -57,12 +57,12 @@ type InputName = keyof typeof DEFAULTS;
 type FailOn = 'error' | 'warning' | 'never';
 
 /** Name of the patch inside the drift artifact; applied with `git apply` from the repository root. */
-export const PATCH_FILE = 'wfc-contracts.patch';
+export const PATCH_FILE = 'flowpact-contracts.patch';
 /**
  * Regenerated contract files and the README go under this folder of the artifact, so downloading the artifact
  * into the repository root (as the job summary suggests) never overwrites tracked files.
  */
-export const ARTIFACT_DIR = 'wfc-contracts';
+export const ARTIFACT_DIR = 'flowpact-contracts';
 
 class InputError extends Error {}
 
@@ -218,7 +218,7 @@ function annotate(f: Finding, prefix: string): void {
   else core.notice(message, props);
 }
 
-/** Rewrites SARIF artifact URIs so they are relative to the workspace (the repository) instead of the wfc root. */
+/** Rewrites SARIF artifact URIs so they are relative to the workspace (the repository) instead of the flowpact root. */
 function sarifInWorkspace(sarif: string, prefix: string): string {
   if (!prefix) return sarif;
   const doc = JSON.parse(sarif) as unknown;
@@ -252,7 +252,7 @@ function artifactReadme(plan: ContractPlan, artifactName: string, runId: string 
   return [
     '# Regenerated workflow contracts',
     '',
-    `wfc check found that the locked contracts no longer match the workflows (${plan.counts.create} new, ${plan.counts.update} changed, ${plan.counts.delete} removed, ${plural(plan.breaking, 'breaking change')}).`,
+    `flowpact check found that the locked contracts no longer match the workflows (${plan.counts.create} new, ${plan.counts.update} changed, ${plan.counts.delete} removed, ${plural(plan.breaking, 'breaking change')}).`,
     '',
     `This artifact holds \`${PATCH_FILE}\`, a patch that brings the contracts up to date, and, in this`,
     `folder, the regenerated contract files themselves (removed contracts are only in the patch).`,
@@ -266,7 +266,7 @@ function artifactReadme(plan: ContractPlan, artifactName: string, runId: string 
     '```',
     '',
     'Review the changes (breaking ones are listed in the job summary), then commit them.',
-    'If you can run wfc locally, `wfc generate` produces the same files.',
+    'If you can run flowpact locally, `flowpact generate` produces the same files.',
     '',
   ].join('\n');
 }
@@ -284,10 +284,10 @@ async function driftArtifact(
   inputs: Inputs,
   runId: string | undefined,
 ): Promise<DriftArtifact> {
-  // One folder per step (and project), so several wfc steps in a job never overwrite each other's patch.
+  // One folder per step (and project), so several flowpact steps in a job never overwrite each other's patch.
   const dir = join(
     process.env.RUNNER_TEMP || tmpdir(),
-    `wfc-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? 'wfc')}-${slug(prefix)}`,
+    `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? 'flowpact')}-${slug(prefix)}`,
   );
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
@@ -330,13 +330,13 @@ function failureMessage(result: AnalysisResult, inputs: Inputs, drift: DriftArti
     inputs.failOn === 'warning'
       ? `${plural(s.errors, 'error')} and ${plural(s.warnings, 'warning')}`
       : plural(s.errors, 'error');
-  let message = `wfc found ${counted}`;
+  let message = `flowpact found ${counted}`;
   const plan = result.contracts;
   if (plan?.drift) {
     message += `; the workflow contracts drifted (${plural(plan.breaking, 'breaking change')})`;
     message += drift?.uploaded
-      ? ` — apply ${PATCH_FILE} from the ${inputs.artifactName} artifact (see the job summary) or run wfc generate`
-      : ' — run wfc generate and commit the result';
+      ? ` — apply ${PATCH_FILE} from the ${inputs.artifactName} artifact (see the job summary) or run flowpact generate`
+      : ' — run flowpact generate and commit the result';
   }
   return `${message}.`;
 }
@@ -358,7 +358,7 @@ export function summaryWithinLimit(result: AnalysisResult, opts: MarkdownOptions
     }
   }
   core.warning('The job summary is too large even when shortened; see the report files instead.');
-  return `## wfc ${opts.title ?? ''}\n\nThe report is too large for a job summary. Use the \`report-json\` or \`report-sarif\` inputs.\n`;
+  return `## flowpact ${opts.title ?? ''}\n\nThe report is too large for a job summary. Use the \`report-json\` or \`report-sarif\` inputs.\n`;
 }
 
 export async function run(): Promise<void> {
@@ -390,7 +390,7 @@ export async function run(): Promise<void> {
     core.info(`mode ${inputs.mode} · root ${prefix || '.'} · config ${loaded.file ?? '(defaults)'}`);
     // With several projects (working-directory), give each its own artifact unless a name was set explicitly.
     if (!core.getInput('artifact-name').trim() && prefix)
-      inputs.artifactName = `wfc-contracts-${slug(prefix)}`;
+      inputs.artifactName = `flowpact-contracts-${slug(prefix)}`;
     if (loaded.config.plugins.length && !inputs.plugins) {
       const why =
         core.getInput('plugins').trim().toLowerCase() === 'false'
@@ -399,7 +399,7 @@ export async function run(): Promise<void> {
       core.warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
     }
 
-    const result = await group(`wfc ${inputs.mode}: analyze`, async () => {
+    const result = await group(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry, logger);
       return analyze({
@@ -444,12 +444,12 @@ export async function run(): Promise<void> {
     const runId = process.env.GITHUB_RUN_ID || undefined;
     const plan = result.contracts;
     const drift = plan?.drift
-      ? await group('wfc: contract drift artifact', () => driftArtifact(plan, prefix, inputs, runId))
+      ? await group('flowpact: contract drift artifact', () => driftArtifact(plan, prefix, inputs, runId))
       : undefined;
 
     const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_SHA } = process.env;
     const markdownOptions: MarkdownOptions = {
-      title: `wfc ${inputs.mode}`,
+      title: `flowpact ${inputs.mode}`,
       maxFindings: inputs.maxFindings,
       includeGraph: inputs.summaryGraph,
       ...(GITHUB_SERVER_URL && GITHUB_REPOSITORY && GITHUB_SHA
@@ -475,7 +475,7 @@ export async function run(): Promise<void> {
 
     const reports: { json?: string; sarif?: string } = {};
     if (inputs.reportJson || inputs.reportSarif || inputs.reportMarkdown) {
-      await group('wfc: reports', () => {
+      await group('flowpact: reports', () => {
         if (inputs.reportJson) reports.json = writeReport(workspace, inputs.reportJson, renderJson(result));
         if (inputs.reportSarif)
           reports.sarif = writeReport(
@@ -502,7 +502,7 @@ export async function run(): Promise<void> {
     core.setOutput('artifact-id', drift?.uploaded?.id ?? '');
 
     core.info(
-      `wfc ${inputs.mode}: ${plural(s.errors, 'error')}, ${plural(s.warnings, 'warning')}, ${s.infos} info, ${s.suppressed} suppressed · ${plural(s.workflows, 'workflow')} · ${result.durationMs} ms`,
+      `flowpact ${inputs.mode}: ${plural(s.errors, 'error')}, ${plural(s.warnings, 'warning')}, ${s.infos} info, ${s.suppressed} suppressed · ${plural(s.workflows, 'workflow')} · ${result.durationMs} ms`,
     );
     if (exitCode !== 0) core.setFailed(failureMessage(result, inputs, drift));
   } catch (err) {

@@ -1,14 +1,14 @@
 ---
 title: How it works
-description: From YAML to a data-flow graph — how wfc finds problems that span workflows and matrix combinations.
+description: From YAML to a data-flow graph — how flowpact finds problems that span workflows and matrix combinations.
 ---
 
-wfc is a static analyzer. Nothing is executed and no GitHub API is called; everything comes from the files in your
+flowpact is a static analyzer. Nothing is executed and no GitHub API is called; everything comes from the files in your
 repository.
 
 ```text
  YAML files ──▶ IR ──▶ expressions ──▶ graph ──▶ matrix expansion ──▶ contracts ──▶ rules ──▶ overrides ──▶ reporters
-   (yaml +    (jobs,   (@actions/    (symbols,    (exact include/    (wfc check)  (45 rules)  (reason,  (terminal, JSON,
+   (yaml +    (jobs,   (@actions/    (symbols,    (exact include/    (flowpact check)  (46 rules)  (reason,  (terminal, JSON,
  positions)   steps)  expressions)    edges)      exclude rules)                               expiry)  Markdown, SARIF)
 ```
 
@@ -23,7 +23,7 @@ scope, jobs (`needs`, `if`, `strategy.matrix`, `uses`, `with`, `secrets` / `inhe
 
 Files are also validated against GitHub's schema with
 [`@actions/workflow-parser`](https://www.npmjs.com/package/@actions/workflow-parser) — the parser behind GitHub's
-Actions language service — and reported as `WFC503`.
+Actions language service — and reported as `FP503`.
 
 Local references are followed until closure: `uses: ./.github/workflows/x.yml`, `uses: ./path/to/action`, and
 `owner/repo/...@ref` when it points at this same repository.
@@ -32,7 +32,7 @@ Local references are followed until closure: `uses: ./.github/workflows/x.yml`, 
 ### 2. Parse every expression
 
 Every `${{ }}` (and every bare `if:` condition) is parsed with GitHub's
-[`@actions/expressions`](https://www.npmjs.com/package/@actions/expressions) into an AST. wfc extracts typed references
+[`@actions/expressions`](https://www.npmjs.com/package/@actions/expressions) into an AST. flowpact extracts typed references
 such as `inputs.config`, `needs.build.outputs['version']`, `steps.meta.outputs.tag`, `matrix.os` or
 `github.event.inputs.x`, each with its own line and column.
 </Step>
@@ -47,7 +47,7 @@ References become edges between **symbols** with stable ids, for example
 - `secrets: inherit` is expanded to the secrets the callee tree actually reads;
 - `needs`, `calls` and `uses` edges describe the structure.
 
-`wfc trace` is a walk over this graph, `wfc graph` draws its call structure, and `wfc lint --dump-graph graph.json`
+`flowpact trace` is a walk over this graph, `flowpact graph` draws its call structure, and `flowpact lint --dump-graph graph.json`
 writes it out.
 </Step>
 <Step>
@@ -62,19 +62,19 @@ Every `with:` value and every expression in the job is then **evaluated once per
 evaluator that implements GitHub's operators and functions (`||`, `&&`, `==`, `format`, `contains`, `fromJSON`, …). A
 missing matrix key evaluates to `null` and carries a *taint*. If that taint survives into a value — and is not
 neutralized by a fallback such as `matrix.config || 'default'` — the binding is reported with the exact combinations
-(`WFC401`, `WFC402`).
+(`FP401`, `FP402`).
 
 Values that depend on runtime state (`github.sha`, `fromJSON(needs.setup.outputs.matrix)`) evaluate to *unknown* and
-are never guessed at; runtime-computed matrices are reported as unverifiable (`WFC403`) unless you declare their keys
+are never guessed at; runtime-computed matrices are reported as unverifiable (`FP403`) unless you declare their keys
 under [`matrixShapes`](/docs/configuration#matrix-shapes).
 </Step>
 <Step>
-### 5. Compare with the contracts (`wfc check`)
+### 5. Compare with the contracts (`flowpact check`)
 
-In check mode, wfc builds a [contract](/docs/contracts) for every workflow and local action from the graph — interface,
-calls, local action uses and consumers — and compares it with the committed file in `.github/workflow-contracts/`.
+In check mode, flowpact builds a [contract](/docs/contracts) for every workflow and local action from the graph — interface,
+calls, local action uses and consumers — and compares it with the committed file in `.github/flowpact/`.
 The comparison is semantic: each difference is classified as breaking or non-breaking, and missing, orphaned and
-unreadable contract files are recorded. `wfc generate` uses the same comparison to decide what to write.
+unreadable contract files are recorded. `flowpact generate` uses the same comparison to decide what to write.
 </Step>
 <Step>
 ### 6. Run rules
@@ -92,8 +92,8 @@ rules still see the whole picture.
 
 Each remaining finding is matched against the [overrides](/docs/configuration#overrides) in the config by rule and
 symbol or file. Accepted findings move to a separate `suppressed` list with the reason that accepted them. Then a last
-set of rules checks the overrides themselves: expired (`WFC901`, the findings come back), unused (`WFC902`) and
-expiring soon (`WFC903`).
+set of rules checks the overrides themselves: expired (`FP901`, the findings come back), unused (`FP902`) and
+expiring soon (`FP903`).
 </Step>
 <Step>
 ### 8. Report
@@ -103,11 +103,11 @@ counts and `--fail-on`.
 </Step>
 </Steps>
 
-## What wfc deliberately does not do
+## What flowpact deliberately does not do
 
-- **Guess runtime values.** Anything that depends on events, previous job results or scripts is *unknown*, so wfc stays
+- **Guess runtime values.** Anything that depends on events, previous job results or scripts is *unknown*, so flowpact stays
   quiet rather than produce false positives.
 - **Analyze other repositories.** Calls to reusable workflows in other repositories are reported as unverified
-  (`WFC603`).
+  (`FP603`).
 - **Replace actionlint.** actionlint checks single files in depth (shell scripts, action inputs of marketplace actions,
   runner labels). Run both — see [Comparison](/docs/comparison).
