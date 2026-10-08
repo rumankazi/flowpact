@@ -5,6 +5,8 @@
       "**",
       "!**/dist",
       "!**/.vscode-test",
+      "!assets/brand",
+      "!apps/docs/app/icon0.svg",
       "!**/coverage",
       "!**/.next",
       "!**/out",

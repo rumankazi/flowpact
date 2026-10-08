@@ -1,4 +1,11 @@
-# flowpact — workflow contracts for GitHub Actions
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/wordmark-dark.svg">
+    <img alt="flowpact" src="assets/brand/wordmark.svg" height="56">
+  </picture>
+</h1>
+
+<p align="center">Workflow contracts for GitHub Actions</p>
 
 [![CI](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml)
 [![Release](https://github.com/rumankazi/flowpact/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/release.yml)

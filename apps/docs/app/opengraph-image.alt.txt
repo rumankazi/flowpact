@@ -1,0 +1,1 @@
+flowpact — workflow contracts for GitHub Actions

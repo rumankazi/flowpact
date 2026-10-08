@@ -1,4 +1,5 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import { Logo } from '@/components/logo';
 import { appName, gitConfig } from './shared';
 
 export function baseOptions(): BaseLayoutProps {
@@ -6,10 +7,8 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <span className="inline-flex items-center gap-2 font-semibold">
-          <span className="rounded bg-fd-primary px-1.5 py-0.5 font-mono text-xs text-fd-primary-foreground">
-            {appName}
-          </span>
-          workflow contracts
+          <Logo className="size-6" />
+          {appName}
         </span>
       ),
     },
