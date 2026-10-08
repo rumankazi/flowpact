@@ -52,7 +52,8 @@ exports.run = async () => {
     .flatMap((h) => h.contents)
     .map((c) => (typeof c === 'string' ? c : c.value))
     .join('\n');
-  assert.match(text, /`inputs\.environment` — input/);
+  assert.match(text, /^\*\*flowpact\*\* · input · \[docs\]/m);
+  assert.match(text, /`inputs\.environment` in `pipeline\.yml`/);
 
   const definitions = await vscode.commands.executeCommand(
     'vscode.executeDefinitionProvider',
