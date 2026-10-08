@@ -1,6 +1,6 @@
 {
   "name": "@wfc/action",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "GitHub Action for wfc: annotations, job summary, reports and contract drift artifacts.",
   "type": "module",

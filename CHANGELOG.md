@@ -4,6 +4,13 @@ All notable changes to wfc are documented here. The format follows [Keep a Chang
 and the project uses [Semantic Versioning](https://semver.org/). Rule codes (`WFCnnn`) are stable: a code never changes
 meaning, and removed codes are not reused.
 
+## [0.1.1](https://github.com/rumankazi/wfc/compare/v0.1.0...v0.1.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **action:** shorten the description to fit the GitHub Marketplace limit ([#5](https://github.com/rumankazi/wfc/issues/5)) ([2ea93bb](https://github.com/rumankazi/wfc/commit/2ea93bb5bc7073046a26292c7da849ee21ad9445))
+
 ## [0.1.0] — 2026-10-08
 
 First release.
