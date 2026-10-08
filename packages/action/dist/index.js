@@ -130584,7 +130584,7 @@ function loadProject(opts) {
 
 // ../core/src/version.ts
 var TOOL_NAME = "flowpact";
-var VERSION10 = "0.2.0";
+var VERSION10 = "0.2.1";
 var SCHEMA_VERSIONS = {
   config: 1,
   contract: 1,
@@ -136524,9 +136524,12 @@ var physicalLocation = (loc) => ({
   artifactLocation: { uri: loc.file, uriBaseId: "%SRCROOT%" },
   region: region(loc)
 });
-function renderSarif(result) {
+function renderSarif(result, opts = {}) {
   const registry2 = createRegistry();
-  const all = [...result.findings, ...result.suppressed];
+  const all = [
+    ...result.findings,
+    ...opts.includeSuppressed ? result.suppressed : []
+  ];
   const firstFinding = /* @__PURE__ */ new Map();
   for (const f of all) if (!firstFinding.has(f.code)) firstFinding.set(f.code, f);
   const codes = result.rules.filter((r) => r.severity !== "off").map((r) => r.code);
