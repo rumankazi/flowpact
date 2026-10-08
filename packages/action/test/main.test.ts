@@ -390,6 +390,9 @@ describe('logging and errors', () => {
 
 describe('action.yml', () => {
   const meta = parse(readFileSync(join(REPO, 'action.yml'), 'utf8')) as {
+    name: string;
+    description: string;
+    branding: { icon: string; color: string };
     inputs: Record<string, { default: string; description: string }>;
     outputs: Record<string, { description: string }>;
     runs: { using: string; main: string };
@@ -403,6 +406,13 @@ describe('action.yml', () => {
   it('declares every output the action sets', async () => {
     const s = await action(join(FIXTURES, 'clean'));
     expect(Object.keys(meta.outputs).sort()).toEqual(Object.keys(s.outputs).sort());
+  });
+
+  it('meets the GitHub Marketplace requirements', () => {
+    // The Marketplace rejects a description of 125 characters or more and needs branding.
+    expect(meta.description.length).toBeLessThan(125);
+    expect(meta.name).toBeTruthy();
+    expect(meta.branding.icon && meta.branding.color).toBeTruthy();
   });
 
   it('runs the committed bundle on node24', () => {
