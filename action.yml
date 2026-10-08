@@ -1,5 +1,5 @@
 name: 'wfc — workflow contracts'
-description: 'Lint the data flow between GitHub Actions workflows and check their locked contracts, with annotations, a job summary and SARIF.'
+description: 'Lint the data flow between GitHub Actions workflows and check their locked contracts, with annotations and SARIF.'
 author: 'Ruman Kazi'
 branding:
   icon: git-merge
