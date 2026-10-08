@@ -1,9 +1,10 @@
 /**
  * Read-only access to another revision of the repository, so impact mode can analyse the base of a pull request (or
  * the last release) with the same rules as the working tree. Runs `git` directly (never through a shell) and only
- * reads; refs are verified before use. Symlinks and submodules in the tree are not followed.
+ * reads; refs are verified before use. In-repository symlinks resolve like in the working tree; submodules are skipped.
  */
 import { execFileSync } from 'node:child_process';
+import { posix } from 'node:path';
 import type { FileSystem } from './project';
 
 export class GitError extends Error {}
@@ -53,16 +54,42 @@ export function gitFileSystem(root: string, commit: string): FileSystem & { comm
   // `ls-tree` paths are relative to the repository top level; flowpact paths are relative to `root`.
   const prefix = git(root, ['rev-parse', '--show-prefix']).toString().trim();
   const files = new Set<string>();
+  const links: string[] = [];
   const out = git(root, ['ls-tree', '-r', '-z', '--full-tree', commit]).toString();
   for (const entry of out.split('\0')) {
     if (!entry) continue;
     const tab = entry.indexOf('\t');
     const [mode, type] = entry.slice(0, tab).split(' ');
     const path = entry.slice(tab + 1);
-    // Regular files only: no symlinks (120000) and no submodules (commit entries).
-    if (type !== 'blob' || (mode !== '100644' && mode !== '100755')) continue;
     if (prefix && !path.startsWith(prefix)) continue;
-    files.add(path.slice(prefix.length));
+    if (type === 'blob' && mode === '120000') links.push(path);
+    // Regular files; submodules (commit entries) are skipped.
+    else if (type === 'blob' && (mode === '100644' || mode === '100755'))
+      files.add(path.slice(prefix.length));
+  }
+  // In-repository symlinks resolve like they do in the working tree (a symlinked action is the same unit on both
+  // sides); links that leave the repository or point into .git are ignored, as nodeFileSystem does.
+  const alias = new Map<string, string>();
+  for (const link of links) {
+    const target = posix.normalize(
+      posix.join(posix.dirname(link), git(root, ['cat-file', 'blob', `${commit}:${link}`]).toString()),
+    );
+    if (target.startsWith('../') || target === '..' || target === '.git' || target.startsWith('.git/'))
+      continue;
+    if (prefix && !target.startsWith(prefix)) continue;
+    const from = link.slice(prefix.length);
+    const to = target.slice(prefix.length);
+    if (files.has(to)) {
+      alias.set(from, to);
+      files.add(from);
+      continue;
+    }
+    for (const f of [...files]) {
+      if (!f.startsWith(`${to}/`)) continue;
+      const virtual = `${from}/${f.slice(to.length + 1)}`;
+      alias.set(virtual, f);
+      files.add(virtual);
+    }
   }
   const cache = new Map<string, string | undefined>();
   // A loop, not /\/+$/: that pattern backtracks quadratically on long runs of slashes.
@@ -82,7 +109,10 @@ export function gitFileSystem(root: string, commit: string): FileSystem & { comm
       const p = norm(path);
       if (!files.has(p)) return undefined;
       if (!cache.has(p))
-        cache.set(p, git(root, ['cat-file', 'blob', `${commit}:${prefix}${p}`]).toString('utf8'));
+        cache.set(
+          p,
+          git(root, ['cat-file', 'blob', `${commit}:${prefix}${alias.get(p) ?? p}`]).toString('utf8'),
+        );
       return cache.get(p);
     },
     list(dir) {

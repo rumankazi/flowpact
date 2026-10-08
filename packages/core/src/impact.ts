@@ -29,7 +29,10 @@ export interface ImpactChange {
 }
 
 export interface ImpactPolicy {
-  /** Globs of published units; default: every `workflow_call` workflow and every action outside `.github/`. */
+  /**
+   * Globs of published units. Default: `workflow_call` workflows (except files starting with `_`, the usual mark of an
+   * internal one) and the repository's root `action.yml`.
+   */
   publish?: string[];
   /** Which declared source decides; the others are advisory. Default: `explicit` when given, else `title`. */
   declaredBy?: 'explicit' | 'title' | 'labels';
@@ -50,20 +53,40 @@ export const DEFAULT_IMPACT_POLICY: ImpactPolicy = {
 export function isPublished(unit: UnitDecl, policy: Pick<ImpactPolicy, 'publish'>): boolean {
   if (policy.publish)
     return policy.publish.some((p) => matchesPattern(unit.file, p) || matchesPattern(unit.path, p));
-  if (unit.kind === 'workflow') return unit.triggers.includes('workflow_call');
-  return unit.path === '.' || !unit.path.startsWith('.github/');
+  if (unit.kind === 'workflow')
+    return unit.triggers.includes('workflow_call') && !unit.path.split('/').pop()!.startsWith('_');
+  return unit.path === '.';
 }
 
 const fileStart = (file: string): Loc => ({ file, line: 1, column: 1, endLine: 1, endColumn: 1 });
 
 // ---------------------------------------------------------------------------
-// Changes
+// Check names
 // ---------------------------------------------------------------------------
 
-/** The check names a published reusable workflow adds after the consumer's own caller job (`<caller> / …`). */
-function publishedChecks(index: ProjectIndex, wf: WorkflowDecl): CheckName[] {
-  return workflowChecks(index, wf);
+/** One job's checks (a job of the workflow, or a job of a workflow it calls), keyed by the chain of job ids. */
+interface JobChecks {
+  chain: string;
+  stem: string;
+  names: CheckName[];
+  certain: boolean;
 }
+
+function jobChecks(index: ProjectIndex, wf: WorkflowDecl): Map<string, JobChecks> {
+  const out = new Map<string, JobChecks>();
+  // A published workflow's inputs come from its consumers, so names that read them are not known statically.
+  for (const c of workflowChecks(index, wf, 'consumer')) {
+    const chain = c.jobs.map((j) => j.split('#')[1]).join(' > ');
+    const cur = out.get(chain);
+    if (cur) {
+      cur.names.push(c);
+      cur.certain &&= c.certain;
+    } else out.set(chain, { chain, stem: c.stem, names: [c], certain: c.certain });
+  }
+  return out;
+}
+
+const quoteName = (n: string) => `"… / ${n}"`;
 
 function checkNameChanges(
   base: ProjectIndex,
@@ -71,70 +94,104 @@ function checkNameChanges(
   b: WorkflowDecl,
   h: WorkflowDecl,
 ): ImpactChange[] {
-  const before = publishedChecks(base, b);
-  const after = publishedChecks(head, h);
-  const count = (xs: CheckName[]) => {
-    const m = new Map<string, { n: number; certain: boolean; jobs: string[] }>();
-    for (const c of xs) {
-      const cur = m.get(c.name);
-      m.set(c.name, { n: (cur?.n ?? 0) + 1, certain: (cur?.certain ?? true) && c.certain, jobs: c.jobs });
-    }
-    return m;
-  };
-  const bm = count(before);
-  const am = count(after);
-  const jobLoc = (jobs: string[]) => {
-    const [path, id] = (jobs.at(-1) ?? '').split('#') as [string, string | undefined];
-    const unit = head.project.workflows.get(path);
-    const job: JobDecl | undefined = id ? unit?.jobs[id] : undefined;
+  const before = jobChecks(base, b);
+  const after = jobChecks(head, h);
+  const jobLoc = (chain: string) => {
+    const id = chain.split(' > ')[0]!;
+    const job: JobDecl | undefined = h.jobs[id];
     return job?.nameLoc ?? job?.loc ?? fileStart(h.file);
   };
   const out: ImpactChange[] = [];
-  const jobKey = (jobs: string[]) => jobs.join(' > ');
-  const removed = [...bm].filter(([name]) => !am.has(name));
-  const added = [...am].filter(([name]) => !bm.has(name));
-  // A job whose checks disappeared and that now reports other ones was renamed (name, matrix or callee).
-  const addedByJob = new Map<string, string[]>();
-  for (const [name, info] of added)
-    addedByJob.set(jobKey(info.jobs), [...(addedByJob.get(jobKey(info.jobs)) ?? []), name]);
-  const paired = new Set<string>();
-  for (const [name, info] of removed) {
-    const now = addedByJob.get(jobKey(info.jobs));
-    const certain = info.certain && (now ? now.every((n) => am.get(n)!.certain) : true);
-    if (now?.length) for (const n of now) paired.add(n);
-    out.push({
-      unit: h.path,
-      kind: 'check-name',
-      level: 'major',
-      certain,
-      message: now?.length
-        ? `check "… / ${name}" is now ${now.map((n) => `"… / ${n}"`).join(', ')}; consumers that require the old name wait forever`
-        : `check "… / ${name}" is no longer reported; consumers that require it wait forever`,
-      loc: jobLoc(info.jobs),
-    });
+  const add = (level: ImpactLevel, certain: boolean, message: string, loc: Loc) =>
+    out.push({ unit: h.path, kind: 'check-name', level, certain, message, loc });
+  const headNames = new Set([...after.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const baseNames = new Set([...before.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const matchedHead = new Set<string>();
+
+  for (const bj of before.values()) {
+    let hj = after.get(bj.chain);
+    // A job renamed by id but reporting the same names (or the same stem) is the same job to consumers.
+    if (!hj) hj = [...after.values()].find((x) => !before.has(x.chain) && x.stem === bj.stem);
+    if (!hj) {
+      const gone = bj.names.filter((n) => !headNames.has(n.name));
+      if (gone.length)
+        add(
+          'major',
+          true,
+          `${bj.names.length > 1 ? `checks ${quoteName(bj.stem)}` : `check ${quoteName(bj.names[0]!.name)}`} no longer reported; consumers that require ${bj.names.length > 1 ? 'them' : 'it'} wait forever`,
+          fileStart(h.file),
+        );
+      continue;
+    }
+    matchedHead.add(hj.chain);
+    if (bj.stem !== hj.stem) {
+      // The static part changed: every name the job reports changed, whatever the unknown values are.
+      add(
+        'major',
+        true,
+        `check ${quoteName(bj.stem)} is now ${quoteName(hj.stem)}; consumers that require the old name wait forever`,
+        jobLoc(hj.chain),
+      );
+      continue;
+    }
+    // Same stem: compare the names (matrix values). Unknown values cannot be compared.
+    const removed = bj.names.filter((n) => n.certain && !headNames.has(n.name));
+    const added = hj.names.filter((n) => n.certain && !baseNames.has(n.name));
+    for (const n of removed)
+      add(
+        'major',
+        true,
+        `check ${quoteName(n.name)} no longer reported; consumers that require it wait forever`,
+        jobLoc(hj.chain),
+      );
+    for (const n of added) add('minor', true, `new check ${quoteName(n.name)}`, jobLoc(hj.chain));
+    const unsure = bj.names.some((n) => !n.certain) || hj.names.some((n) => !n.certain);
+    if (unsure && JSON.stringify(bj.names.map((n) => n.name)) !== JSON.stringify(hj.names.map((n) => n.name)))
+      add('major', false, `checks ${quoteName(bj.stem)} may report different names`, jobLoc(hj.chain));
   }
-  for (const [name, info] of added) {
-    if (paired.has(name)) continue;
-    out.push({
-      unit: h.path,
-      kind: 'check-name',
-      level: 'minor',
-      certain: info.certain,
-      message: `new check "… / ${name}"`,
-      loc: jobLoc(info.jobs),
-    });
+  for (const hj of after.values()) {
+    if (matchedHead.has(hj.chain) || before.has(hj.chain)) continue;
+    const fresh = hj.names.filter((n) => !baseNames.has(n.name));
+    if (fresh.length)
+      add(
+        'minor',
+        true,
+        `new check${hj.names.length > 1 ? 's' : ''} ${quoteName(hj.names.length > 1 ? hj.stem : hj.names[0]!.name)}`,
+        jobLoc(hj.chain),
+      );
   }
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Interfaces, permissions, runtimes, uses
+// ---------------------------------------------------------------------------
+
 function contractLevel(path: string, breaking: boolean, message: string): ImpactLevel {
   const root = path.split('.')[0]!;
-  if (!['inputs', 'dispatchInputs', 'secrets', 'outputs'].includes(root)) return 'none';
+  // workflow_dispatch inputs belong to the publishing repository's manual runs; consumers call workflow_call.
+  if (!['inputs', 'secrets', 'outputs'].includes(root)) return 'none';
   if (breaking) return 'major';
   if (/was added|now optional/.test(message)) return 'minor';
   if (/default/.test(message)) return 'minor';
   if (/description changed/.test(message)) return 'none';
   return 'patch';
+}
+
+/** The head declaration a contract change path (`inputs.<name>`, …) names; the file start when it was removed. */
+function interfaceLoc(h: UnitDecl, path: string): Loc {
+  const dot = path.indexOf('.');
+  const kind = path.slice(0, dot);
+  const name = path.slice(dot + 1);
+  const decls: Record<string, { loc: Loc }> | undefined =
+    h.kind === 'workflow'
+      ? kind === 'inputs' || kind === 'secrets' || kind === 'outputs'
+        ? h.call?.[kind]
+        : undefined
+      : kind === 'inputs' || kind === 'outputs'
+        ? h[kind]
+        : undefined;
+  return (dot > 0 && decls && Object.hasOwn(decls, name) ? decls[name]?.loc : undefined) ?? fileStart(h.file);
 }
 
 function interfaceChanges(base: ProjectIndex, head: ProjectIndex, b: UnitDecl, h: UnitDecl): ImpactChange[] {
@@ -148,7 +205,7 @@ function interfaceChanges(base: ProjectIndex, head: ProjectIndex, b: UnitDecl, h
       level,
       certain: true,
       message: c.message,
-      loc: fileStart(h.file),
+      loc: interfaceLoc(h, c.path),
     });
   }
   return out;
@@ -156,6 +213,7 @@ function interfaceChanges(base: ProjectIndex, head: ProjectIndex, b: UnitDecl, h
 
 type Scopes = Record<string, number> | 'inherit';
 const RANK: Record<string, number> = { none: 0, read: 1, write: 2 };
+const LEVEL_NAMES = ['none', 'read', 'write'];
 const SCOPES = [
   'actions',
   'attestations',
@@ -182,38 +240,59 @@ function scopesOf(p: PermissionsDecl | undefined): Scopes {
   return Object.fromEntries(Object.entries(p).map(([k, v]) => [k, RANK[v] ?? 0]));
 }
 
-/** The highest level each scope is requested at by any job (`inherit` when a job does not set permissions). */
-function requested(wf: WorkflowDecl): Scopes {
-  let out: Record<string, number> = {};
+/**
+ * What each job requests, by chain of job ids, including the jobs of called workflows (GitHub checks nested jobs
+ * against what the caller grants, so they count too).
+ */
+function requestedByJob(
+  index: ProjectIndex,
+  wf: WorkflowDecl,
+  depth = 0,
+  seen = new Set<string>(),
+): Map<string, Scopes> {
+  const out = new Map<string, Scopes>();
   for (const job of Object.values(wf.jobs)) {
-    if (job.uses) continue;
-    const s = scopesOf(job.permissions ?? wf.permissions);
-    if (s === 'inherit') return 'inherit';
-    for (const [k, v] of Object.entries(s)) out = { ...out, [k]: Math.max(out[k] ?? 0, v) };
+    const callee = job.uses ? index.calleeOf(job) : undefined;
+    if (callee) {
+      if (depth >= 10 || seen.has(callee.path)) continue;
+      for (const [chain, s] of requestedByJob(index, callee, depth + 1, new Set([...seen, wf.path])))
+        out.set(`${job.id} > ${chain}`, s);
+      continue;
+    }
+    if (!job.uses) out.set(job.id, scopesOf(job.permissions ?? wf.permissions));
   }
   return out;
 }
 
-function permissionChanges(b: WorkflowDecl, h: WorkflowDecl): ImpactChange[] {
-  const before = requested(b);
-  const after = requested(h);
-  if (after === 'inherit') return [];
-  const names = ['none', 'read', 'write'];
-  const widened = Object.entries(after).filter(
-    ([k, v]) => v > 0 && (before === 'inherit' ? v >= 2 || k === 'id-token' : v > (before[k] ?? 0)),
-  );
-  if (widened.length === 0) return [];
-  const list = widened.map(([k, v]) => `${k}: ${names[v]}`).join(', ');
-  return [
-    {
+function permissionChanges(
+  base: ProjectIndex,
+  head: ProjectIndex,
+  b: WorkflowDecl,
+  h: WorkflowDecl,
+): ImpactChange[] {
+  const before = requestedByJob(base, b);
+  const after = requestedByJob(head, h);
+  const workflowLevel = scopesOf(b.permissions);
+  const out: ImpactChange[] = [];
+  for (const [chain, hs] of after) {
+    if (hs === 'inherit') continue;
+    const bs = before.get(chain) ?? workflowLevel;
+    const widened = Object.entries(hs).filter(([k, v]) =>
+      bs === 'inherit' ? v >= 2 || (k === 'id-token' && v > 0) : v > (bs[k] ?? 0),
+    );
+    if (!widened.length) continue;
+    const job = h.jobs[chain.split(' > ')[0]!];
+    out.push({
       unit: h.path,
       kind: 'permissions',
       level: 'major',
-      certain: before !== 'inherit',
-      message: `jobs now request ${list}; callers that grant less fail when the run starts`,
-      loc: fileStart(h.file),
-    },
-  ];
+      // From an explicit set we know it widened; from inherited permissions it depends on what callers grant.
+      certain: bs !== 'inherit',
+      message: `jobs.${chain.replaceAll(' > ', ' › ')} now requests ${widened.map(([k, v]) => `${k}: ${LEVEL_NAMES[v]}`).join(', ')}; callers that grant less fail when the run starts`,
+      loc: job?.loc ?? fileStart(h.file),
+    });
+  }
+  return out;
 }
 
 function remoteUses(unit: UnitDecl): Set<string> {
@@ -255,11 +334,18 @@ function runtimeChanges(b: ActionDecl, h: ActionDecl): ImpactChange[] {
   ];
 }
 
-/** Every graded change to a published unit between `base` and `head`. */
+const describeUnit = (u: UnitDecl) =>
+  u.kind === 'workflow' ? `reusable workflow ${u.path}` : `action ${u.path}`;
+
+/**
+ * Every graded change to a published unit between `base` and `head`. `headExists` tells whether a unit's file is still
+ * in the working tree (a unit can exist without being loaded, e.g. an action nothing here uses any more).
+ */
 export function impactChanges(
   base: ProjectIndex,
   head: ProjectIndex,
   policy: Pick<ImpactPolicy, 'publish'>,
+  headExists: (file: string) => boolean = () => false,
 ): ImpactChange[] {
   const out: ImpactChange[] = [];
   const baseUnits = new Map(base.units().map((u) => [u.path, u]));
@@ -268,12 +354,13 @@ export function impactChanges(
     if (!isPublished(b, policy)) continue;
     const h = headUnits.get(path);
     if (!h || h.kind !== b.kind) {
+      if (!h && headExists(b.file)) continue;
       out.push({
         unit: path,
         kind: 'unit',
         level: 'major',
         certain: true,
-        message: `${b.kind === 'workflow' ? 'reusable workflow' : 'action'} ${path} was removed or moved; consumers that reference it fail`,
+        message: `${describeUnit(b)} was removed or moved; consumers that reference it fail`,
         loc: fileStart(b.file),
       });
       continue;
@@ -292,10 +379,31 @@ export function impactChanges(
       });
       continue;
     }
-    if (b.parseErrors.length || h.parseErrors.length) continue;
+    if (h.parseErrors.length) {
+      out.push({
+        unit: path,
+        kind: 'unit',
+        level: 'major',
+        certain: !b.parseErrors.length,
+        message: `${describeUnit(h)} has YAML errors (${h.parseErrors[0]!.message}); consumers' runs fail`,
+        loc: h.parseErrors[0]!.loc,
+      });
+      continue;
+    }
+    if (b.parseErrors.length) {
+      out.push({
+        unit: path,
+        kind: 'unit',
+        level: 'patch',
+        certain: false,
+        message: `${describeUnit(h)} could not be compared: the baseline has YAML errors`,
+        loc: fileStart(h.file),
+      });
+      continue;
+    }
     out.push(...interfaceChanges(base, head, b, h), ...usesChanges(b, h));
     if (b.kind === 'workflow' && h.kind === 'workflow')
-      out.push(...checkNameChanges(base, head, b, h), ...permissionChanges(b, h));
+      out.push(...checkNameChanges(base, head, b, h), ...permissionChanges(base, head, b, h));
     if (b.kind === 'action' && h.kind === 'action') out.push(...runtimeChanges(b, h));
   }
   for (const [path, h] of headUnits) {
@@ -307,7 +415,7 @@ export function impactChanges(
       kind: 'unit',
       level: 'minor',
       certain: true,
-      message: `new ${h.kind === 'workflow' ? 'reusable workflow' : 'action'} ${path}`,
+      message: `new ${describeUnit(h)}`,
       loc: fileStart(h.file),
     });
   }
@@ -338,23 +446,32 @@ export function levelFromLabels(labels: string[], map: Record<ImpactLevel, strin
   return found.length ? maxLevel([...found]) : undefined;
 }
 
+/** release-please's pre-1.0 settings (`bump-minor-pre-major`, `bump-patch-for-minor-pre-major`). */
+export interface PreMajorBumps {
+  bumpMinorPreMajor: boolean;
+  bumpPatchForMinorPreMajor: boolean;
+}
+
 export interface DeclaredInput {
   explicit?: ImpactLevel;
   title?: string;
   labels?: string[];
   /** A release pull request: the proposed version and the version of the baseline release. */
-  release?: { version: string; previous: string; bumpMinorPreMajor: boolean };
+  release?: { version: string; previous: string } & PreMajorBumps;
 }
 
-/** The level a version bump declares (`0.1.4` → `0.2.0` is breaking under `bump-minor-pre-major`). */
-export function levelFromVersions(previous: string, next: string, bumpMinorPreMajor: boolean): ImpactLevel {
+/**
+ * The level a version bump declares. Before 1.0, release-please bumps the minor for breaking changes with
+ * `bump-minor-pre-major`, and the patch for features with `bump-patch-for-minor-pre-major`.
+ */
+export function levelFromVersions(previous: string, next: string, bumps: PreMajorBumps): ImpactLevel {
   const parse = (v: string) =>
     v.replace(/^v/, '').split(/[.-]/).slice(0, 3).map(Number) as [number, number, number];
   const [pa, pb, pc] = parse(previous);
   const [na, nb, nc] = parse(next);
   if (na > pa) return 'major';
-  if (nb > pb) return na === 0 && bumpMinorPreMajor ? 'major' : 'minor';
-  if (nc > pc) return na === 0 && bumpMinorPreMajor ? 'minor' : 'patch';
+  if (nb > pb) return na === 0 && bumps.bumpMinorPreMajor ? 'major' : 'minor';
+  if (nc > pc) return na === 0 && bumps.bumpPatchForMinorPreMajor ? 'minor' : 'patch';
   return 'none';
 }
 
@@ -368,21 +485,20 @@ export interface ImpactVerdict {
   ok: boolean;
 }
 
+/** The changes that count towards the required impact. */
+export const countedChanges = (changes: ImpactChange[], policy: Pick<ImpactPolicy, 'uncertain'>) =>
+  changes.filter((c) => c.certain || policy.uncertain === 'fail');
+
 export function impactVerdict(
   changes: ImpactChange[],
   input: DeclaredInput,
   policy: ImpactPolicy,
 ): ImpactVerdict {
-  const counted = changes.filter((c) => c.certain || policy.uncertain === 'fail');
-  const required = maxLevel(counted.map((c) => c.level));
+  const required = maxLevel(countedChanges(changes, policy).map((c) => c.level));
   const sources: DeclaredSource[] = [];
   if (input.explicit) sources.push({ kind: 'explicit', value: input.explicit, level: input.explicit });
   if (input.release) {
-    const level = levelFromVersions(
-      input.release.previous,
-      input.release.version,
-      input.release.bumpMinorPreMajor,
-    );
+    const level = levelFromVersions(input.release.previous, input.release.version, input.release);
     sources.push({ kind: 'version', value: `${input.release.previous} → ${input.release.version}`, level });
   } else if (input.title !== undefined) {
     const level = levelFromTitle(input.title, policy.types);
@@ -392,10 +508,14 @@ export function impactVerdict(
     const level = levelFromLabels(input.labels, policy.labels);
     if (level) sources.push({ kind: 'labels', value: input.labels.join(', '), level });
   }
-  const order: DeclaredSource['kind'][] = input.release
-    ? ['explicit', 'version']
-    : [policy.declaredBy ?? 'explicit', 'explicit', 'title', 'labels'];
-  const declared = order.map((k) => sources.find((s) => s.kind === k)).find(Boolean);
+  // Exactly one authoritative source: an explicit level, the release version, or the configured one (title by
+  // default). Falling back to another source would declare something the release tool never reads.
+  const authority: DeclaredSource['kind'] = input.explicit
+    ? 'explicit'
+    : input.release
+      ? 'version'
+      : (policy.declaredBy ?? 'title');
+  const declared = sources.find((s) => s.kind === authority);
   const advisory = sources.filter((s) => s !== declared);
   const conflict = declared
     ? advisory.find((s) => levelRank(s.level) > levelRank(declared.level))
@@ -417,6 +537,9 @@ export interface ImpactResult {
   baseline: { kind: 'ref' | 'release'; ref: string; commit: string };
   changes: ImpactChange[];
   verdict: ImpactVerdict;
+  policy: ImpactPolicy;
+  /** Files of the published units (base and head), e.g. to place findings that are not about one change. */
+  publishedFiles: string[];
 }
 
 /** Grades the changes and judges the declaration in one step. */
@@ -426,7 +549,11 @@ export function computeImpact(
   baseline: ImpactResult['baseline'],
   declared: DeclaredInput,
   policy: ImpactPolicy,
+  headExists?: (file: string) => boolean,
 ): ImpactResult {
-  const changes = impactChanges(base, head, policy);
-  return { baseline, changes, verdict: impactVerdict(changes, declared, policy) };
+  const changes = impactChanges(base, head, policy, headExists);
+  const publishedFiles = [
+    ...new Set([...head.units(), ...base.units()].filter((u) => isPublished(u, policy)).map((u) => u.file)),
+  ].sort();
+  return { baseline, changes, verdict: impactVerdict(changes, declared, policy), policy, publishedFiles };
 }

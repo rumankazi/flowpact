@@ -158,83 +158,113 @@ function readInputs(): Inputs {
 }
 
 /**
- * Makes `refs` available in a shallow checkout: fetched once, at depth 1, with a one-off authorization header passed
- * through the environment (never written to .git/config, never in argv).
+ * Makes `refs` available in a shallow checkout: fetched at depth 1 with a one-off authorization header passed through
+ * the environment (never in argv, never written to .git/config). An empty value first clears the header
+ * actions/checkout persists, since GitHub rejects a request with two Authorization headers.
  */
-function fetchMissing(root: string, refs: string[], token: string, logger: Logger): void {
+function fetchRefs(root: string, refs: string[], token: string, logger: Logger): void {
   const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
   if (token && !token.startsWith('${{')) {
     const host = new URL(process.env.GITHUB_SERVER_URL || 'https://github.com').host;
+    const key = `http.https://${host}/.extraheader`;
+    const n = Number(env.GIT_CONFIG_COUNT) || 0;
     Object.assign(env, {
-      GIT_CONFIG_COUNT: '1',
-      GIT_CONFIG_KEY_0: `http.https://${host}/.extraheader`,
-      GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString('base64')}`,
+      [`GIT_CONFIG_KEY_${n}`]: key,
+      [`GIT_CONFIG_VALUE_${n}`]: '',
+      [`GIT_CONFIG_KEY_${n + 1}`]: key,
+      [`GIT_CONFIG_VALUE_${n + 1}`]: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString('base64')}`,
+      GIT_CONFIG_COUNT: String(n + 2),
     });
   }
   for (const ref of refs) {
+    // A commit is fetched as is; `origin/<branch>` into its remote-tracking ref; refspecs (tags) unchanged.
+    const spec = /^[0-9a-f]{7,64}$/i.test(ref)
+      ? ref
+      : ref.startsWith('origin/')
+        ? `+refs/heads/${ref.slice('origin/'.length)}:refs/remotes/${ref}`
+        : ref;
     try {
-      execFileSync('git', ['-C', root, 'fetch', '--no-tags', '--depth=1', 'origin', ref], {
+      execFileSync('git', ['-C', root, 'fetch', '--no-tags', '--depth=1', 'origin', spec], {
         env,
         stdio: 'pipe',
       });
-      logger.debug(`fetched ${ref}`);
+      logger.debug(`fetched ${spec}`);
     } catch (err) {
-      logger.warn(`could not fetch ${ref}: ${(err as Error).message.split('\n')[0]}`);
+      const stderr = String((err as { stderr?: Buffer }).stderr ?? '')
+        .replace(/AUTHORIZATION: [^\s]+ [^\s]+/gi, 'AUTHORIZATION: ***')
+        .trim()
+        .split('\n')
+        .slice(-2)
+        .join(' ');
+      logger.warn(`could not fetch ${spec}${stderr ? `: ${stderr}` : ''}`);
     }
   }
 }
-
-const RELEASE_TITLE = /^chore(\([^)]*\))?: release\b/i;
 
 /** Impact mode's options for analyze(), or why it does not run. */
 function impactSetup(
   root: string,
   config: WfcConfig,
+  configPath: string | undefined,
   inputs: Inputs,
   logger: Logger,
 ): { options?: NonNullable<AnalyzeOptions['impact']>; note?: string } {
   if (inputs.impact === 'off') return {};
   const event = githubEvent();
-  const isPr = event?.name === 'pull_request' || event?.name === 'pull_request_target';
-  if (inputs.impact === 'auto') {
-    if (!isPr && !inputs.baseRef) return { note: 'impact: auto runs on pull requests' };
-    const project = loadProject({ root, logger });
-    const units = [...project.workflows.values(), ...project.actions.values()];
-    if (!units.some((u) => isPublished(u, config.impact))) {
-      return { note: 'impact: no published workflows or actions (see impact.publish)' };
-    }
-  }
-  const pr = event?.payload?.pull_request;
-  const base = inputs.baseRef || pr?.base?.sha;
-  const missing: string[] = [];
-  if (base) {
+  const auto = inputs.impact === 'auto';
+  if (auto && event?.name === 'pull_request_target')
+    return { note: 'impact: auto skips pull_request_target' };
+  if (auto && event?.name !== 'pull_request' && !inputs.baseRef)
+    return { note: 'impact: auto runs on pull requests' };
+  // A branch name prefers its remote-tracking ref (a local branch can be stale on a reused workspace), then the ref as
+  // given; when the clone has neither, the remote-tracking ref is fetched.
+  const resolves = (ref: string) => {
     try {
-      resolveCommit(root, base);
+      resolveCommit(root, ref);
+      return true;
     } catch {
-      missing.push(base);
+      return false;
     }
+  };
+  let base = inputs.baseRef;
+  if (base && !/^[0-9a-f]{7,64}$/i.test(base) && !base.startsWith('refs/')) {
+    const tracking = `origin/${base.replace(/^origin\//, '')}`;
+    if (resolves(tracking) || !resolves(base)) base = tracking;
   }
-  if (pr?.title && RELEASE_TITLE.test(pr.title)) missing.push('+refs/tags/v*:refs/tags/v*');
-  if (missing.length) fetchMissing(root, missing, core.getInput('token'), logger);
+  let prepared: ReturnType<typeof prepareImpact>;
   try {
-    const prepared = prepareImpact(
+    prepared = prepareImpact(
       root,
       config,
       {
-        ...(inputs.baseRef ? { base: inputs.baseRef } : {}),
+        ...(base ? { base } : {}),
         ...(inputs.expectedImpact ? { expect: inputs.expectedImpact } : {}),
         ...(event ? { event } : {}),
         ...(process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}),
+        ...(configPath ? { configPath } : {}),
+        fetch: (refs) => fetchRefs(root, refs, core.getInput('token'), logger),
       },
       logger,
     );
-    if ('skip' in prepared) return { note: `impact: skipped (${prepared.skip})` };
-    for (const n of prepared.notes) logger.info(`impact: ${n}`);
-    return { options: prepared.options };
   } catch (err) {
     if (err instanceof ImpactSetupError) throw new InputError(`impact: ${err.message}`);
     throw err;
   }
+  if ('skip' in prepared) return { note: `impact: skipped (${prepared.skip})` };
+  for (const n of prepared.notes) logger.info(`impact: ${n}`);
+  if (auto && prepared.options.publishedFiles?.length === 0) {
+    // Decided on both sides: a pull request that deletes or unpublishes the only published unit is still checked.
+    const project = loadProject({
+      root,
+      logger,
+      ...(prepared.options.policy.publish ? { publish: prepared.options.policy.publish } : {}),
+    });
+    const units = [...project.workflows.values(), ...project.actions.values()];
+    if (!units.some((u) => isPublished(u, prepared.options.policy))) {
+      return { note: 'impact: no published workflows or actions (see impact.publish)' };
+    }
+  }
+  return { options: prepared.options };
 }
 
 function pluginsAllowed(value: 'auto' | 'true' | 'false'): boolean {
@@ -503,7 +533,7 @@ export async function run(): Promise<void> {
     }
 
     const impact = await group('flowpact: impact baseline', async () =>
-      impactSetup(root, loaded.config, inputs, logger),
+      impactSetup(root, loaded.config, inputs.config || undefined, inputs, logger),
     );
     if (impact.note) core.info(impact.note);
 

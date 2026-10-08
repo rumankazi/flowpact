@@ -1,5 +1,5 @@
-import type { ImpactChange, ImpactLevel } from '../impact';
-import { levelRank } from '../impact';
+import type { ImpactChange, ImpactLevel, ImpactResult } from '../impact';
+import { countedChanges, levelRank } from '../impact';
 import type { Loc } from '../source';
 import { defineRule, type RelatedLocation, type RuleDefinition } from './types';
 
@@ -13,11 +13,20 @@ const describeSource = (s: { kind: string; value: string }) =>
 const related = (changes: ImpactChange[]): RelatedLocation[] =>
   changes.slice(0, 20).map((c) => ({ loc: c.loc, message: `${c.level}: ${c.message}` }));
 
-const firstLoc = (changes: ImpactChange[], fallback: Loc): Loc => changes[0]?.loc ?? fallback;
-const NOWHERE: Loc = { file: '.github', line: 1, column: 1, endLine: 1, endColumn: 1 };
+/** Where a verdict is reported: its first driving change, else any change, else the first published file. */
+const verdictLoc = (impact: ImpactResult, changes: ImpactChange[]): Loc =>
+  changes[0]?.loc ??
+  impact.changes[0]?.loc ?? {
+    file: impact.publishedFiles[0] ?? 'action.yml',
+    line: 1,
+    column: 1,
+    endLine: 1,
+    endColumn: 1,
+  };
 
-const driving = (changes: ImpactChange[], level: ImpactLevel) =>
-  changes.filter((c) => c.level === level && c.certain);
+/** The changes that decide the required level (uncertain ones too when `impact.uncertain` is `fail`). */
+const driving = (impact: ImpactResult, level: ImpactLevel) =>
+  countedChanges(impact.changes, impact.policy).filter((c) => c.level === level);
 
 export const impactUnderDeclared = defineRule({
   code: 'FP810',
@@ -48,10 +57,10 @@ jobs:
       levelRank(v.required) < levelRank('minor')
     )
       return;
-    const changes = driving(ctx.impact!.changes, v.required);
+    const changes = driving(ctx.impact!, v.required);
     ctx.report({
       message: `Declared ${v.declared.level} (${describeSource(v.declared)}), but the changes require ${v.required}: ${changes[0]?.message ?? ''}${changes.length > 1 ? ` (+${changes.length - 1} more)` : ''}`,
-      loc: firstLoc(changes, NOWHERE),
+      loc: verdictLoc(ctx.impact!, changes),
       related: related(changes),
       symbol: `impact#${v.required}`,
     });
@@ -75,7 +84,7 @@ export const impactConflict = defineRule({
     if (!v?.declared || !v.conflict) return;
     ctx.report({
       message: `${describeSource(v.conflict)} declares ${v.conflict.level}, but ${describeSource(v.declared)} — what the release tool reads — declares ${v.declared.level}`,
-      loc: firstLoc(ctx.impact!.changes, NOWHERE),
+      loc: verdictLoc(ctx.impact!, []),
       symbol: 'impact#conflict',
     });
   },
@@ -96,7 +105,7 @@ export const impactOverDeclared = defineRule({
     if (!v?.declared || levelRank(v.declared.level) <= levelRank(v.required)) return;
     ctx.report({
       message: `Declared ${v.declared.level} (${describeSource(v.declared)}); the workflow and action changes require ${v.required}`,
-      loc: firstLoc(ctx.impact!.changes, NOWHERE),
+      loc: verdictLoc(ctx.impact!, []),
       symbol: 'impact#over',
     });
   },
@@ -115,10 +124,10 @@ export const impactUndeclared = defineRule({
   check(ctx) {
     const v = ctx.impact?.verdict;
     if (!v || v.declared) return;
-    const changes = driving(ctx.impact!.changes, v.required);
+    const changes = driving(ctx.impact!, v.required);
     ctx.report({
       message: `No impact declared; the changes to published workflows and actions require ${v.required}`,
-      loc: firstLoc(changes, NOWHERE),
+      loc: verdictLoc(ctx.impact!, changes),
       related: related(changes),
       symbol: 'impact#undeclared',
     });

@@ -30,31 +30,38 @@ Impact  declared patch (title "fix: tidy the test job")  ·  required MAJOR  ✖
 
 Only **published** units:
 
-- every reusable workflow (`on: workflow_call`);
+- every reusable workflow (`on: workflow_call`), except files whose name starts with `_`
+  (`.github/workflows/_build.yml`), the convention for internal ones;
 - the repository's own action (`action.yml` at the root — what `uses: owner/repo@ref` runs);
 - the units listed in [`impact.publish`](#configuration) (for example `*/action.yml` in a repository of several
-  actions). Setting `impact.publish` replaces the defaults.
+  actions). Setting `impact.publish` replaces the defaults. `**/` also matches no directory, so `**/action.yml`
+  includes the root action.
 
-Workflows that only run the repository's own CI, internal reusable workflows you leave out of `impact.publish`, and
-`.github/actions/**` are not graded: renaming your own CI jobs is not a change your consumers can see.
+Workflows that only run the repository's own CI, `_`-prefixed reusable workflows, and `.github/actions/**` are not
+graded: renaming your own CI jobs is not a change your consumers can see. Internal workflows still count where a
+published one calls them — their check names appear under the caller's.
 
 | Change to a published unit | Required impact |
 | --- | --- |
 | A check name a reusable workflow reports is gone: job renamed, job id changed when there is no `name`, matrix key changed or value removed, `${{ }}` added to or removed from `name`, job or nested call removed | major |
+| Job id renamed while its check name stays the same | none |
 | A new check name (matrix value added, new job) | minor |
 | `workflow_call` input or secret removed, optional → required, new required input or secret, input type changed, choice option removed | major |
 | Output removed (callers silently read `''`) | major |
 | Optional input, secret or output added | minor |
 | Input default changed | minor |
 | Reusable workflow moved or deleted, or `workflow_call` removed; action moved or deleted | major |
-| A job requests a new or higher `permissions:` scope (callers that grant less fail when the run starts) | major |
+| A published unit no longer parses | major |
+| A job requests a new or higher `permissions:` scope — its own, the workflow-level ones it inherits, or a called workflow's job's (callers that grant less fail when the run starts) | major |
 | Action `runs.using` changed (for example `node20` → `node24`) | major |
 | A new third-party action or workflow used inside a published unit (organization allow-lists and SHA-pinning policies apply to consumers) | minor |
-| Narrower permissions, descriptions, internal steps | none |
+| Narrower permissions, descriptions, internal steps, `workflow_dispatch` inputs | none |
 
 Consumers' branch protection is not visible from the publishing repository, so every check name a published reusable
 workflow reports counts as one a consumer may require. Names are compared the way GitHub forms them — see
-[how check names are formed](#how-check-names-are-formed).
+[how check names are formed](#how-check-names-are-formed). A name that reads the reusable workflow's own inputs
+depends on what each consumer passes, so it is compared by its template: `Test ${{ inputs.os }}` becoming
+`Tests ${{ inputs.os }}` is a rename whatever the consumer passes.
 
 ## Where the declared impact comes from
 
@@ -71,9 +78,13 @@ The declared impact must be what the release tool will read, so exactly one sour
   title as the commit message. A title that is not a Conventional Commit counts as _not declared_.
 - **Other sources are advisory.** A higher advisory declaration (a `semver:major` label on a `fix:` title) is an
   error: the release tool would cut a patch.
+- **Labels never stand in for a missing title.** With `declaredBy: title`, a title that is not a Conventional Commit
+  is _not declared_ even when the pull request has a `semver:*` label.
 - **Release pull requests** (a release-please title `chore(main): release 0.3.0`, or the `autorelease: pending` label)
-  compare everything since the **last release tag** with the proposed version. Before 1.0, release-please's
-  `bump-minor-pre-major` is respected: `0.2.0` → `0.3.0` is a major release.
+  compare everything since the **last release tag** with the proposed version. release-please's settings for the
+  root package are respected — `bump-minor-pre-major` (before 1.0, `0.2.0` → `0.3.0` is a major release),
+  `bump-patch-for-minor-pre-major`, `include-v-in-tag` and component tags (`my-action-v0.2.0`), at the top level or
+  under `packages["."]`.
 - Without a declaration, flowpact reports the required impact (`FP813`) and does not fail.
 
 Over-declaring is never an error — a release may contain changes flowpact does not grade — and a `patch` change in a
@@ -88,6 +99,19 @@ pull request that declares `none` does not fail either.
 | [`FP812`](/docs/rules/fp812) `impact-over-declared` | info | The declaration is bigger than the changes require. |
 | [`FP813`](/docs/rules/fp813) `impact-undeclared` | info | Nothing is declared; the required impact is reported. |
 | [`FP814`](/docs/rules/fp814) `impact-uncertain` | warning | A change depends on something flowpact cannot evaluate (a check name built from `vars` or the event, a runtime matrix). Not counted unless `impact.uncertain: fail`. |
+
+## The baseline
+
+| Run | Compared with |
+| --- | --- |
+| `--base <ref>` / action input `base-ref` | that ref |
+| `pull_request` | the base commit of the pull request |
+| `push` | the commit before the push (a new branch or tag is skipped) |
+| release pull request | the last release tag (see above) |
+| anything else | `origin/HEAD`, else `origin/main`, else `origin/master` |
+
+`merge_group` runs are skipped (the pull request was checked), and so is a run whose baseline is the checked-out
+commit.
 
 ## Using it
 
@@ -144,7 +168,9 @@ impact:
   uncertain: warn                                              # warn | fail
 ```
 
-The impact settings are read from the **base** of the pull request, so a pull request cannot relax its own check.
+The impact settings are read from the **baseline** (the same `--config` path, or the default locations), so a pull
+request cannot relax its own check; changed settings apply once it is merged. When the baseline has no config, or an
+invalid one, the defaults apply.
 
 ## How check names are formed
 

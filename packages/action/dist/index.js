@@ -21598,8 +21598,8 @@ var require_readdir_glob = __commonJS({
           useStat = true;
         }
         const filename = dir2 + "/" + name;
-        const relative5 = filename.slice(1);
-        const absolute = path4 + "/" + relative5;
+        const relative6 = filename.slice(1);
+        const absolute = path4 + "/" + relative6;
         let stats = null;
         if (useStat || followSymlinks) {
           stats = await stat2(absolute, followSymlinks);
@@ -21611,12 +21611,12 @@ var require_readdir_glob = __commonJS({
           stats = { isDirectory: () => false };
         }
         if (stats.isDirectory()) {
-          if (!shouldSkip(relative5)) {
-            yield { relative: relative5, absolute, stats };
+          if (!shouldSkip(relative6)) {
+            yield { relative: relative6, absolute, stats };
             yield* exploreWalkAsync(filename, path4, followSymlinks, useStat, shouldSkip, false);
           }
         } else {
-          yield { relative: relative5, absolute, stats };
+          yield { relative: relative6, absolute, stats };
         }
       }
     }
@@ -21686,11 +21686,11 @@ var require_readdir_glob = __commonJS({
         }
         setTimeout(() => this._next(), 0);
       }
-      _shouldSkipDirectory(relative5) {
-        return this.skipMatchers.some((m) => m.match(relative5));
+      _shouldSkipDirectory(relative6) {
+        return this.skipMatchers.some((m) => m.match(relative6));
       }
-      _fileMatches(relative5, isDirectory2) {
-        const file2 = relative5 + (isDirectory2 ? "/" : "");
+      _fileMatches(relative6, isDirectory2) {
+        const file2 = relative6 + (isDirectory2 ? "/" : "");
         return (this.matchers.length === 0 || this.matchers.some((m) => m.match(file2))) && !this.ignoreMatchers.some((m) => m.match(file2)) && (!this.options.nodir || !isDirectory2);
       }
       _next() {
@@ -21699,16 +21699,16 @@ var require_readdir_glob = __commonJS({
             if (!obj.done) {
               const isDirectory2 = obj.value.stats.isDirectory();
               if (this._fileMatches(obj.value.relative, isDirectory2)) {
-                let relative5 = obj.value.relative;
+                let relative6 = obj.value.relative;
                 let absolute = obj.value.absolute;
                 if (this.options.mark && isDirectory2) {
-                  relative5 += "/";
+                  relative6 += "/";
                   absolute += "/";
                 }
                 if (this.options.stat) {
-                  this.emit("match", { relative: relative5, absolute, stat: obj.value.stats });
+                  this.emit("match", { relative: relative6, absolute, stat: obj.value.stats });
                 } else {
-                  this.emit("match", { relative: relative5, absolute });
+                  this.emit("match", { relative: relative6, absolute });
                 }
               }
               this._next(this.iterator);
@@ -40421,10 +40421,10 @@ var require_ignore = __commonJS({
       ignored(p) {
         const fullpath = p.fullpath();
         const fullpaths = `${fullpath}/`;
-        const relative5 = p.relative() || ".";
-        const relatives = `${relative5}/`;
+        const relative6 = p.relative() || ".";
+        const relatives = `${relative6}/`;
         for (const m of this.relative) {
-          if (m.match(relative5) || m.match(relatives))
+          if (m.match(relative6) || m.match(relatives))
             return true;
         }
         for (const m of this.absolute) {
@@ -40435,9 +40435,9 @@ var require_ignore = __commonJS({
       }
       childrenIgnored(p) {
         const fullpath = p.fullpath() + "/";
-        const relative5 = (p.relative() || ".") + "/";
+        const relative6 = (p.relative() || ".") + "/";
         for (const m of this.relativeChildren) {
-          if (m.match(relative5))
+          if (m.match(relative6))
             return true;
         }
         for (const m of this.absoluteChildren) {
@@ -58703,7 +58703,7 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync3, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname4, join as join8, posix as posix2, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname4, join as join8, posix as posix3, relative as relative5, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -125329,7 +125329,9 @@ function matchesPattern(path4, pattern) {
   if (!pattern.includes("*"))
     return path4 === pattern || path4.startsWith(pattern.endsWith("/") ? pattern : `${pattern}/`);
   const re = new RegExp(
-    `^${pattern.split("**").map((part) => part.split("*").map(escapeRe).join("[^/]*")).join(".*")}$`
+    `^${pattern.split("**/").map(
+      (chunk) => chunk.split("**").map((part) => part.split("*").map(escapeRe).join("[^/]*")).join(".*")
+    ).join("(?:[^/]*/)*")}$`
   );
   return re.test(path4);
 }
@@ -130470,6 +130472,12 @@ function loadProject(opts) {
   const actionFiles = fs8.walk(ACTIONS_DIR).filter(isActionFile).sort();
   if (["action.yml", "action.yaml"].some((f) => fs8.read(f) !== void 0)) actionFiles.push("action.yml");
   for (const pattern of opts.publish ?? []) {
+    if (!/[*?[]/.test(pattern)) {
+      const file2 = isActionFile(pattern) ? pattern : `${pattern.replace(/\/$/, "")}/action.yml`;
+      if (isActionFile(file2) && !file2.startsWith(".github/actions/") && fs8.read(file2) !== void 0)
+        actionFiles.push(file2);
+      continue;
+    }
     const literal2 = pattern.split(/[*?[]/)[0];
     const dir2 = literal2.includes("/") ? literal2.slice(0, literal2.lastIndexOf("/")) : "";
     for (const f of dir2 ? fs8.walk(dir2) : fs8.walk(".")) {
@@ -132395,7 +132403,7 @@ function nameResolver(combo, inputs) {
     if (ref.context === "inputs") {
       if (ref.path.length !== 1) return UNKNOWN;
       const v = lookup(inputs, ref.path[0]);
-      return v === void 0 ? UNKNOWN : known(v);
+      return v?.known ? known(v.value) : UNKNOWN;
     }
     return void 0;
   };
@@ -132405,31 +132413,34 @@ function jobSegments(job, inputs = {}) {
   const exp = job.matrix ? expandMatrix(job.matrix) : void 0;
   const combos = exp && !exp.dynamic && !exp.truncated && exp.combos.length ? exp.combos : [void 0];
   const matrixUnknown = !!exp && (exp.dynamic || exp.truncated);
+  const stem = kind.kind === "static" ? `${kind.text || job.id}${exp ? " (\u2026)" : ""}` : kind.template.trim().replace(/\$\{\{[\s\S]*?\}\}/g, "\u2026");
   return combos.map((combo) => {
     if (kind.kind === "static") {
       const base = kind.text || job.id;
-      if (!combo || !exp) return { name: base, certain: !matrixUnknown };
+      if (!combo || !exp)
+        return { name: matrixUnknown ? `${base} (\u2026)` : base, stem, certain: !matrixUnknown };
       const s = suffix(combo, exp, job);
-      return { name: `${base}${s.text}`, certain: s.certain, combo };
+      return { name: `${base}${s.text}`, stem, certain: s.certain, combo };
     }
     const text2 = toText(evaluateTemplate(kind.template, nameResolver(combo, inputs)))?.trim();
     const certain = text2 !== void 0 && !matrixUnknown && (!exp || exp.exact);
     return {
       name: text2 === void 0 ? kind.template.trim() : text2 || job.id,
+      stem,
       certain,
       ...combo ? { combo } : {}
     };
   });
 }
-function callerInputs(job, combo) {
+function callerInputs(job, combo, own2) {
   const out = {};
   for (const [name, b] of Object.entries(job.with)) {
     if (!b.site) {
-      out[name] = b.value;
+      out[name] = { known: true, value: b.value };
       continue;
     }
-    const v = evaluateTemplate(b.site.text, nameResolver(combo, {}));
-    out[name] = v.known ? v.value : void 0;
+    const v = evaluateTemplate(b.site.text, nameResolver(combo, own2));
+    out[name] = v.known ? { known: true, value: v.value } : { known: false };
   }
   return out;
 }
@@ -132437,8 +132448,10 @@ var MAX_DEPTH = 12;
 function workflowChecks(index2, wf, inputs = {}, depth = 0, seen = /* @__PURE__ */ new Set()) {
   const values = {};
   for (const [name, input3] of Object.entries(wf.call?.inputs ?? {})) {
-    const given = lookup(inputs, name);
-    values[name] = given !== void 0 ? given : input3.hasDefault ? input3.default : void 0;
+    const given = inputs === "consumer" ? { known: false } : lookup(inputs, name);
+    if (given) values[name] = given;
+    else if (input3.hasDefault) values[name] = { known: true, value: input3.default };
+    else values[name] = { known: true, value: null };
   }
   const out = [];
   for (const job of Object.values(wf.jobs)) {
@@ -132446,20 +132459,21 @@ function workflowChecks(index2, wf, inputs = {}, depth = 0, seen = /* @__PURE__ 
     const callee = job.uses ? index2.calleeOf(job) : void 0;
     for (const seg of jobSegments(job, values)) {
       if (!callee) {
-        out.push({ name: seg.name, certain: seg.certain, jobs: [id] });
+        out.push({ name: seg.name, stem: seg.stem, certain: seg.certain, jobs: [id] });
         continue;
       }
       if (depth >= MAX_DEPTH || seen.has(callee.path)) continue;
       const nested = workflowChecks(
         index2,
         callee,
-        callerInputs(job, seg.combo),
+        callerInputs(job, seg.combo, values),
         depth + 1,
         /* @__PURE__ */ new Set([...seen, wf.path])
       );
       for (const c of nested) {
         out.push({
           name: `${seg.name} / ${c.name}`,
+          stem: `${seg.stem} / ${c.stem}`,
           certain: seg.certain && c.certain,
           jobs: [id, ...c.jobs]
         });
@@ -132476,74 +132490,103 @@ var maxLevel = (levels) => levels.reduce((a, b) => levelRank(b) > levelRank(a) ?
 function isPublished(unit, policy) {
   if (policy.publish)
     return policy.publish.some((p) => matchesPattern(unit.file, p) || matchesPattern(unit.path, p));
-  if (unit.kind === "workflow") return unit.triggers.includes("workflow_call");
-  return unit.path === "." || !unit.path.startsWith(".github/");
+  if (unit.kind === "workflow")
+    return unit.triggers.includes("workflow_call") && !unit.path.split("/").pop().startsWith("_");
+  return unit.path === ".";
 }
 var fileStart = (file2) => ({ file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 });
-function publishedChecks(index2, wf) {
-  return workflowChecks(index2, wf);
+function jobChecks(index2, wf) {
+  const out = /* @__PURE__ */ new Map();
+  for (const c of workflowChecks(index2, wf, "consumer")) {
+    const chain = c.jobs.map((j) => j.split("#")[1]).join(" > ");
+    const cur = out.get(chain);
+    if (cur) {
+      cur.names.push(c);
+      cur.certain &&= c.certain;
+    } else out.set(chain, { chain, stem: c.stem, names: [c], certain: c.certain });
+  }
+  return out;
 }
+var quoteName = (n) => `"\u2026 / ${n}"`;
 function checkNameChanges(base, head, b, h) {
-  const before = publishedChecks(base, b);
-  const after = publishedChecks(head, h);
-  const count = (xs) => {
-    const m = /* @__PURE__ */ new Map();
-    for (const c of xs) {
-      const cur = m.get(c.name);
-      m.set(c.name, { n: (cur?.n ?? 0) + 1, certain: (cur?.certain ?? true) && c.certain, jobs: c.jobs });
-    }
-    return m;
-  };
-  const bm = count(before);
-  const am = count(after);
-  const jobLoc = (jobs2) => {
-    const [path4, id] = (jobs2.at(-1) ?? "").split("#");
-    const unit = head.project.workflows.get(path4);
-    const job = id ? unit?.jobs[id] : void 0;
+  const before = jobChecks(base, b);
+  const after = jobChecks(head, h);
+  const jobLoc = (chain) => {
+    const id = chain.split(" > ")[0];
+    const job = h.jobs[id];
     return job?.nameLoc ?? job?.loc ?? fileStart(h.file);
   };
   const out = [];
-  const jobKey = (jobs2) => jobs2.join(" > ");
-  const removed = [...bm].filter(([name]) => !am.has(name));
-  const added = [...am].filter(([name]) => !bm.has(name));
-  const addedByJob = /* @__PURE__ */ new Map();
-  for (const [name, info2] of added)
-    addedByJob.set(jobKey(info2.jobs), [...addedByJob.get(jobKey(info2.jobs)) ?? [], name]);
-  const paired = /* @__PURE__ */ new Set();
-  for (const [name, info2] of removed) {
-    const now = addedByJob.get(jobKey(info2.jobs));
-    const certain = info2.certain && (now ? now.every((n) => am.get(n).certain) : true);
-    if (now?.length) for (const n of now) paired.add(n);
-    out.push({
-      unit: h.path,
-      kind: "check-name",
-      level: "major",
-      certain,
-      message: now?.length ? `check "\u2026 / ${name}" is now ${now.map((n) => `"\u2026 / ${n}"`).join(", ")}; consumers that require the old name wait forever` : `check "\u2026 / ${name}" is no longer reported; consumers that require it wait forever`,
-      loc: jobLoc(info2.jobs)
-    });
+  const add = (level, certain, message, loc) => out.push({ unit: h.path, kind: "check-name", level, certain, message, loc });
+  const headNames = new Set([...after.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const baseNames = new Set([...before.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const matchedHead = /* @__PURE__ */ new Set();
+  for (const bj of before.values()) {
+    let hj = after.get(bj.chain);
+    if (!hj) hj = [...after.values()].find((x) => !before.has(x.chain) && x.stem === bj.stem);
+    if (!hj) {
+      const gone = bj.names.filter((n) => !headNames.has(n.name));
+      if (gone.length)
+        add(
+          "major",
+          true,
+          `${bj.names.length > 1 ? `checks ${quoteName(bj.stem)}` : `check ${quoteName(bj.names[0].name)}`} no longer reported; consumers that require ${bj.names.length > 1 ? "them" : "it"} wait forever`,
+          fileStart(h.file)
+        );
+      continue;
+    }
+    matchedHead.add(hj.chain);
+    if (bj.stem !== hj.stem) {
+      add(
+        "major",
+        true,
+        `check ${quoteName(bj.stem)} is now ${quoteName(hj.stem)}; consumers that require the old name wait forever`,
+        jobLoc(hj.chain)
+      );
+      continue;
+    }
+    const removed = bj.names.filter((n) => n.certain && !headNames.has(n.name));
+    const added = hj.names.filter((n) => n.certain && !baseNames.has(n.name));
+    for (const n of removed)
+      add(
+        "major",
+        true,
+        `check ${quoteName(n.name)} no longer reported; consumers that require it wait forever`,
+        jobLoc(hj.chain)
+      );
+    for (const n of added) add("minor", true, `new check ${quoteName(n.name)}`, jobLoc(hj.chain));
+    const unsure = bj.names.some((n) => !n.certain) || hj.names.some((n) => !n.certain);
+    if (unsure && JSON.stringify(bj.names.map((n) => n.name)) !== JSON.stringify(hj.names.map((n) => n.name)))
+      add("major", false, `checks ${quoteName(bj.stem)} may report different names`, jobLoc(hj.chain));
   }
-  for (const [name, info2] of added) {
-    if (paired.has(name)) continue;
-    out.push({
-      unit: h.path,
-      kind: "check-name",
-      level: "minor",
-      certain: info2.certain,
-      message: `new check "\u2026 / ${name}"`,
-      loc: jobLoc(info2.jobs)
-    });
+  for (const hj of after.values()) {
+    if (matchedHead.has(hj.chain) || before.has(hj.chain)) continue;
+    const fresh = hj.names.filter((n) => !baseNames.has(n.name));
+    if (fresh.length)
+      add(
+        "minor",
+        true,
+        `new check${hj.names.length > 1 ? "s" : ""} ${quoteName(hj.names.length > 1 ? hj.stem : hj.names[0].name)}`,
+        jobLoc(hj.chain)
+      );
   }
   return out;
 }
 function contractLevel(path4, breaking, message) {
   const root = path4.split(".")[0];
-  if (!["inputs", "dispatchInputs", "secrets", "outputs"].includes(root)) return "none";
+  if (!["inputs", "secrets", "outputs"].includes(root)) return "none";
   if (breaking) return "major";
   if (/was added|now optional/.test(message)) return "minor";
   if (/default/.test(message)) return "minor";
   if (/description changed/.test(message)) return "none";
   return "patch";
+}
+function interfaceLoc(h, path4) {
+  const dot = path4.indexOf(".");
+  const kind = path4.slice(0, dot);
+  const name = path4.slice(dot + 1);
+  const decls = h.kind === "workflow" ? kind === "inputs" || kind === "secrets" || kind === "outputs" ? h.call?.[kind] : void 0 : kind === "inputs" || kind === "outputs" ? h[kind] : void 0;
+  return (dot > 0 && decls && Object.hasOwn(decls, name) ? decls[name]?.loc : void 0) ?? fileStart(h.file);
 }
 function interfaceChanges(base, head, b, h) {
   const out = [];
@@ -132556,12 +132599,13 @@ function interfaceChanges(base, head, b, h) {
       level,
       certain: true,
       message: c.message,
-      loc: fileStart(h.file)
+      loc: interfaceLoc(h, c.path)
     });
   }
   return out;
 }
 var RANK = { none: 0, read: 1, write: 2 };
+var LEVEL_NAMES = ["none", "read", "write"];
 var SCOPES = [
   "actions",
   "attestations",
@@ -132586,36 +132630,44 @@ function scopesOf(p) {
   }
   return Object.fromEntries(Object.entries(p).map(([k, v]) => [k, RANK[v] ?? 0]));
 }
-function requested(wf) {
-  let out = {};
+function requestedByJob(index2, wf, depth = 0, seen = /* @__PURE__ */ new Set()) {
+  const out = /* @__PURE__ */ new Map();
   for (const job of Object.values(wf.jobs)) {
-    if (job.uses) continue;
-    const s = scopesOf(job.permissions ?? wf.permissions);
-    if (s === "inherit") return "inherit";
-    for (const [k, v] of Object.entries(s)) out = { ...out, [k]: Math.max(out[k] ?? 0, v) };
+    const callee = job.uses ? index2.calleeOf(job) : void 0;
+    if (callee) {
+      if (depth >= 10 || seen.has(callee.path)) continue;
+      for (const [chain, s] of requestedByJob(index2, callee, depth + 1, /* @__PURE__ */ new Set([...seen, wf.path])))
+        out.set(`${job.id} > ${chain}`, s);
+      continue;
+    }
+    if (!job.uses) out.set(job.id, scopesOf(job.permissions ?? wf.permissions));
   }
   return out;
 }
-function permissionChanges(b, h) {
-  const before = requested(b);
-  const after = requested(h);
-  if (after === "inherit") return [];
-  const names = ["none", "read", "write"];
-  const widened = Object.entries(after).filter(
-    ([k, v]) => v > 0 && (before === "inherit" ? v >= 2 || k === "id-token" : v > (before[k] ?? 0))
-  );
-  if (widened.length === 0) return [];
-  const list = widened.map(([k, v]) => `${k}: ${names[v]}`).join(", ");
-  return [
-    {
+function permissionChanges(base, head, b, h) {
+  const before = requestedByJob(base, b);
+  const after = requestedByJob(head, h);
+  const workflowLevel = scopesOf(b.permissions);
+  const out = [];
+  for (const [chain, hs] of after) {
+    if (hs === "inherit") continue;
+    const bs = before.get(chain) ?? workflowLevel;
+    const widened = Object.entries(hs).filter(
+      ([k, v]) => bs === "inherit" ? v >= 2 || k === "id-token" && v > 0 : v > (bs[k] ?? 0)
+    );
+    if (!widened.length) continue;
+    const job = h.jobs[chain.split(" > ")[0]];
+    out.push({
       unit: h.path,
       kind: "permissions",
       level: "major",
-      certain: before !== "inherit",
-      message: `jobs now request ${list}; callers that grant less fail when the run starts`,
-      loc: fileStart(h.file)
-    }
-  ];
+      // From an explicit set we know it widened; from inherited permissions it depends on what callers grant.
+      certain: bs !== "inherit",
+      message: `jobs.${chain.replaceAll(" > ", " \u203A ")} now requests ${widened.map(([k, v]) => `${k}: ${LEVEL_NAMES[v]}`).join(", ")}; callers that grant less fail when the run starts`,
+      loc: job?.loc ?? fileStart(h.file)
+    });
+  }
+  return out;
 }
 function remoteUses(unit) {
   const out = /* @__PURE__ */ new Set();
@@ -132651,7 +132703,8 @@ function runtimeChanges(b, h) {
     }
   ];
 }
-function impactChanges(base, head, policy) {
+var describeUnit = (u) => u.kind === "workflow" ? `reusable workflow ${u.path}` : `action ${u.path}`;
+function impactChanges(base, head, policy, headExists = () => false) {
   const out = [];
   const baseUnits = new Map(base.units().map((u) => [u.path, u]));
   const headUnits = new Map(head.units().map((u) => [u.path, u]));
@@ -132659,12 +132712,13 @@ function impactChanges(base, head, policy) {
     if (!isPublished(b, policy)) continue;
     const h = headUnits.get(path4);
     if (!h || h.kind !== b.kind) {
+      if (!h && headExists(b.file)) continue;
       out.push({
         unit: path4,
         kind: "unit",
         level: "major",
         certain: true,
-        message: `${b.kind === "workflow" ? "reusable workflow" : "action"} ${path4} was removed or moved; consumers that reference it fail`,
+        message: `${describeUnit(b)} was removed or moved; consumers that reference it fail`,
         loc: fileStart(b.file)
       });
       continue;
@@ -132680,10 +132734,31 @@ function impactChanges(base, head, policy) {
       });
       continue;
     }
-    if (b.parseErrors.length || h.parseErrors.length) continue;
+    if (h.parseErrors.length) {
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "major",
+        certain: !b.parseErrors.length,
+        message: `${describeUnit(h)} has YAML errors (${h.parseErrors[0].message}); consumers' runs fail`,
+        loc: h.parseErrors[0].loc
+      });
+      continue;
+    }
+    if (b.parseErrors.length) {
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "patch",
+        certain: false,
+        message: `${describeUnit(h)} could not be compared: the baseline has YAML errors`,
+        loc: fileStart(h.file)
+      });
+      continue;
+    }
     out.push(...interfaceChanges(base, head, b, h), ...usesChanges(b, h));
     if (b.kind === "workflow" && h.kind === "workflow")
-      out.push(...checkNameChanges(base, head, b, h), ...permissionChanges(b, h));
+      out.push(...checkNameChanges(base, head, b, h), ...permissionChanges(base, head, b, h));
     if (b.kind === "action" && h.kind === "action") out.push(...runtimeChanges(b, h));
   }
   for (const [path4, h] of headUnits) {
@@ -132695,7 +132770,7 @@ function impactChanges(base, head, policy) {
       kind: "unit",
       level: "minor",
       certain: true,
-      message: `new ${h.kind === "workflow" ? "reusable workflow" : "action"} ${path4}`,
+      message: `new ${describeUnit(h)}`,
       loc: fileStart(h.file)
     });
   }
@@ -132711,26 +132786,22 @@ function levelFromLabels(labels, map3) {
   const found = IMPACT_LEVELS.filter((l) => labels.some((x) => x.toLowerCase() === map3[l].toLowerCase()));
   return found.length ? maxLevel([...found]) : void 0;
 }
-function levelFromVersions(previous, next, bumpMinorPreMajor) {
+function levelFromVersions(previous, next, bumps) {
   const parse6 = (v) => v.replace(/^v/, "").split(/[.-]/).slice(0, 3).map(Number);
   const [pa, pb, pc] = parse6(previous);
   const [na, nb, nc] = parse6(next);
   if (na > pa) return "major";
-  if (nb > pb) return na === 0 && bumpMinorPreMajor ? "major" : "minor";
-  if (nc > pc) return na === 0 && bumpMinorPreMajor ? "minor" : "patch";
+  if (nb > pb) return na === 0 && bumps.bumpMinorPreMajor ? "major" : "minor";
+  if (nc > pc) return na === 0 && bumps.bumpPatchForMinorPreMajor ? "minor" : "patch";
   return "none";
 }
+var countedChanges = (changes, policy) => changes.filter((c) => c.certain || policy.uncertain === "fail");
 function impactVerdict(changes, input3, policy) {
-  const counted = changes.filter((c) => c.certain || policy.uncertain === "fail");
-  const required2 = maxLevel(counted.map((c) => c.level));
+  const required2 = maxLevel(countedChanges(changes, policy).map((c) => c.level));
   const sources = [];
   if (input3.explicit) sources.push({ kind: "explicit", value: input3.explicit, level: input3.explicit });
   if (input3.release) {
-    const level = levelFromVersions(
-      input3.release.previous,
-      input3.release.version,
-      input3.release.bumpMinorPreMajor
-    );
+    const level = levelFromVersions(input3.release.previous, input3.release.version, input3.release);
     sources.push({ kind: "version", value: `${input3.release.previous} \u2192 ${input3.release.version}`, level });
   } else if (input3.title !== void 0) {
     const level = levelFromTitle(input3.title, policy.types);
@@ -132740,8 +132811,8 @@ function impactVerdict(changes, input3, policy) {
     const level = levelFromLabels(input3.labels, policy.labels);
     if (level) sources.push({ kind: "labels", value: input3.labels.join(", "), level });
   }
-  const order = input3.release ? ["explicit", "version"] : [policy.declaredBy ?? "explicit", "explicit", "title", "labels"];
-  const declared = order.map((k) => sources.find((s) => s.kind === k)).find(Boolean);
+  const authority = input3.explicit ? "explicit" : input3.release ? "version" : policy.declaredBy ?? "title";
+  const declared = sources.find((s) => s.kind === authority);
   const advisory = sources.filter((s) => s !== declared);
   const conflict = declared ? advisory.find((s) => levelRank(s.level) > levelRank(declared.level)) : void 0;
   const under = declared && levelRank(required2) > levelRank(declared.level) && levelRank(required2) >= levelRank("minor");
@@ -132753,9 +132824,12 @@ function impactVerdict(changes, input3, policy) {
     ok: !under && !conflict
   };
 }
-function computeImpact(base, head, baseline, declared, policy) {
-  const changes = impactChanges(base, head, policy);
-  return { baseline, changes, verdict: impactVerdict(changes, declared, policy) };
+function computeImpact(base, head, baseline, declared, policy, headExists) {
+  const changes = impactChanges(base, head, policy, headExists);
+  const publishedFiles = [
+    ...new Set([...head.units(), ...base.units()].filter((u) => isPublished(u, policy)).map((u) => u.file))
+  ].sort();
+  return { baseline, changes, verdict: impactVerdict(changes, declared, policy), policy, publishedFiles };
 }
 
 // ../core/src/rules/types.ts
@@ -133294,9 +133368,14 @@ var expressionRules = [
 // ../core/src/rules/impact.ts
 var describeSource = (s) => s.kind === "explicit" ? "the explicit impact" : s.kind === "version" ? `the version bump ${s.value}` : `the ${s.kind === "title" ? "title" : "labels"} "${s.value}"`;
 var related = (changes) => changes.slice(0, 20).map((c) => ({ loc: c.loc, message: `${c.level}: ${c.message}` }));
-var firstLoc = (changes, fallback2) => changes[0]?.loc ?? fallback2;
-var NOWHERE = { file: ".github", line: 1, column: 1, endLine: 1, endColumn: 1 };
-var driving = (changes, level) => changes.filter((c) => c.level === level && c.certain);
+var verdictLoc = (impact, changes) => changes[0]?.loc ?? impact.changes[0]?.loc ?? {
+  file: impact.publishedFiles[0] ?? "action.yml",
+  line: 1,
+  column: 1,
+  endLine: 1,
+  endColumn: 1
+};
+var driving = (impact, level) => countedChanges(impact.changes, impact.policy).filter((c) => c.level === level);
 var impactUnderDeclared = defineRule({
   code: "FP810",
   name: "impact-under-declared",
@@ -133318,10 +133397,10 @@ jobs:
     const v = ctx.impact?.verdict;
     if (!v?.declared || levelRank(v.required) <= levelRank(v.declared.level) || levelRank(v.required) < levelRank("minor"))
       return;
-    const changes = driving(ctx.impact.changes, v.required);
+    const changes = driving(ctx.impact, v.required);
     ctx.report({
       message: `Declared ${v.declared.level} (${describeSource(v.declared)}), but the changes require ${v.required}: ${changes[0]?.message ?? ""}${changes.length > 1 ? ` (+${changes.length - 1} more)` : ""}`,
-      loc: firstLoc(changes, NOWHERE),
+      loc: verdictLoc(ctx.impact, changes),
       related: related(changes),
       symbol: `impact#${v.required}`
     });
@@ -133342,7 +133421,7 @@ var impactConflict = defineRule({
     if (!v?.declared || !v.conflict) return;
     ctx.report({
       message: `${describeSource(v.conflict)} declares ${v.conflict.level}, but ${describeSource(v.declared)} \u2014 what the release tool reads \u2014 declares ${v.declared.level}`,
-      loc: firstLoc(ctx.impact.changes, NOWHERE),
+      loc: verdictLoc(ctx.impact, []),
       symbol: "impact#conflict"
     });
   }
@@ -133362,7 +133441,7 @@ var impactOverDeclared = defineRule({
     if (!v?.declared || levelRank(v.declared.level) <= levelRank(v.required)) return;
     ctx.report({
       message: `Declared ${v.declared.level} (${describeSource(v.declared)}); the workflow and action changes require ${v.required}`,
-      loc: firstLoc(ctx.impact.changes, NOWHERE),
+      loc: verdictLoc(ctx.impact, []),
       symbol: "impact#over"
     });
   }
@@ -133380,10 +133459,10 @@ var impactUndeclared = defineRule({
   check(ctx) {
     const v = ctx.impact?.verdict;
     if (!v || v.declared) return;
-    const changes = driving(ctx.impact.changes, v.required);
+    const changes = driving(ctx.impact, v.required);
     ctx.report({
       message: `No impact declared; the changes to published workflows and actions require ${v.required}`,
-      loc: firstLoc(changes, NOWHERE),
+      loc: verdictLoc(ctx.impact, changes),
       related: related(changes),
       symbol: "impact#undeclared"
     });
@@ -135149,6 +135228,13 @@ function analyze(opts) {
   const started = performance.now();
   const logger7 = opts.logger ?? silentLogger;
   const config2 = opts.config ?? defaultConfig();
+  const publishPatterns = [
+    .../* @__PURE__ */ new Set([
+      ...config2.impact.publish ?? [],
+      ...opts.impact?.policy.publish ?? [],
+      ...opts.impact?.publishedFiles ?? []
+    ])
+  ];
   const registry2 = opts.registry ?? createRegistry();
   const repository = opts.repository ?? config2.repository ?? detectRepository(opts.root);
   logger7.debug("config resolved", {
@@ -135162,7 +135248,7 @@ function analyze(opts) {
       root: opts.root,
       ...opts.fs ? { fs: opts.fs } : {},
       ...opts.paths ? { paths: opts.paths } : {},
-      ...config2.impact.publish ? { publish: config2.impact.publish } : {},
+      ...publishPatterns.length ? { publish: publishPatterns } : {},
       ...repository ? { repository } : {},
       validateSchema: opts.validateSchema ?? true,
       logger: logger7
@@ -135470,6 +135556,7 @@ function exitCodeFor(summary2, failOn) {
 
 // ../core/src/git.ts
 import { execFileSync } from "child_process";
+import { posix as posix2 } from "path";
 var GitError = class extends Error {
 };
 var MAX_BUFFER = 256 * 1024 * 1024;
@@ -135500,15 +135587,39 @@ function resolveCommit(root, ref) {
 function gitFileSystem(root, commit) {
   const prefix2 = git(root, ["rev-parse", "--show-prefix"]).toString().trim();
   const files = /* @__PURE__ */ new Set();
+  const links = [];
   const out = git(root, ["ls-tree", "-r", "-z", "--full-tree", commit]).toString();
   for (const entry of out.split("\0")) {
     if (!entry) continue;
     const tab = entry.indexOf("	");
     const [mode, type] = entry.slice(0, tab).split(" ");
     const path4 = entry.slice(tab + 1);
-    if (type !== "blob" || mode !== "100644" && mode !== "100755") continue;
     if (prefix2 && !path4.startsWith(prefix2)) continue;
-    files.add(path4.slice(prefix2.length));
+    if (type === "blob" && mode === "120000") links.push(path4);
+    else if (type === "blob" && (mode === "100644" || mode === "100755"))
+      files.add(path4.slice(prefix2.length));
+  }
+  const alias = /* @__PURE__ */ new Map();
+  for (const link of links) {
+    const target = posix2.normalize(
+      posix2.join(posix2.dirname(link), git(root, ["cat-file", "blob", `${commit}:${link}`]).toString())
+    );
+    if (target.startsWith("../") || target === ".." || target === ".git" || target.startsWith(".git/"))
+      continue;
+    if (prefix2 && !target.startsWith(prefix2)) continue;
+    const from = link.slice(prefix2.length);
+    const to = target.slice(prefix2.length);
+    if (files.has(to)) {
+      alias.set(from, to);
+      files.add(from);
+      continue;
+    }
+    for (const f of [...files]) {
+      if (!f.startsWith(`${to}/`)) continue;
+      const virtual = `${from}/${f.slice(to.length + 1)}`;
+      alias.set(virtual, f);
+      files.add(virtual);
+    }
   }
   const cache = /* @__PURE__ */ new Map();
   const norm = (p) => {
@@ -135527,7 +135638,10 @@ function gitFileSystem(root, commit) {
       const p = norm(path4);
       if (!files.has(p)) return void 0;
       if (!cache.has(p))
-        cache.set(p, git(root, ["cat-file", "blob", `${commit}:${prefix2}${p}`]).toString("utf8"));
+        cache.set(
+          p,
+          git(root, ["cat-file", "blob", `${commit}:${prefix2}${alias.get(p) ?? p}`]).toString("utf8")
+        );
       return cache.get(p);
     },
     list(dir2) {
@@ -135547,7 +135661,7 @@ function gitFileSystem(root, commit) {
 
 // ../core/src/impact-run.ts
 import { readFileSync as readFileSync4 } from "fs";
-import { join as join6 } from "path";
+import { join as join6, relative as relative3 } from "path";
 var ImpactSetupError = class extends Error {
 };
 function githubEvent(env = process.env) {
@@ -135561,6 +135675,10 @@ function githubEvent(env = process.env) {
   return { name: env.GITHUB_EVENT_NAME, ...payload ? { payload } : {} };
 }
 var RELEASE_TITLE = /^chore(\([^)]*\))?: release\b/i;
+var RELEASE_LABEL = "autorelease: pending";
+function isReleasePullRequest(title, labels) {
+  return title !== void 0 && RELEASE_TITLE.test(title) || labels.includes(RELEASE_LABEL);
+}
 function readJson(fs8, path4) {
   const text2 = fs8.read(path4);
   if (text2 === void 0) return void 0;
@@ -135577,14 +135695,32 @@ function versionOf(fs8) {
   const pkg = readJson(fs8, "package.json");
   return typeof pkg?.version === "string" ? pkg.version : void 0;
 }
-function configOf(fs8) {
-  for (const [dir2, names] of [
-    [CONFIG_DIR, CONFIG_FILES],
-    [LEGACY_CONFIG_DIR, LEGACY_CONFIG_FILES]
-  ]) {
-    for (const name of names) {
-      const text2 = fs8.read(`${dir2}/${name}`);
-      if (text2 !== void 0) return parseConfigText(text2, `${dir2}/${name}`).config;
+function releaseSettings(fs8) {
+  const config2 = readJson(fs8, "release-please-config.json") ?? {};
+  const pkg = config2.packages?.["."] ?? {};
+  const get2 = (key) => pkg[key] ?? config2[key];
+  const component = get2("component") ?? get2("package-name");
+  return {
+    bumpMinorPreMajor: get2("bump-minor-pre-major") === true,
+    bumpPatchForMinorPreMajor: get2("bump-patch-for-minor-pre-major") === true,
+    includeV: get2("include-v-in-tag") !== false,
+    component: get2("include-component-in-tag") === true && typeof component === "string" ? component : void 0
+  };
+}
+function baselineConfig(fs8, configPath, notes) {
+  const candidates = configPath ? [configPath] : [
+    ...CONFIG_FILES.map((f) => `${CONFIG_DIR}/${f}`),
+    ...LEGACY_CONFIG_FILES.map((f) => `${LEGACY_CONFIG_DIR}/${f}`)
+  ];
+  for (const path4 of candidates) {
+    const text2 = fs8.read(path4);
+    if (text2 === void 0) continue;
+    try {
+      return parseConfigText(text2, path4).config;
+    } catch (err) {
+      if (!(err instanceof ConfigError)) throw err;
+      notes.push(`the baseline's ${path4} is invalid (${err.message}); using the default impact settings`);
+      return void 0;
     }
   }
   return void 0;
@@ -135601,6 +135737,19 @@ var workingTree = (root) => ({
   walk: () => [],
   isDir: () => false
 });
+function commitOf(root, ref, fetch2) {
+  try {
+    return resolveCommit(root, ref);
+  } catch (err) {
+    if (!fetch2) throw new ImpactSetupError(err.message);
+    fetch2([ref]);
+    try {
+      return resolveCommit(root, ref);
+    } catch (again) {
+      throw new ImpactSetupError(again.message);
+    }
+  }
+}
 function defaultBase(root) {
   for (const ref of ["origin/HEAD", "origin/main", "origin/master"]) {
     try {
@@ -135611,63 +135760,93 @@ function defaultBase(root) {
   }
   throw new ImpactSetupError("No baseline: pass --base <ref> (for example --base origin/main).");
 }
+var ZERO_SHA = /^0+$/;
 function prepareImpact(root, headConfig, req, logger7) {
   const eventName = req.event?.name;
   if (eventName === "merge_group") return { skip: "merge_group: impact was checked on the pull request" };
   if (eventName === "pull_request_target" && !req.base) {
     throw new ImpactSetupError(
-      "pull_request_target runs on the default branch, so it would compare the default branch with itself. Run impact mode on pull_request (or pass --base and check out the pull request head)."
+      "pull_request_target runs on the default branch, so it would compare the default branch with itself. Run impact mode on pull_request (or pass a base and check out the pull request head)."
     );
   }
-  const pr = req.event?.payload?.pull_request;
+  const payload = req.event?.payload;
+  const pr = payload?.pull_request;
   const title = req.title ?? pr?.title;
   const labels = req.labels ?? (pr?.labels ?? []).map((l) => l.name ?? "").filter(Boolean);
   const notes = [];
-  let baseRef = req.base ?? pr?.base?.sha ?? defaultBase(root);
+  let baseRef;
+  if (req.base) baseRef = req.base;
+  else if (pr?.base?.sha) baseRef = pr.base.sha;
+  else if (eventName === "push" && payload?.before && !ZERO_SHA.test(payload.before))
+    baseRef = payload.before;
+  else if (eventName === "push") return { skip: "push without a previous commit (new branch or tag)" };
+  else baseRef = defaultBase(root);
   let kind = "ref";
   let release;
-  const isRelease = title !== void 0 && RELEASE_TITLE.test(title) || labels.includes("autorelease: pending");
-  if (isRelease) {
-    const prBase = gitFileSystem(root, resolveCommit(root, baseRef));
-    const previous = versionOf(prBase);
+  let commit = commitOf(root, baseRef, req.fetch);
+  if (isReleasePullRequest(title, labels)) {
+    const previous = versionOf(gitFileSystem(root, commit));
     const next = versionOf(workingTree(root));
     if (previous && next && previous !== next) {
-      const tag = [`v${previous}`, previous].find((t) => {
+      const settings = releaseSettings(workingTree(root));
+      const tags2 = [
+        ...settings.component ? [`${settings.component}-v${previous}`, `${settings.component}-${previous}`] : [],
+        settings.includeV ? `v${previous}` : previous,
+        settings.includeV ? previous : `v${previous}`
+      ];
+      const found = () => tags2.find((t) => {
         try {
-          resolveCommit(root, t);
+          resolveCommit(root, `refs/tags/${t}`);
           return true;
         } catch {
           return false;
         }
       });
+      let tag = found();
+      if (!tag && req.fetch) {
+        req.fetch(tags2.map((t) => `+refs/tags/${t}:refs/tags/${t}`));
+        tag = found();
+      }
       if (!tag)
         throw new ImpactSetupError(
-          `The release tag v${previous} is not available; fetch tags first (git fetch --tags).`
+          `No release tag for ${previous} (tried ${tags2.join(", ")}); fetch tags first.`
         );
-      const rpConfig = readJson(workingTree(root), "release-please-config.json");
-      release = { previous, version: next, bumpMinorPreMajor: rpConfig?.["bump-minor-pre-major"] === true };
+      release = {
+        previous,
+        version: next,
+        bumpMinorPreMajor: settings.bumpMinorPreMajor,
+        bumpPatchForMinorPreMajor: settings.bumpPatchForMinorPreMajor
+      };
       baseRef = tag;
       kind = "release";
+      commit = commitOf(root, `refs/tags/${tag}`, void 0);
       notes.push(`release pull request: ${previous} \u2192 ${next}, compared with ${tag}`);
     }
   }
-  let commit;
+  let head;
   try {
-    commit = resolveCommit(root, baseRef);
+    head = resolveCommit(root, "HEAD");
+  } catch {
+    head = void 0;
+  }
+  if (head === commit) return { skip: `the baseline ${baseRef} is the checked-out commit` };
+  let fs8;
+  try {
+    fs8 = gitFileSystem(root, commit);
   } catch (err) {
     throw new ImpactSetupError(err.message);
   }
-  const fs8 = gitFileSystem(root, commit);
-  const baseConfig = configOf(fs8);
-  const policy = { ...(baseConfig ?? headConfig).impact };
-  if (baseConfig && JSON.stringify(baseConfig.impact) !== JSON.stringify(headConfig.impact)) {
+  const configPath = req.configPath ? relative3(root, join6(root, req.configPath)).split("\\").join("/") : void 0;
+  const baseConfig = baselineConfig(fs8, configPath, notes);
+  const policy = { ...(baseConfig ?? defaultConfig()).impact };
+  if (JSON.stringify(policy) !== JSON.stringify(headConfig.impact)) {
     notes.push("this pull request changes impact settings; they apply after it is merged");
   }
   logger7?.debug("impact baseline", { ref: baseRef, commit, kind });
   const base = analyze({
     root,
     fs: fs8,
-    config: baseConfig ?? headConfig,
+    config: baseConfig ?? defaultConfig(),
     validateSchema: false,
     only: [],
     ...req.repository ? { repository: req.repository } : {}
@@ -135682,7 +135861,9 @@ function prepareImpact(root, headConfig, req, logger7) {
         ...labels.length ? { labels } : {},
         ...release ? { release } : {}
       },
-      policy
+      policy,
+      // Load the head's copies of what the baseline published, so a unit that still exists is compared, not "removed".
+      publishedFiles: base.index.units().filter((u) => isPublished(u, policy)).map((u) => u.file)
     },
     notes
   };
@@ -135699,7 +135880,7 @@ import {
   rmSync as rmSync2,
   writeFileSync as writeFileSync2
 } from "fs";
-import { dirname as dirname3, join as join7, relative as relative3 } from "path";
+import { dirname as dirname3, join as join7, relative as relative4 } from "path";
 
 // ../core/src/plugins.ts
 import { existsSync as existsSync9 } from "fs";
@@ -136495,72 +136676,88 @@ function readInputs() {
     debug: bool("debug")
   };
 }
-function fetchMissing(root, refs, token, logger7) {
+function fetchRefs(root, refs, token, logger7) {
   const env = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
   if (token && !token.startsWith("${{")) {
     const host = new URL(process.env.GITHUB_SERVER_URL || "https://github.com").host;
+    const key = `http.https://${host}/.extraheader`;
+    const n = Number(env.GIT_CONFIG_COUNT) || 0;
     Object.assign(env, {
-      GIT_CONFIG_COUNT: "1",
-      GIT_CONFIG_KEY_0: `http.https://${host}/.extraheader`,
-      GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`
+      [`GIT_CONFIG_KEY_${n}`]: key,
+      [`GIT_CONFIG_VALUE_${n}`]: "",
+      [`GIT_CONFIG_KEY_${n + 1}`]: key,
+      [`GIT_CONFIG_VALUE_${n + 1}`]: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`,
+      GIT_CONFIG_COUNT: String(n + 2)
     });
   }
   for (const ref of refs) {
+    const spec = /^[0-9a-f]{7,64}$/i.test(ref) ? ref : ref.startsWith("origin/") ? `+refs/heads/${ref.slice("origin/".length)}:refs/remotes/${ref}` : ref;
     try {
-      execFileSync2("git", ["-C", root, "fetch", "--no-tags", "--depth=1", "origin", ref], {
+      execFileSync2("git", ["-C", root, "fetch", "--no-tags", "--depth=1", "origin", spec], {
         env,
         stdio: "pipe"
       });
-      logger7.debug(`fetched ${ref}`);
+      logger7.debug(`fetched ${spec}`);
     } catch (err) {
-      logger7.warn(`could not fetch ${ref}: ${err.message.split("\n")[0]}`);
+      const stderr = String(err.stderr ?? "").replace(/AUTHORIZATION: [^\s]+ [^\s]+/gi, "AUTHORIZATION: ***").trim().split("\n").slice(-2).join(" ");
+      logger7.warn(`could not fetch ${spec}${stderr ? `: ${stderr}` : ""}`);
     }
   }
 }
-var RELEASE_TITLE2 = /^chore(\([^)]*\))?: release\b/i;
-function impactSetup(root, config2, inputs, logger7) {
+function impactSetup(root, config2, configPath, inputs, logger7) {
   if (inputs.impact === "off") return {};
   const event = githubEvent();
-  const isPr = event?.name === "pull_request" || event?.name === "pull_request_target";
-  if (inputs.impact === "auto") {
-    if (!isPr && !inputs.baseRef) return { note: "impact: auto runs on pull requests" };
-    const project = loadProject({ root, logger: logger7 });
-    const units = [...project.workflows.values(), ...project.actions.values()];
-    if (!units.some((u) => isPublished(u, config2.impact))) {
-      return { note: "impact: no published workflows or actions (see impact.publish)" };
-    }
-  }
-  const pr = event?.payload?.pull_request;
-  const base = inputs.baseRef || pr?.base?.sha;
-  const missing = [];
-  if (base) {
+  const auto2 = inputs.impact === "auto";
+  if (auto2 && event?.name === "pull_request_target")
+    return { note: "impact: auto skips pull_request_target" };
+  if (auto2 && event?.name !== "pull_request" && !inputs.baseRef)
+    return { note: "impact: auto runs on pull requests" };
+  const resolves = (ref) => {
     try {
-      resolveCommit(root, base);
+      resolveCommit(root, ref);
+      return true;
     } catch {
-      missing.push(base);
+      return false;
     }
+  };
+  let base = inputs.baseRef;
+  if (base && !/^[0-9a-f]{7,64}$/i.test(base) && !base.startsWith("refs/")) {
+    const tracking = `origin/${base.replace(/^origin\//, "")}`;
+    if (resolves(tracking) || !resolves(base)) base = tracking;
   }
-  if (pr?.title && RELEASE_TITLE2.test(pr.title)) missing.push("+refs/tags/v*:refs/tags/v*");
-  if (missing.length) fetchMissing(root, missing, getInput("token"), logger7);
+  let prepared;
   try {
-    const prepared = prepareImpact(
+    prepared = prepareImpact(
       root,
       config2,
       {
-        ...inputs.baseRef ? { base: inputs.baseRef } : {},
+        ...base ? { base } : {},
         ...inputs.expectedImpact ? { expect: inputs.expectedImpact } : {},
         ...event ? { event } : {},
-        ...process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}
+        ...process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {},
+        ...configPath ? { configPath } : {},
+        fetch: (refs) => fetchRefs(root, refs, getInput("token"), logger7)
       },
       logger7
     );
-    if ("skip" in prepared) return { note: `impact: skipped (${prepared.skip})` };
-    for (const n of prepared.notes) logger7.info(`impact: ${n}`);
-    return { options: prepared.options };
   } catch (err) {
     if (err instanceof ImpactSetupError) throw new InputError(`impact: ${err.message}`);
     throw err;
   }
+  if ("skip" in prepared) return { note: `impact: skipped (${prepared.skip})` };
+  for (const n of prepared.notes) logger7.info(`impact: ${n}`);
+  if (auto2 && prepared.options.publishedFiles?.length === 0) {
+    const project = loadProject({
+      root,
+      logger: logger7,
+      ...prepared.options.policy.publish ? { publish: prepared.options.policy.publish } : {}
+    });
+    const units = [...project.workflows.values(), ...project.actions.values()];
+    if (!units.some((u) => isPublished(u, prepared.options.policy))) {
+      return { note: "impact: no published workflows or actions (see impact.publish)" };
+    }
+  }
+  return { options: prepared.options };
 }
 function pluginsAllowed(value) {
   if (value !== "auto") return value === "true";
@@ -136610,7 +136807,7 @@ function actionsSink(runnerDebug, groups) {
 var toPosix2 = (p) => p.split(sep3).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function inWorkspace(prefix2, file2) {
-  return prefix2 ? posix2.join(prefix2, file2) : file2;
+  return prefix2 ? posix3.join(prefix2, file2) : file2;
 }
 function annotate(f, prefix2) {
   const loc = f.loc;
@@ -136639,7 +136836,7 @@ function sarifInWorkspace(sarif, prefix2) {
     }
     if (!v || typeof v !== "object") return;
     const o = v;
-    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix2.join(prefix2, o.uri);
+    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix3.join(prefix2, o.uri);
     for (const value of Object.values(o)) visit3(value);
   };
   visit3(doc);
@@ -136650,7 +136847,7 @@ function writeReport(workspace, file2, content) {
   const abs = resolve4(workspace, file2);
   mkdirSync3(dirname4(abs), { recursive: true });
   writeFileSync3(abs, content);
-  const shown = toPosix2(relative4(workspace, abs));
+  const shown = toPosix2(relative5(workspace, abs));
   info(`wrote ${shown.startsWith("..") ? abs : shown}`);
   return abs;
 }
@@ -136766,7 +136963,7 @@ async function run() {
     info(bannerText());
     const workspace = resolve4(process.env.GITHUB_WORKSPACE || process.cwd());
     const root = resolve4(workspace, inputs.workingDirectory);
-    const rel = toPosix2(relative4(workspace, root));
+    const rel = toPosix2(relative5(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
     const loaded = loadConfig(root, inputs.config ? resolve4(root, inputs.config) : void 0);
     info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
@@ -136778,7 +136975,7 @@ async function run() {
     }
     const impact = await group2(
       "flowpact: impact baseline",
-      async () => impactSetup(root, loaded.config, inputs, logger7)
+      async () => impactSetup(root, loaded.config, inputs.config || void 0, inputs, logger7)
     );
     if (impact.note) info(impact.note);
     const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {

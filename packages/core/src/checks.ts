@@ -30,6 +30,11 @@ import { type Combination, expandMatrix, type MatrixExpansion, matrixResolver } 
 export interface CheckName {
   /** The check-run name (context), e.g. `call-mx (p) / build`. */
   name: string;
+  /**
+   * The part of the name that does not depend on values: the static name with ` (…)` for a matrix suffix, or the
+   * template with `…` for each expression (`Build …`). A changed stem means every name the job reports changed.
+   */
+  stem: string;
   /** False when part of the name depends on something flowpact cannot evaluate (event data, `needs`, `vars`, …). */
   certain: boolean;
   /** The jobs that produce it, outermost first, as `<workflow path>#<job id>`. */
@@ -105,18 +110,18 @@ function suffix(combo: Combination, exp: MatrixExpansion, job: JobDecl): { text:
   return { text: parts.length ? ` (${parts.join(', ')})` : '', certain };
 }
 
+/** A workflow's inputs: absent = not passed (the default applies), `known: false` = passed but not known statically. */
+export type InputValues = Record<string, { known: true; value: Json } | { known: false }>;
+
 /** The resolver for a job's `name`: matrix values of the combination and the (caller-supplied) inputs. */
-function nameResolver(
-  combo: Combination | undefined,
-  inputs: Record<string, Json | undefined>,
-): ContextResolver {
+function nameResolver(combo: Combination | undefined, inputs: InputValues): ContextResolver {
   const matrix = combo ? matrixResolver(combo) : undefined;
   return (ref) => {
     if (ref.context === 'matrix') return matrix ? matrix(ref) : known(null);
     if (ref.context === 'inputs') {
       if (ref.path.length !== 1) return UNKNOWN;
       const v = lookup(inputs, ref.path[0]!);
-      return v === undefined ? UNKNOWN : known(v);
+      return v?.known ? known(v.value) : UNKNOWN;
     }
     return undefined;
   };
@@ -128,24 +133,30 @@ function nameResolver(
  */
 export function jobSegments(
   job: JobDecl,
-  inputs: Record<string, Json | undefined> = {},
-): { name: string; certain: boolean; combo?: Combination }[] {
+  inputs: InputValues = {},
+): { name: string; stem: string; certain: boolean; combo?: Combination }[] {
   const kind = nameKind(job);
   const exp = job.matrix ? expandMatrix(job.matrix) : undefined;
   const combos: (Combination | undefined)[] =
     exp && !exp.dynamic && !exp.truncated && exp.combos.length ? exp.combos : [undefined];
   const matrixUnknown = !!exp && (exp.dynamic || exp.truncated);
+  const stem =
+    kind.kind === 'static'
+      ? `${kind.text || job.id}${exp ? ' (…)' : ''}`
+      : kind.template.trim().replace(/\$\{\{[\s\S]*?\}\}/g, '…');
   return combos.map((combo) => {
     if (kind.kind === 'static') {
       const base = kind.text || job.id;
-      if (!combo || !exp) return { name: base, certain: !matrixUnknown };
+      if (!combo || !exp)
+        return { name: matrixUnknown ? `${base} (…)` : base, stem, certain: !matrixUnknown };
       const s = suffix(combo, exp, job);
-      return { name: `${base}${s.text}`, certain: s.certain, combo };
+      return { name: `${base}${s.text}`, stem, certain: s.certain, combo };
     }
     const text = toText(evaluateTemplate(kind.template, nameResolver(combo, inputs)))?.trim();
     const certain = text !== undefined && !matrixUnknown && (!exp || exp.exact);
     return {
       name: text === undefined ? kind.template.trim() : text || job.id,
+      stem,
       certain,
       ...(combo ? { combo } : {}),
     };
@@ -158,16 +169,16 @@ export function skippedCheckName(job: JobDecl): string {
   return kind.kind === 'static' ? kind.text || job.id : kind.template.trim();
 }
 
-/** Values a caller passes to a called workflow, for one caller combination. */
-function callerInputs(job: JobDecl, combo: Combination | undefined): Record<string, Json | undefined> {
-  const out: Record<string, Json | undefined> = {};
+/** Values a caller passes to a called workflow, for one caller combination (resolved against the caller's inputs). */
+function callerInputs(job: JobDecl, combo: Combination | undefined, own: InputValues): InputValues {
+  const out: InputValues = {};
   for (const [name, b] of Object.entries(job.with)) {
     if (!b.site) {
-      out[name] = b.value as Json;
+      out[name] = { known: true, value: b.value as Json };
       continue;
     }
-    const v = evaluateTemplate(b.site.text, nameResolver(combo, {}));
-    out[name] = v.known ? v.value : undefined;
+    const v = evaluateTemplate(b.site.text, nameResolver(combo, own));
+    out[name] = v.known ? { known: true, value: v.value } : { known: false };
   }
   return out;
 }
@@ -181,14 +192,17 @@ const MAX_DEPTH = 12;
 export function workflowChecks(
   index: ProjectIndex,
   wf: WorkflowDecl,
-  inputs: Record<string, Json | undefined> = {},
+  /** The workflow's inputs, or `'consumer'` when consumers call it with values of their own (all unknown). */
+  inputs: InputValues | 'consumer' = {},
   depth = 0,
   seen: Set<string> = new Set(),
 ): CheckName[] {
-  const values: Record<string, Json | undefined> = {};
+  const values: InputValues = {};
   for (const [name, input] of Object.entries(wf.call?.inputs ?? {})) {
-    const given = lookup(inputs, name);
-    values[name] = given !== undefined ? given : input.hasDefault ? (input.default as Json) : undefined;
+    const given = inputs === 'consumer' ? { known: false as const } : lookup(inputs, name);
+    if (given) values[name] = given;
+    else if (input.hasDefault) values[name] = { known: true, value: input.default as Json };
+    else values[name] = { known: true, value: null };
   }
   const out: CheckName[] = [];
   for (const job of Object.values(wf.jobs)) {
@@ -196,20 +210,21 @@ export function workflowChecks(
     const callee = job.uses ? index.calleeOf(job) : undefined;
     for (const seg of jobSegments(job, values)) {
       if (!callee) {
-        out.push({ name: seg.name, certain: seg.certain, jobs: [id] });
+        out.push({ name: seg.name, stem: seg.stem, certain: seg.certain, jobs: [id] });
         continue;
       }
       if (depth >= MAX_DEPTH || seen.has(callee.path)) continue;
       const nested = workflowChecks(
         index,
         callee,
-        callerInputs(job, seg.combo),
+        callerInputs(job, seg.combo, values),
         depth + 1,
         new Set([...seen, wf.path]),
       );
       for (const c of nested) {
         out.push({
           name: `${seg.name} / ${c.name}`,
+          stem: `${seg.stem} / ${c.stem}`,
           certain: seg.certain && c.certain,
           jobs: [id, ...c.jobs],
         });

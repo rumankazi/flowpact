@@ -192,6 +192,13 @@ export function loadProject(opts: LoadProjectOptions): Project {
   // uses it, and so are the actions `impact.publish` lists.
   if (['action.yml', 'action.yaml'].some((f) => fs.read(f) !== undefined)) actionFiles.push('action.yml');
   for (const pattern of opts.publish ?? []) {
+    // An exact file is loaded directly; a glob walks the directory before its first wildcard.
+    if (!/[*?[]/.test(pattern)) {
+      const file = isActionFile(pattern) ? pattern : `${pattern.replace(/\/$/, '')}/action.yml`;
+      if (isActionFile(file) && !file.startsWith('.github/actions/') && fs.read(file) !== undefined)
+        actionFiles.push(file);
+      continue;
+    }
     const literal = pattern.split(/[*?[]/)[0]!;
     const dir = literal.includes('/') ? literal.slice(0, literal.lastIndexOf('/')) : '';
     for (const f of dir ? fs.walk(dir) : fs.walk('.')) {

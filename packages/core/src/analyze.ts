@@ -58,6 +58,8 @@ export interface AnalyzeOptions {
     baseline: ImpactResult['baseline'];
     declared: DeclaredInput;
     policy: ImpactPolicy;
+    /** Files of the units the baseline published; their head versions are loaded even when nothing uses them. */
+    publishedFiles?: string[];
   };
   /** Compare against the contracts in `.github/flowpact/` (`flowpact check`). */
   checkContracts?: boolean;
@@ -180,6 +182,14 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
   const started = performance.now();
   const logger = opts.logger ?? silentLogger;
   const config = opts.config ?? defaultConfig();
+  // Units to load even when nothing here uses them: what the config (and, in impact mode, the baseline) publishes.
+  const publishPatterns = [
+    ...new Set([
+      ...(config.impact.publish ?? []),
+      ...(opts.impact?.policy.publish ?? []),
+      ...(opts.impact?.publishedFiles ?? []),
+    ]),
+  ];
   const registry = opts.registry ?? createRegistry();
   const repository = opts.repository ?? config.repository ?? detectRepository(opts.root);
   logger.debug('config resolved', {
@@ -193,7 +203,7 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
       root: opts.root,
       ...(opts.fs ? { fs: opts.fs } : {}),
       ...(opts.paths ? { paths: opts.paths } : {}),
-      ...(config.impact.publish ? { publish: config.impact.publish } : {}),
+      ...(publishPatterns.length ? { publish: publishPatterns } : {}),
       ...(repository ? { repository } : {}),
       validateSchema: opts.validateSchema ?? true,
       logger,

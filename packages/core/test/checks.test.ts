@@ -36,7 +36,7 @@ function labChecks(): CheckName[] {
     for (const job of Object.values(wf.jobs)) {
       const id = `${wf.path}#${job.id}`;
       if (definitelySkipped(job) || SKIPPED_AT_RUNTIME.has(id)) {
-        out.push({ name: skippedCheckName(job), certain: true, jobs: [id] });
+        out.push({ name: skippedCheckName(job), stem: skippedCheckName(job), certain: true, jobs: [id] });
         continue;
       }
       const single = { ...wf, jobs: { [job.id]: job } };
@@ -115,7 +115,7 @@ describe('composition', () => {
     });
     const checks = workflowChecks(r.index, r.project.workflows.get(`${WF}/c.yml`)!);
     expect(checks.map((c) => [c.name, c.certain])).toEqual([
-      ['a', false],
+      ['a (…)', false],
       ['B ${{ needs.a.outputs.x }}', false],
     ]);
   });
