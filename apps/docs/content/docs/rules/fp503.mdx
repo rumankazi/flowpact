@@ -11,11 +11,47 @@ description: "The file does not match GitHub’s workflow / action schema (valid
 
 ## Why it matters
 
-GitHub refuses to run a workflow with schema errors, often only when the trigger fires.
+GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it accepts and ignores instead, such as a top-level `env:` in action.yml or a filter the event does not support. Those are reported as warnings: the file runs, but without the setting.
 
 ## How to fix
 
 Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub’s tooling uses.
+
+## Example
+
+<Tabs items={["Problem", "Fixed"]}>
+<Tab value="Problem">
+
+```yaml
+# action.yml
+env:
+  UV_VERSION: 0.9.0   # ignored: actions have no top-level env
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: ${{ env.UV_VERSION }}
+```
+
+</Tab>
+<Tab value="Fixed">
+
+```yaml
+# action.yml
+inputs:
+  uv-version:
+    default: 0.9.0
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: ${{ inputs.uv-version }}
+```
+
+</Tab>
+</Tabs>
 
 ## Configure
 

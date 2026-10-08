@@ -42,6 +42,10 @@ export default [prodNeedsApproval];
 A rule is a plain object, so a plugin needs no imports. Built-in rules are written the same way in TypeScript, wrapped
 in `defineRule(...)` for type checking.
 
+Besides `message`, `loc` and `symbol`, `ctx.report` takes `fix` (advice for this finding instead of the rule's) and
+`severity`, which reports one finding below the rule's severity. It can only lower it: a finding never exceeds the
+severity the rule is configured with.
+
 ## Codes
 
 Codes have the form `<PREFIX><category digit><two digits>`:

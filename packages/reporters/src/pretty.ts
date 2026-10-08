@@ -257,7 +257,14 @@ export function renderSummary(result: AnalysisResult, opts: RenderOptions, infoH
   const codes = Object.entries(s.byCode).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   if (codes.length) {
     lines.push('');
-    const nameOf = new Map(result.findings.map((f) => [f.code, { name: f.name, severity: f.severity }]));
+    // A rule can report some findings below its severity (FP503: keys GitHub ignores); show the most severe.
+    const rank: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
+    const nameOf = new Map<string, { name: string; severity: Severity }>();
+    for (const f of result.findings) {
+      const seen = nameOf.get(f.code);
+      if (!seen || rank[f.severity] < rank[seen.severity])
+        nameOf.set(f.code, { name: f.name, severity: f.severity });
+    }
     const nameW = Math.max(...codes.map(([code]) => visibleWidth(nameOf.get(code)?.name ?? '')));
     for (const [code, n] of codes.slice(0, 10)) {
       const info = nameOf.get(code)!;

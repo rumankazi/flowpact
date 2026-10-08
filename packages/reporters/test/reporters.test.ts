@@ -59,6 +59,15 @@ describe('renderPretty', () => {
     expect(renderPretty(result('incident-matrix'), plain)).not.toMatch(/\u001B/);
   });
 
+  it('marks a code in the summary with its most severe finding', () => {
+    const r = result('incident-matrix');
+    const [f] = r.findings;
+    const later = { ...f!, severity: 'warning' as const, loc: { ...f!.loc, line: f!.loc.line + 1 } };
+    r.findings = [f!, later];
+    r.summary.byCode = { [f!.code]: 2 };
+    expect(renderPretty(r, plain)).toContain(`✖ ${f!.code}  `);
+  });
+
   it('supports ASCII-only output', () => {
     const out = renderPretty(result('incident-matrix'), { ...plain, ascii: true });
     expect(out).toMatch(/^[\x20-\x7E\n]*$/);

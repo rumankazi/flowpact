@@ -115,12 +115,45 @@ export const schemaViolation = defineRule({
   docs: {
     summary:
       'The file does not match GitHub’s workflow / action schema (validated with GitHub’s own parser).',
-    why: 'GitHub refuses to run a workflow with schema errors, often only when the trigger fires.',
+    why:
+      'GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it ' +
+      'accepts and ignores instead, such as a top-level `env:` in action.yml or a filter the event does not support. ' +
+      'Those are reported as warnings: the file runs, but without the setting.',
     fix: 'Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub’s tooling uses.',
+    examples: {
+      bad: `# action.yml
+env:
+  UV_VERSION: 0.9.0   # ignored: actions have no top-level env
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: \${{ env.UV_VERSION }}`,
+      good: `# action.yml
+inputs:
+  uv-version:
+    default: 0.9.0
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: \${{ inputs.uv-version }}`,
+    },
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
-      for (const e of unit.schemaErrors) if (!e.kind) ctx.report({ message: e.message, loc: e.loc });
+      for (const e of unit.schemaErrors) {
+        if (e.kind === 'context') continue;
+        ctx.report({
+          message: e.message,
+          loc: e.loc,
+          ...(e.fix ? { fix: e.fix } : {}),
+          // GitHub runs the file without the key: worth fixing, but not a failed run.
+          ...(e.kind === 'ignored' ? { severity: 'warning' as const } : {}),
+        });
+      }
     }
   },
 });

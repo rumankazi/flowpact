@@ -10705,10 +10705,10 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildHeadersFromArray(headers) {
-      const clone2 = headers.slice();
+      const clone3 = headers.slice();
       const entries2 = [];
-      for (let index2 = 0; index2 < clone2.length; index2 += 2) {
-        entries2.push([clone2[index2], clone2[index2 + 1]]);
+      for (let index2 = 0; index2 < clone3.length; index2 += 2) {
+        entries2.push([clone3[index2], clone3[index2 + 1]]);
       }
       return Object.fromEntries(entries2);
     }
@@ -20693,7 +20693,7 @@ var require_brace_expansion = __commonJS({
       if (str2.substr(0, 2) === "{}") {
         str2 = "\\{\\}" + str2.substr(2);
       }
-      return expand2(escapeBraces(str2), max, maxLength, maxDepth, 0, maxRewrites, true).map(unescapeBraces);
+      return expand3(escapeBraces(str2), max, maxLength, maxDepth, 0, maxRewrites, true).map(unescapeBraces);
     }
     function embrace(str2) {
       return "{" + str2 + "}";
@@ -20767,7 +20767,7 @@ var require_brace_expansion = __commonJS({
       }
       return N;
     }
-    function expand2(str2, max, maxLength, maxDepth, depth, maxRewrites, isTop) {
+    function expand3(str2, max, maxLength, maxDepth, depth, maxRewrites, isTop) {
       if (depth > maxDepth) {
         return [str2];
       }
@@ -20825,7 +20825,7 @@ var require_brace_expansion = __commonJS({
         } else {
           var n = parseCommaParts(m.body);
           if (n.length === 1 && n[0] !== void 0) {
-            n = expand2(n[0], max, maxLength, maxDepth, depth + 1, maxRewrites, false).map(embrace);
+            n = expand3(n[0], max, maxLength, maxDepth, depth + 1, maxRewrites, false).map(embrace);
             if (n.length === 1) {
               acc = combine(
                 acc,
@@ -20849,7 +20849,7 @@ var require_brace_expansion = __commonJS({
           values = [];
           var valuesLength = 0;
           outer: for (var j = 0; j < n.length; j++) {
-            var expanded = expand2(n[j], max, maxLength, maxDepth, depth + 1, maxRewrites, false);
+            var expanded = expand3(n[j], max, maxLength, maxDepth, depth + 1, maxRewrites, false);
             for (var k = 0; k < expanded.length; k++) {
               var v = expanded[k];
               if (dropsEmpties && !v) continue;
@@ -20886,7 +20886,7 @@ var require_minimatch = __commonJS({
     minimatch.sep = path4.sep;
     var GLOBSTAR = /* @__PURE__ */ Symbol("globstar **");
     minimatch.GLOBSTAR = GLOBSTAR;
-    var expand2 = require_brace_expansion();
+    var expand3 = require_brace_expansion();
     var plTypes = {
       "!": { open: "(?:(?!(?:", close: "))[^/]*?)" },
       "?": { open: "(?:", close: ")?" },
@@ -20937,7 +20937,7 @@ var require_minimatch = __commonJS({
       if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
         return [pattern];
       }
-      return expand2(pattern);
+      return expand3(pattern);
     };
     var MAX_PATTERN_LENGTH = 1024 * 64;
     var assertValidPattern = (pattern) => {
@@ -23994,11 +23994,11 @@ var require_legacy_streams = __commonJS({
 var require_clone = __commonJS({
   "../../node_modules/.pnpm/graceful-fs@4.2.11/node_modules/graceful-fs/clone.js"(exports2, module) {
     "use strict";
-    module.exports = clone2;
+    module.exports = clone3;
     var getPrototypeOf = Object.getPrototypeOf || function(obj) {
       return obj.__proto__;
     };
-    function clone2(obj) {
+    function clone3(obj) {
       if (obj === null || typeof obj !== "object")
         return obj;
       if (obj instanceof Object)
@@ -24020,7 +24020,7 @@ var require_graceful_fs = __commonJS({
     var fs8 = __require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
-    var clone2 = require_clone();
+    var clone3 = require_clone();
     var util3 = __require("util");
     var gracefulQueue;
     var previousSymbol;
@@ -24088,7 +24088,7 @@ var require_graceful_fs = __commonJS({
     if (!global[gracefulQueue]) {
       publishQueue(global, fs8[gracefulQueue]);
     }
-    module.exports = patch(clone2(fs8));
+    module.exports = patch(clone3(fs8));
     if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs8.__patched) {
       module.exports = patch(fs8);
       fs8.__patched = true;
@@ -47215,7 +47215,7 @@ var require_traverse = __commonJS({
     };
     Traverse.prototype.clone = function() {
       var parents = [], nodes = [];
-      return (function clone2(src) {
+      return (function clone3(src) {
         for (var i = 0; i < parents.length; i++) {
           if (parents[i] === src) {
             return nodes[i];
@@ -47226,7 +47226,7 @@ var require_traverse = __commonJS({
           parents.push(src);
           nodes.push(dst);
           Object.keys(src).forEach(function(key) {
-            dst[key] = clone2(src[key]);
+            dst[key] = clone3(src[key]);
           });
           parents.pop();
           nodes.pop();
@@ -50307,10 +50307,10 @@ var require_identity2 = __commonJS({
     var NODE_TYPE = /* @__PURE__ */ Symbol.for("yaml.node.type");
     var isAlias3 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === ALIAS;
     var isDocument2 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === DOC;
-    var isMap4 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === MAP;
+    var isMap5 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === MAP;
     var isPair3 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === PAIR;
-    var isScalar4 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === SCALAR2;
-    var isSeq4 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === SEQ;
+    var isScalar5 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === SCALAR2;
+    var isSeq5 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === SEQ;
     function isCollection2(node2) {
       if (node2 && typeof node2 === "object")
         switch (node2[NODE_TYPE]) {
@@ -50331,7 +50331,7 @@ var require_identity2 = __commonJS({
         }
       return false;
     }
-    var hasAnchor = (node2) => (isScalar4(node2) || isCollection2(node2)) && !!node2.anchor;
+    var hasAnchor = (node2) => (isScalar5(node2) || isCollection2(node2)) && !!node2.anchor;
     exports2.ALIAS = ALIAS;
     exports2.DOC = DOC;
     exports2.MAP = MAP;
@@ -50343,11 +50343,11 @@ var require_identity2 = __commonJS({
     exports2.isAlias = isAlias3;
     exports2.isCollection = isCollection2;
     exports2.isDocument = isDocument2;
-    exports2.isMap = isMap4;
+    exports2.isMap = isMap5;
     exports2.isNode = isNode;
     exports2.isPair = isPair3;
-    exports2.isScalar = isScalar4;
-    exports2.isSeq = isSeq4;
+    exports2.isScalar = isScalar5;
+    exports2.isSeq = isSeq5;
   }
 });
 
@@ -54455,9 +54455,9 @@ var require_resolve_flow_collection = __commonJS({
     var blockMsg = "Block collections are not allowed within flow collections";
     var isBlock = (token) => token && (token.type === "block-map" || token.type === "block-seq");
     function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag) {
-      const isMap4 = fc.start.source === "{";
-      const fcName = isMap4 ? "flow map" : "flow sequence";
-      const NodeClass = tag?.nodeClass ?? (isMap4 ? YAMLMap.YAMLMap : YAMLSeq.YAMLSeq);
+      const isMap5 = fc.start.source === "{";
+      const fcName = isMap5 ? "flow map" : "flow sequence";
+      const NodeClass = tag?.nodeClass ?? (isMap5 ? YAMLMap.YAMLMap : YAMLSeq.YAMLSeq);
       const coll = new NodeClass(ctx.schema);
       coll.flow = true;
       const atRoot = ctx.atRoot;
@@ -54493,7 +54493,7 @@ var require_resolve_flow_collection = __commonJS({
             offset = props.end;
             continue;
           }
-          if (!isMap4 && ctx.options.strict && utilContainsNewline.containsNewline(key))
+          if (!isMap5 && ctx.options.strict && utilContainsNewline.containsNewline(key))
             onError(
               key,
               // checked by containsNewline()
@@ -54533,7 +54533,7 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap4 && !sep4 && !props.found) {
+        if (!isMap5 && !sep4 && !props.found) {
           const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
@@ -54556,7 +54556,7 @@ var require_resolve_flow_collection = __commonJS({
             startOnNewline: false
           });
           if (valueProps.found) {
-            if (!isMap4 && !props.found && ctx.options.strict) {
+            if (!isMap5 && !props.found && ctx.options.strict) {
               if (sep4)
                 for (const st of sep4) {
                   if (st === valueProps.found)
@@ -54588,7 +54588,7 @@ var require_resolve_flow_collection = __commonJS({
           const pair = new Pair.Pair(keyNode, valueNode);
           if (ctx.options.keepSourceTokens)
             pair.srcToken = collItem;
-          if (isMap4) {
+          if (isMap5) {
             const map3 = coll;
             if (utilMapIncludes.mapIncludes(ctx, map3.items, keyNode))
               onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
@@ -54604,7 +54604,7 @@ var require_resolve_flow_collection = __commonJS({
           offset = valueNode ? valueNode.range[2] : valueProps.end;
         }
       }
-      const expectedEnd = isMap4 ? "}" : "]";
+      const expectedEnd = isMap5 ? "}" : "]";
       const [ce, ...ee] = fc.end;
       let cePos = offset;
       if (ce?.source === expectedEnd)
@@ -55891,7 +55891,7 @@ var require_cst = __commonJS({
     var FLOW_END = "";
     var SCALAR2 = "";
     var isCollection2 = (token) => !!token && "items" in token;
-    var isScalar4 = (token) => !!token && (token.type === "scalar" || token.type === "single-quoted-scalar" || token.type === "double-quoted-scalar" || token.type === "block-scalar");
+    var isScalar5 = (token) => !!token && (token.type === "scalar" || token.type === "single-quoted-scalar" || token.type === "double-quoted-scalar" || token.type === "block-scalar");
     function prettyToken(token) {
       switch (token) {
         case BOM:
@@ -55975,7 +55975,7 @@ var require_cst = __commonJS({
     exports2.FLOW_END = FLOW_END;
     exports2.SCALAR = SCALAR2;
     exports2.isCollection = isCollection2;
-    exports2.isScalar = isScalar4;
+    exports2.isScalar = isScalar5;
     exports2.prettyToken = prettyToken;
     exports2.tokenType = tokenType;
   }
@@ -56574,7 +56574,7 @@ var require_lexer = __commonJS({
 var require_line_counter = __commonJS({
   "../../node_modules/.pnpm/yaml@2.9.1/node_modules/yaml/dist/parse/line-counter.js"(exports2) {
     "use strict";
-    var LineCounter4 = class {
+    var LineCounter5 = class {
       constructor() {
         this.lineStarts = [];
         this.addNewLine = (offset) => this.lineStarts.push(offset);
@@ -56597,7 +56597,7 @@ var require_line_counter = __commonJS({
         };
       }
     };
-    exports2.LineCounter = LineCounter4;
+    exports2.LineCounter = LineCounter5;
   }
 });
 
@@ -57505,7 +57505,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument4(source, options = {}) {
+    function parseDocument5(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -57531,7 +57531,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver2 && typeof reviver2 === "object") {
         options = reviver2;
       }
-      const doc = parseDocument4(src, options);
+      const doc = parseDocument5(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning2) => log3.warn(doc.options.logLevel, warning2));
@@ -57567,7 +57567,7 @@ var require_public_api = __commonJS({
     }
     exports2.parse = parse6;
     exports2.parseAllDocuments = parseAllDocuments;
-    exports2.parseDocument = parseDocument4;
+    exports2.parseDocument = parseDocument5;
     exports2.stringify = stringify2;
   }
 });
@@ -105652,7 +105652,7 @@ var client = new DefaultArtifactClient();
 import { createHash as createHash4 } from "crypto";
 
 // ../core/src/config.ts
-var import_yaml4 = __toESM(require_dist5(), 1);
+var import_yaml5 = __toESM(require_dist5(), 1);
 import { existsSync as existsSync6, readFileSync as readFileSync3 } from "fs";
 import { join as join4, relative as relative2 } from "path";
 
@@ -118583,9 +118583,9 @@ function compileValidator(schema3, parser) {
 function compile(schema3, options) {
   try {
     const parser = compileFn(schema3);
-    const clone2 = withParser(schema3, parser);
-    clone2._zod.bag.validator = compileValidator(schema3, parser);
-    return clone2;
+    const clone3 = withParser(schema3, parser);
+    clone3._zod.bag.validator = compileValidator(schema3, parser);
+    return clone3;
   } catch (err) {
     if (options?.strict)
       throw err;
@@ -118596,7 +118596,7 @@ function withParser(schema3, parser) {
   if (isRecursiveSchema(schema3)) {
     throw new ZodCompileUnsupportedError("a schema whose subtree contains a reference cycle");
   }
-  const clone2 = clone(schema3);
+  const clone3 = clone(schema3);
   const liveRun = schema3._zod.run;
   const originalRun = liveRun.__originalRun ?? liveRun;
   const wrapped = (payload, ctx) => {
@@ -118616,12 +118616,12 @@ function withParser(schema3, parser) {
     return originalRun(payload, ctx);
   };
   wrapped.__originalRun = originalRun;
-  clone2._zod.bag.fallbackRun = originalRun;
-  clone2._zod.bag.validator = parser;
-  clone2._zod.run = wrapped;
+  clone3._zod.bag.fallbackRun = originalRun;
+  clone3._zod.bag.validator = parser;
+  clone3._zod.run = wrapped;
   if (!liveRun.__originalRun)
-    installCompiledUserMethods(clone2, schema3, parser);
-  return clone2;
+    installCompiledUserMethods(clone3, schema3, parser);
+  return clone3;
 }
 function installCompiledUserMethods(target, source, parser) {
   const targetAny = target;
@@ -130345,10 +130345,175 @@ function parseAction(entryFile, contextOrTrace) {
 }
 
 // ../core/src/validate.ts
+var import_yaml4 = __toESM(require_dist5(), 1);
+
+// ../core/src/rules/util.ts
+function* refsOf(unit) {
+  for (const site of unit.sites)
+    for (const seg of site.segments) for (const ref of seg.refs) yield { site, ref };
+}
+function readsContextDynamically(unit, context5) {
+  if (unit.parseErrors.length > 0 || unit.sites.some((s) => s.segments.some((seg) => seg.expr.error)))
+    return true;
+  for (const { ref } of refsOf(unit)) {
+    if (ref.context === context5 && ref.dynamic) return true;
+    if (context5 === "inputs" && ref.context === "github" && ref.path[0] === "event") {
+      if (ref.path.length === 1 || ref.path[1] === "inputs" && (ref.path.length === 2 || ref.path[2] === "?"))
+        return true;
+    }
+  }
+  return false;
+}
+function chainTo(index2, target) {
+  const queue2 = [{ path: target, chain: [] }];
+  const seen = /* @__PURE__ */ new Set([target]);
+  let fallback2 = [];
+  while (queue2.length) {
+    const { path: path4, chain } = queue2.shift();
+    const callers = index2.callersOf(path4);
+    if (callers.length === 0) return chain;
+    if (chain.length > fallback2.length) fallback2 = chain;
+    for (const c of callers) {
+      if (seen.has(c.caller.path)) continue;
+      seen.add(c.caller.path);
+      queue2.push({ path: c.caller.path, chain: [c, ...chain] });
+    }
+  }
+  return fallback2;
+}
+function chainRelated(chain) {
+  return chain.map((c) => ({
+    loc: c.job.uses?.loc ?? c.job.loc,
+    message: `jobs.${c.job.id} calls ${c.callee.path}`
+  }));
+}
+function editDistance(a, b) {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  const dp = Array.from({ length: x.length + 1 }, (_2, i) => [i, ...Array(y.length).fill(0)]);
+  for (let j = 1; j <= y.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= x.length; i++) {
+    for (let j = 1; j <= y.length; j++) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return dp[x.length][y.length];
+}
+function didYouMean(name, candidates) {
+  const norm = (s) => s.toLowerCase().replace(/[-_]/g, "");
+  let best;
+  for (const c of candidates) {
+    const [a, b] = [norm(name), norm(c)];
+    const prefix2 = Math.min(a.length, b.length) >= 3 && (a.startsWith(b) || b.startsWith(a));
+    const d = a === b ? 0 : prefix2 ? 1 : editDistance(name, c);
+    if (!best || d < best.d) best = { c, d };
+  }
+  if (!best) return void 0;
+  return best.d <= Math.max(2, Math.floor(name.length / 3)) ? best.c : void 0;
+}
+var quote = (s) => `"${escapeControl(s)}"`;
+function listNames(names, max = 6) {
+  if (names.length === 0) return "(none)";
+  const shown = names.slice(0, max).join(", ");
+  return names.length > max ? `${shown}, \u2026 (+${names.length - max})` : shown;
+}
+function isCallOnly(wf) {
+  return wf.triggers.length === 1 && wf.triggers[0] === "workflow_call";
+}
+
+// ../core/src/schema.ts
+var SCHEMA_ROOT = { workflow: "workflow-root-strict", action: "action-root-strict" };
+var CACHE_MODE = {
+  values: ["read", "write", "write-only", "none"],
+  in: ["workflow-root", "workflow-root-strict", "job-factory", "workflow-job"]
+};
+var workflow;
+function workflowSchema() {
+  if (workflow) return workflow;
+  const base = getWorkflowSchema();
+  if (base.definitions["cache-mode"]) {
+    workflow = base;
+    return workflow;
+  }
+  const definitions = { ...base.definitions };
+  const cacheMode = new OneOfDefinition("cache-mode");
+  for (const value of CACHE_MODE.values) {
+    const constant2 = new StringDefinition(`cache-mode-${value}`);
+    constant2.constant = value;
+    definitions[constant2.key] = constant2;
+    cacheMode.oneOf.push(constant2.key);
+  }
+  definitions[cacheMode.key] = cacheMode;
+  const property = new PropertyDefinition(new StringToken(void 0, void 0, cacheMode.key, void 0));
+  for (const name of CACHE_MODE.in) {
+    const mapping = definitions[name];
+    if (mapping?.definitionType !== DefinitionType.Mapping) continue;
+    const { properties } = mapping;
+    if (properties["cache-mode"]) continue;
+    definitions[name] = clone2(mapping, {
+      properties: { ...properties, "cache-mode": property }
+    });
+  }
+  workflow = clone2(base, { definitions });
+  return workflow;
+}
+function schemaFor(kind) {
+  return kind === "workflow" ? workflowSchema() : getActionSchema();
+}
+function clone2(value, overrides) {
+  return Object.assign(Object.create(Object.getPrototypeOf(value)), value, overrides);
+}
+function expand2(schema3, name, seen = /* @__PURE__ */ new Set()) {
+  if (seen.has(name)) return [];
+  seen.add(name);
+  const def = schema3.definitions[name];
+  if (!def) return [];
+  if (def.definitionType !== DefinitionType.OneOf) return [def];
+  return def.oneOf.flatMap((n) => expand2(schema3, n, seen));
+}
+function mappingsAt(schema3, root, path4) {
+  let types = [root];
+  for (const seg of path4) {
+    const next = /* @__PURE__ */ new Set();
+    for (const def of types.flatMap((t) => expand2(schema3, t))) {
+      if (typeof seg === "number" && def.definitionType === DefinitionType.Sequence) {
+        next.add(def.itemType);
+      } else if (typeof seg === "string" && def.definitionType === DefinitionType.Mapping) {
+        const mapping = def;
+        const property = mapping.properties[seg];
+        if (property) next.add(property.type);
+        else if (mapping.looseValueType) next.add(mapping.looseValueType);
+      }
+    }
+    types = [...next];
+  }
+  const out = /* @__PURE__ */ new Set();
+  for (const t of types)
+    for (const def of expand2(schema3, t))
+      if (def.definitionType === DefinitionType.Mapping) out.add(def);
+  return [...out];
+}
+
+// ../core/src/validate.ts
 var SYNTAX_NOISE = [/Unexpected symbol/i, /Unexpected end of expression/i, /Unclosed expression/i];
 var LOCAL_ACTION_NOISE = /Required property is missing: (name|description)\b/i;
 var CONTEXT_NAMES = new Set(KNOWN_CONTEXTS);
 var FUNCTION_NAMES = new Set(CONTEXT_FUNCTIONS.map((f) => f.name.toLowerCase()));
+var WORKFLOW_FEATURES = new FeatureFlags({ allowBackgroundSteps: true });
+var EVENT_FILTERS = [
+  "branches",
+  "branches-ignore",
+  "tags",
+  "tags-ignore",
+  "paths",
+  "paths-ignore",
+  "types",
+  "workflows"
+];
 function classify2(message) {
   if (SYNTAX_NOISE.some((re) => re.test(message))) return "drop";
   const named = /Unrecognized named-value: '([^']+)'/i.exec(message);
@@ -130357,12 +130522,21 @@ function classify2(message) {
   if (fn) return FUNCTION_NAMES.has(fn[1].toLowerCase()) ? "context" : "drop";
   return "schema";
 }
+function workflowContext() {
+  const context5 = new TemplateContext(
+    new TemplateValidationErrors(),
+    workflowSchema(),
+    new NoOperationTraceWriter()
+  );
+  context5.state.featureFlags = WORKFLOW_FEATURES;
+  return context5;
+}
 function validateSchema(unit, logger7) {
   try {
     const file2 = { name: unit.file, content: unit.source.text };
-    const result = unit.kind === "workflow" ? parseWorkflow(file2, new NoOperationTraceWriter()) : parseAction(file2, new NoOperationTraceWriter());
+    const result = unit.kind === "workflow" ? parseWorkflow(file2, workflowContext()) : parseAction(file2, new NoOperationTraceWriter());
     const errors = result.context.errors.getErrors();
-    return errors.filter((e) => classify2(e.message) !== "drop").filter((e) => !(unit.kind === "action" && LOCAL_ACTION_NOISE.test(e.message))).map((e) => {
+    const diagnostics = errors.filter((e) => classify2(e.message) !== "drop").filter((e) => !(unit.kind === "action" && LOCAL_ACTION_NOISE.test(e.message))).map((e) => {
       const r = e.range;
       const at = /\(Line: (\d+), Col: (\d+)\)/.exec(e.message);
       const message = e.message.replace(/^[^:]*\.ya?ml(?: \(Line: \d+, Col: \d+\))?:\s*/, "").replace(/\.\s*Located at position \d+ within expression:.*$/s, "");
@@ -130379,10 +130553,147 @@ function validateSchema(unit, logger7) {
         } : { file: unit.file, line: 1, column: 1, endLine: 1, endColumn: 1 }
       };
     });
+    return explain(unit, diagnostics);
   } catch (err) {
     logger7.debug(`schema validation skipped for ${unit.file}`, { reason: err.message });
     return [];
   }
+}
+var posKey = (line, column) => `${line}:${column}`;
+function shapeOf(unit) {
+  const lineCounter = new import_yaml4.LineCounter();
+  const doc = (0, import_yaml4.parseDocument)(unit.source.text, { lineCounter, prettyErrors: false, strict: false });
+  if (doc.errors.length > 0) return void 0;
+  const shape = { maps: /* @__PURE__ */ new Map(), keys: /* @__PURE__ */ new Map() };
+  const walk = (node2, path4) => {
+    if ((0, import_yaml4.isSeq)(node2)) {
+      for (const [i, item] of node2.items.entries()) walk(item, [...path4, i]);
+      return;
+    }
+    if (!(0, import_yaml4.isMap)(node2)) return;
+    const map3 = { path: path4, keys: [] };
+    if (node2.range) {
+      const p = lineCounter.linePos(node2.range[0]);
+      shape.maps.set(posKey(p.line, p.col), map3);
+    }
+    for (const pair of node2.items) {
+      if (!(0, import_yaml4.isScalar)(pair.key) || !pair.key.range) continue;
+      const name = String(pair.key.value);
+      const a = lineCounter.linePos(pair.key.range[0]);
+      const b = lineCounter.linePos(pair.key.range[1]);
+      const loc = { file: unit.file, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
+      const key = { name, map: map3, loc };
+      map3.keys.push(key);
+      shape.keys.set(posKey(a.line, a.col), key);
+      walk(pair.value, [...path4, name]);
+    }
+  };
+  walk(doc.contents, []);
+  return shape;
+}
+function explain(unit, diagnostics) {
+  if (!diagnostics.some((d) => !d.kind)) return diagnostics;
+  const shape = shapeOf(unit);
+  if (!shape) return diagnostics;
+  const schema3 = schemaFor(unit.kind);
+  const root = SCHEMA_ROOT[unit.kind];
+  const keyOf = /* @__PURE__ */ new Map();
+  const groups = /* @__PURE__ */ new Map();
+  for (const d of diagnostics) {
+    if (d.kind) continue;
+    const pos = posKey(d.loc.line, d.loc.column);
+    const unexpected = /^Unexpected value '(.*)'$/s.exec(d.message);
+    const key = unexpected ? shape.keys.get(pos) : void 0;
+    let map3;
+    if (key && key.name === unexpected[1]) {
+      keyOf.set(d, key);
+      map3 = key.map;
+    } else if (d.message.startsWith("Required property is missing: ")) {
+      map3 = shape.maps.get(pos);
+    }
+    if (map3) groups.set(map3, [...groups.get(map3) ?? [], d]);
+  }
+  const replaced = /* @__PURE__ */ new Map();
+  for (const [map3, group2] of groups) {
+    if (group2.length < 2) continue;
+    const merged = mergeAlternatives(map3, group2, schema3, root);
+    if (!merged) continue;
+    for (const [i, d] of group2.entries()) replaced.set(d, i === 0 ? merged : void 0);
+  }
+  const out = [];
+  for (const d of diagnostics) {
+    if (replaced.has(d)) {
+      const merged = replaced.get(d);
+      if (merged) out.push(merged);
+      continue;
+    }
+    const key = keyOf.get(d);
+    const ignored = key ? ignoredKey(unit.kind, key, schema3, root) : void 0;
+    out.push(ignored ? { ...d, kind: "ignored", ...ignored } : d);
+  }
+  return out;
+}
+function mergeAlternatives(map3, group2, schema3, root) {
+  const shapes = mappingsAt(schema3, root, map3.path);
+  if (shapes.length < 2) return void 0;
+  const names = new Set(map3.keys.map((k) => k.name));
+  const scored = shapes.map((def) => {
+    const unexpected = def.looseKeyType ? [] : map3.keys.filter((k) => !def.properties[k.name]);
+    const missing = Object.entries(def.properties).filter(([name, p]) => p.required && !names.has(name)).map(([name]) => name);
+    return { def, unexpected, missing, score: unexpected.length + missing.length };
+  }).sort((a, b) => a.score - b.score);
+  const [best, runnerUp] = scored;
+  if (!best || !runnerUp || best.score === 0 || best.score === runnerUp.score) return void 0;
+  const others = shapes.filter((s) => s !== best.def);
+  const own2 = map3.keys.filter(
+    (k) => best.def.properties[k.name] && !others.some((o) => o.properties[k.name])
+  );
+  const anchor2 = own2.find((k) => best.def.properties[k.name].required) ?? own2[0];
+  const parts = [];
+  if (best.unexpected.length > 0) {
+    const list = best.unexpected.map((k) => `'${k.name}'`).join(", ");
+    const s = best.unexpected.length > 1 ? "s" : "";
+    parts.push(
+      `Unexpected value${s} ${list}${anchor2 ? ` (not allowed together with \`${anchor2.name}\`)` : ""}`
+    );
+  }
+  if (best.missing.length > 0) {
+    parts.push(
+      best.missing.length > 1 ? `Required properties are missing: ${best.missing.join(", ")}` : `Required property is missing: ${best.missing[0]}`
+    );
+  }
+  const mapLoc = group2.find((d) => d.message.startsWith("Required property is missing: "))?.loc ?? group2[0].loc;
+  return { message: parts.join("; "), loc: best.unexpected[0]?.loc ?? mapLoc };
+}
+function ignoredKey(kind, key, schema3, root) {
+  const { path: path4 } = key.map;
+  const shapes = mappingsAt(schema3, root, path4);
+  const known2 = [...new Set(shapes.flatMap((s) => Object.keys(s.properties)))];
+  if (known2.includes(key.name)) return void 0;
+  const guess = didYouMean(key.name, known2);
+  const hint = guess ? ` (did you mean \`${guess}\`?)` : "";
+  const rename2 = guess ? `Rename it to \`${guess}\`.` : void 0;
+  if (kind === "action" && path4.length === 0) {
+    if (key.name === "env") {
+      return {
+        message: "GitHub ignores this key: actions have no top-level `env`, so the action's steps never see these values",
+        fix: "Set the variables in `env:` on the steps that read them, or declare them as inputs."
+      };
+    }
+    return {
+      message: `GitHub ignores this key: action metadata has no \`${key.name}\`${hint}, so it has no effect`,
+      fix: rename2 ?? "Remove it."
+    };
+  }
+  const event = path4[1];
+  if (kind === "workflow" && path4.length === 2 && path4[0] === "on" && typeof event === "string" && event !== "workflow_call" && shapes.length > 0) {
+    const filter2 = didYouMean(key.name, EVENT_FILTERS) !== void 0;
+    return {
+      message: `GitHub ignores this key: the \`${event}\` event does not support \`${key.name}\`${hint}, ${filter2 ? "so the workflow runs regardless of it" : "so it has no effect"}`,
+      fix: rename2 ?? (filter2 ? "Remove it, or check the condition in a job's `if:` instead." : "Remove it.")
+    };
+  }
+  return void 0;
 }
 
 // ../core/src/project.ts
@@ -130733,9 +131044,9 @@ function loadConfig(root, explicit) {
   return { config: defaultConfig() };
 }
 function parseConfigText(text2, file2 = "flowpact.config.yml") {
-  const lineCounter = new import_yaml4.LineCounter();
+  const lineCounter = new import_yaml5.LineCounter();
   const lines = text2.split(/\r?\n/);
-  const doc = (0, import_yaml4.parseDocument)(text2, { lineCounter, prettyErrors: false });
+  const doc = (0, import_yaml5.parseDocument)(text2, { lineCounter, prettyErrors: false });
   if (doc.errors.length) {
     throw new ConfigError(`Config file is not valid YAML: ${doc.errors[0].message.split("\n")[0]}`, file2);
   }
@@ -130746,8 +131057,8 @@ function parseConfigText(text2, file2 = "flowpact.config.yml") {
     throw new ConfigError(`Config file cannot be read: ${err.message.split("\n")[0]}`, file2);
   }
   const config2 = parseConfig(data, file2);
-  const overridesNode = (0, import_yaml4.isMap)(doc.contents) ? doc.contents.get("overrides", true) : void 0;
-  const overrideLocs = (0, import_yaml4.isSeq)(overridesNode) ? overridesNode.items.map((item) => {
+  const overridesNode = (0, import_yaml5.isMap)(doc.contents) ? doc.contents.get("overrides", true) : void 0;
+  const overrideLocs = (0, import_yaml5.isSeq)(overridesNode) ? overridesNode.items.map((item) => {
     const r = item.range ?? [0, 0, 0];
     const a = lineCounter.linePos(r[0]);
     return {
@@ -131263,7 +131574,7 @@ function splitLines(text2) {
 }
 
 // ../core/src/contracts.ts
-var import_yaml5 = __toESM(require_dist5(), 1);
+var import_yaml6 = __toESM(require_dist5(), 1);
 
 // ../core/src/ir.ts
 function lookup(rec, key) {
@@ -132003,7 +132314,7 @@ function buildContract(index2, unit) {
   };
 }
 function serializeContract(c) {
-  return `${CONTRACT_HEADER}${(0, import_yaml5.stringify)(c, { lineWidth: 0, indent: 2, defaultStringType: "PLAIN", singleQuote: true })}`;
+  return `${CONTRACT_HEADER}${(0, import_yaml6.stringify)(c, { lineWidth: 0, indent: 2, defaultStringType: "PLAIN", singleQuote: true })}`;
 }
 function contractFileFor(unit, taken = /* @__PURE__ */ new Set(), dir2 = CONTRACTS_DIR) {
   const fileOf = (base2) => `${dir2}/${base2}.contract.yml`;
@@ -132171,7 +132482,7 @@ function readContracts(fs8) {
   for (const file2 of fs8.walk(CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort()) {
     const text2 = fs8.read(file2) ?? "";
     try {
-      const parsed = contractSchema.safeParse((0, import_yaml5.parse)(text2));
+      const parsed = contractSchema.safeParse((0, import_yaml6.parse)(text2));
       out.set(
         file2,
         parsed.success ? { file: file2, text: text2, contract: parsed.data } : {
@@ -132331,7 +132642,7 @@ function entryConsumers(e) {
   for (const text2 of [e.before, e.after]) {
     if (!text2) continue;
     try {
-      const data = (0, import_yaml5.parse)(text2);
+      const data = (0, import_yaml6.parse)(text2);
       for (const c of data?.consumers ?? []) if (typeof c?.from === "string") out.add(c.from);
     } catch {
     }
@@ -132873,84 +133184,6 @@ function defineRule(rule) {
   return rule;
 }
 
-// ../core/src/rules/util.ts
-function* refsOf(unit) {
-  for (const site of unit.sites)
-    for (const seg of site.segments) for (const ref of seg.refs) yield { site, ref };
-}
-function readsContextDynamically(unit, context5) {
-  if (unit.parseErrors.length > 0 || unit.sites.some((s) => s.segments.some((seg) => seg.expr.error)))
-    return true;
-  for (const { ref } of refsOf(unit)) {
-    if (ref.context === context5 && ref.dynamic) return true;
-    if (context5 === "inputs" && ref.context === "github" && ref.path[0] === "event") {
-      if (ref.path.length === 1 || ref.path[1] === "inputs" && (ref.path.length === 2 || ref.path[2] === "?"))
-        return true;
-    }
-  }
-  return false;
-}
-function chainTo(index2, target) {
-  const queue2 = [{ path: target, chain: [] }];
-  const seen = /* @__PURE__ */ new Set([target]);
-  let fallback2 = [];
-  while (queue2.length) {
-    const { path: path4, chain } = queue2.shift();
-    const callers = index2.callersOf(path4);
-    if (callers.length === 0) return chain;
-    if (chain.length > fallback2.length) fallback2 = chain;
-    for (const c of callers) {
-      if (seen.has(c.caller.path)) continue;
-      seen.add(c.caller.path);
-      queue2.push({ path: c.caller.path, chain: [c, ...chain] });
-    }
-  }
-  return fallback2;
-}
-function chainRelated(chain) {
-  return chain.map((c) => ({
-    loc: c.job.uses?.loc ?? c.job.loc,
-    message: `jobs.${c.job.id} calls ${c.callee.path}`
-  }));
-}
-function editDistance(a, b) {
-  const x = a.toLowerCase();
-  const y = b.toLowerCase();
-  const dp = Array.from({ length: x.length + 1 }, (_2, i) => [i, ...Array(y.length).fill(0)]);
-  for (let j = 1; j <= y.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= x.length; i++) {
-    for (let j = 1; j <= y.length; j++) {
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1)
-      );
-    }
-  }
-  return dp[x.length][y.length];
-}
-function didYouMean(name, candidates) {
-  const norm = (s) => s.toLowerCase().replace(/[-_]/g, "");
-  let best;
-  for (const c of candidates) {
-    const [a, b] = [norm(name), norm(c)];
-    const prefix2 = Math.min(a.length, b.length) >= 3 && (a.startsWith(b) || b.startsWith(a));
-    const d = a === b ? 0 : prefix2 ? 1 : editDistance(name, c);
-    if (!best || d < best.d) best = { c, d };
-  }
-  if (!best) return void 0;
-  return best.d <= Math.max(2, Math.floor(name.length / 3)) ? best.c : void 0;
-}
-var quote = (s) => `"${escapeControl(s)}"`;
-function listNames(names, max = 6) {
-  if (names.length === 0) return "(none)";
-  const shown = names.slice(0, max).join(", ");
-  return names.length > max ? `${shown}, \u2026 (+${names.length - max})` : shown;
-}
-function isCallOnly(wf) {
-  return wf.triggers.length === 1 && wf.triggers[0] === "workflow_call";
-}
-
 // ../core/src/rules/contracts.ts
 var fileStart2 = (file2) => ({ file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 });
 function locFor(unit, path4, fallback2) {
@@ -133217,12 +133450,42 @@ var schemaViolation = defineRule({
   defaultSeverity: "error",
   docs: {
     summary: "The file does not match GitHub\u2019s workflow / action schema (validated with GitHub\u2019s own parser).",
-    why: "GitHub refuses to run a workflow with schema errors, often only when the trigger fires.",
-    fix: "Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub\u2019s tooling uses."
+    why: "GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it accepts and ignores instead, such as a top-level `env:` in action.yml or a filter the event does not support. Those are reported as warnings: the file runs, but without the setting.",
+    fix: "Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub\u2019s tooling uses.",
+    examples: {
+      bad: `# action.yml
+env:
+  UV_VERSION: 0.9.0   # ignored: actions have no top-level env
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: \${{ env.UV_VERSION }}`,
+      good: `# action.yml
+inputs:
+  uv-version:
+    default: 0.9.0
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: \${{ inputs.uv-version }}`
+    }
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
-      for (const e of unit.schemaErrors) if (!e.kind) ctx.report({ message: e.message, loc: e.loc });
+      for (const e of unit.schemaErrors) {
+        if (e.kind === "context") continue;
+        ctx.report({
+          message: e.message,
+          loc: e.loc,
+          ...e.fix ? { fix: e.fix } : {},
+          // GitHub runs the file without the key: worth fixing, but not a failed run.
+          ...e.kind === "ignored" ? { severity: "warning" } : {}
+        });
+      }
     }
   }
 });
@@ -135408,10 +135671,11 @@ function analyze(opts) {
   };
 }
 function toFinding(rule, severity, input3, registry2) {
+  const lowered = input3.severity && SEVERITY_ORDER[input3.severity] > SEVERITY_ORDER[severity];
   return {
     code: rule.code,
     name: rule.name,
-    severity,
+    severity: lowered ? input3.severity : severity,
     category: rule.category,
     message: escapeControl(input3.message),
     loc: input3.loc,
