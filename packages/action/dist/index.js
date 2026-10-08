@@ -50305,7 +50305,7 @@ var require_identity2 = __commonJS({
     var SCALAR2 = /* @__PURE__ */ Symbol.for("yaml.scalar");
     var SEQ = /* @__PURE__ */ Symbol.for("yaml.seq");
     var NODE_TYPE = /* @__PURE__ */ Symbol.for("yaml.node.type");
-    var isAlias3 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === ALIAS;
+    var isAlias4 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === ALIAS;
     var isDocument2 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === DOC;
     var isMap5 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === MAP;
     var isPair3 = (node2) => !!node2 && typeof node2 === "object" && node2[NODE_TYPE] === PAIR;
@@ -50340,7 +50340,7 @@ var require_identity2 = __commonJS({
     exports2.SCALAR = SCALAR2;
     exports2.SEQ = SEQ;
     exports2.hasAnchor = hasAnchor;
-    exports2.isAlias = isAlias3;
+    exports2.isAlias = isAlias4;
     exports2.isCollection = isCollection2;
     exports2.isDocument = isDocument2;
     exports2.isMap = isMap5;
@@ -109675,13 +109675,13 @@ function handleIntersectionResults(result, left, right) {
         result.issues.push(keyIssues.get(k));
     }
   }
-  const merged = mergeValues(left.value, right.value);
-  if (!merged.valid) {
+  const merged2 = mergeValues(left.value, right.value);
+  if (!merged2.valid) {
     if (aborted(result))
       return result;
-    throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
+    throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged2.mergeErrorPath)}`);
   }
-  result.value = merged.data;
+  result.value = merged2.data;
   return result;
 }
 var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
@@ -121471,8 +121471,8 @@ function foldObjects(members2) {
         if (!parts.some((seen) => JSON.stringify(seen) === JSON.stringify(part)))
           parts.push(part);
       }
-      const merged = parts.length === 1 ? parts[0] : foldObjects(parts) ?? { allOf: parts };
-      assignProp(properties, key, merged);
+      const merged2 = parts.length === 1 ? parts[0] : foldObjects(parts) ?? { allOf: parts };
+      assignProp(properties, key, merged2);
     }
     for (const key of object2.required ?? [])
       required2.add(key);
@@ -130565,32 +130565,41 @@ function shapeOf(unit) {
   const doc = (0, import_yaml4.parseDocument)(unit.source.text, { lineCounter, prettyErrors: false, strict: false });
   if (doc.errors.length > 0) return void 0;
   const shape = { maps: /* @__PURE__ */ new Map(), keys: /* @__PURE__ */ new Map() };
+  const locOf = (range3) => {
+    const a = lineCounter.linePos(range3[0]);
+    const b = lineCounter.linePos(range3[1]);
+    return { file: unit.file, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
+  };
+  const mergeOf = (value) => {
+    const sources = (0, import_yaml4.isSeq)(value) ? value.items : [value];
+    const maps = sources.map((s) => (0, import_yaml4.isAlias)(s) ? s.resolve(doc) : s).filter(import_yaml4.isMap);
+    const keys = maps.flatMap((m) => m.items.flatMap((p) => (0, import_yaml4.isScalar)(p.key) ? [String(p.key.value)] : []));
+    const aliases = sources.filter(import_yaml4.isAlias).map((a) => `*${a.source}`);
+    return { aliases: [...new Set(aliases)], keys };
+  };
   const walk = (node2, path4) => {
     if ((0, import_yaml4.isSeq)(node2)) {
       for (const [i, item] of node2.items.entries()) walk(item, [...path4, i]);
       return;
     }
-    if (!(0, import_yaml4.isMap)(node2)) return;
-    const map3 = { path: path4, keys: [] };
-    if (node2.range) {
-      const p = lineCounter.linePos(node2.range[0]);
-      shape.maps.set(posKey(p.line, p.col), map3);
-    }
+    if (!(0, import_yaml4.isMap)(node2) || !node2.range) return;
+    const map3 = { path: path4, keys: [], loc: locOf(node2.range) };
+    shape.maps.set(posKey(map3.loc.line, map3.loc.column), map3);
     for (const pair of node2.items) {
       if (!(0, import_yaml4.isScalar)(pair.key) || !pair.key.range) continue;
       const name = String(pair.key.value);
-      const a = lineCounter.linePos(pair.key.range[0]);
-      const b = lineCounter.linePos(pair.key.range[1]);
-      const loc = { file: unit.file, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
-      const key = { name, map: map3, loc };
+      const key = { name, map: map3, loc: locOf(pair.key.range) };
+      if (name === "<<") key.merge = mergeOf(pair.value);
       map3.keys.push(key);
-      shape.keys.set(posKey(a.line, a.col), key);
+      shape.keys.set(posKey(key.loc.line, key.loc.column), key);
       walk(pair.value, [...path4, name]);
     }
   };
   walk(doc.contents, []);
   return shape;
 }
+var unexpectedValue = (name) => `Unexpected value '${name}'`;
+var propertyOf = (def, name) => Object.hasOwn(def.properties, name) ? def.properties[name] : void 0;
 function explain(unit, diagnostics) {
   if (!diagnostics.some((d) => !d.kind)) return diagnostics;
   const shape = shapeOf(unit);
@@ -130615,55 +130624,70 @@ function explain(unit, diagnostics) {
   }
   const replaced = /* @__PURE__ */ new Map();
   for (const [map3, group2] of groups) {
-    if (group2.length < 2) continue;
-    const merged = mergeAlternatives(map3, group2, schema3, root);
-    if (!merged) continue;
-    for (const [i, d] of group2.entries()) replaced.set(d, i === 0 ? merged : void 0);
+    const resolved = resolveAlternatives(map3, group2, keyOf, schema3, root);
+    if (!resolved) continue;
+    for (const [i, d] of group2.entries()) replaced.set(d, i === 0 ? resolved : []);
   }
   const out = [];
-  for (const d of diagnostics) {
-    if (replaced.has(d)) {
-      const merged = replaced.get(d);
-      if (merged) out.push(merged);
+  for (const d of diagnostics.flatMap((d2) => replaced.get(d2) ?? [d2])) {
+    const key = keyOf.get(d);
+    if (!key || d.message !== unexpectedValue(key.name)) {
+      out.push(d);
       continue;
     }
-    const key = keyOf.get(d);
-    const ignored = key ? ignoredKey(unit.kind, key, schema3, root) : void 0;
-    out.push(ignored ? { ...d, kind: "ignored", ...ignored } : d);
+    const ignored = ignoredKey(unit.kind, key, schema3, root);
+    if (ignored) out.push({ ...d, kind: "ignored", ...ignored });
+    else if (key.merge) out.push({ ...d, fix: mergeFix(key, "here", "the whole mapping") });
+    else out.push(d);
   }
   return out;
 }
-function mergeAlternatives(map3, group2, schema3, root) {
+function resolveAlternatives(map3, group2, keyOf, schema3, root) {
   const shapes = mappingsAt(schema3, root, map3.path);
   if (shapes.length < 2) return void 0;
   const names = new Set(map3.keys.map((k) => k.name));
   const scored = shapes.map((def) => {
-    const unexpected = def.looseKeyType ? [] : map3.keys.filter((k) => !def.properties[k.name]);
+    const unexpected = def.looseKeyType ? [] : map3.keys.filter((k) => !propertyOf(def, k.name));
     const missing = Object.entries(def.properties).filter(([name, p]) => p.required && !names.has(name)).map(([name]) => name);
     return { def, unexpected, missing, score: unexpected.length + missing.length };
   }).sort((a, b) => a.score - b.score);
   const [best, runnerUp] = scored;
-  if (!best || !runnerUp || best.score === 0 || best.score === runnerUp.score) return void 0;
-  const others = shapes.filter((s) => s !== best.def);
-  const own2 = map3.keys.filter(
-    (k) => best.def.properties[k.name] && !others.some((o) => o.properties[k.name])
-  );
-  const anchor2 = own2.find((k) => best.def.properties[k.name].required) ?? own2[0];
-  const parts = [];
-  if (best.unexpected.length > 0) {
-    const list = best.unexpected.map((k) => `'${k.name}'`).join(", ");
-    const s = best.unexpected.length > 1 ? "s" : "";
-    parts.push(
-      `Unexpected value${s} ${list}${anchor2 ? ` (not allowed together with \`${anchor2.name}\`)` : ""}`
-    );
+  if (!best || !runnerUp || best.score === 0) return void 0;
+  const agrees = (def) => group2.every((d) => {
+    const key = keyOf.get(d);
+    if (key) return !def.looseKeyType && !propertyOf(def, key.name);
+    return propertyOf(def, d.message.slice("Required property is missing: ".length))?.required === true;
+  });
+  const explained = (def) => {
+    const others = shapes.filter((s) => s !== def);
+    const own2 = map3.keys.filter((k) => propertyOf(def, k.name) && !others.some((o) => propertyOf(o, k.name)));
+    const anchor2 = own2.find((k) => propertyOf(def, k.name).required) ?? own2[0];
+    return (key, d) => {
+      if (!anchor2 || !others.some((o) => propertyOf(o, key.name))) return d;
+      const e = { ...d, message: `${d.message} (not allowed together with \`${anchor2.name}\`)` };
+      keyOf.set(e, key);
+      return e;
+    };
+  };
+  if (best.score < runnerUp.score && !agrees(best.def)) {
+    const explain3 = explained(best.def);
+    return [
+      ...best.unexpected.map((key) => {
+        const parsed = group2.find((d2) => keyOf.get(d2) === key);
+        const d = parsed ?? { message: unexpectedValue(key.name), loc: key.loc };
+        keyOf.set(d, key);
+        return explain3(key, d);
+      }),
+      ...best.missing.map((name) => {
+        const message = `Required property is missing: ${name}`;
+        return group2.find((d) => d.message === message) ?? { message, loc: map3.loc };
+      })
+    ];
   }
-  if (best.missing.length > 0) {
-    parts.push(
-      best.missing.length > 1 ? `Required properties are missing: ${best.missing.join(", ")}` : `Required property is missing: ${best.missing[0]}`
-    );
-  }
-  const mapLoc = group2.find((d) => d.message.startsWith("Required property is missing: "))?.loc ?? group2[0].loc;
-  return { message: parts.join("; "), loc: best.unexpected[0]?.loc ?? mapLoc };
+  const guesses = scored.filter((s) => s.score === best.score && agrees(s.def));
+  if (guesses.length !== 1) return void 0;
+  const explain2 = explained(guesses[0].def);
+  return group2.map((d) => keyOf.has(d) ? explain2(keyOf.get(d), d) : d);
 }
 function ignoredKey(kind, key, schema3, root) {
   const { path: path4 } = key.map;
@@ -130674,6 +130698,12 @@ function ignoredKey(kind, key, schema3, root) {
   const hint = guess ? ` (did you mean \`${guess}\`?)` : "";
   const rename2 = guess ? `Rename it to \`${guess}\`.` : void 0;
   if (kind === "action" && path4.length === 0) {
+    if (key.merge) {
+      return {
+        message: `GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so ${merged(key)} are not applied`,
+        fix: mergeFix(key, "at the top level")
+      };
+    }
     if (key.name === "env") {
       return {
         message: "GitHub ignores this key: actions have no top-level `env`, so the action's steps never see these values",
@@ -130687,6 +130717,13 @@ function ignoredKey(kind, key, schema3, root) {
   }
   const event = path4[1];
   if (kind === "workflow" && path4.length === 2 && path4[0] === "on" && typeof event === "string" && event !== "workflow_call" && shapes.length > 0) {
+    if (key.merge) {
+      const filters = key.merge.keys.some((k) => EVENT_FILTERS.includes(k));
+      return {
+        message: `GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so ${merged(key, filters ? "filters" : "keys")} are not applied to \`${event}\`${filters ? " and the workflow runs regardless of them" : ""}`,
+        fix: mergeFix(key, `under \`${event}\``, `the whole event (\`${event}: ${key.merge.aliases[0]}\`)`)
+      };
+    }
     const filter2 = didYouMean(key.name, EVENT_FILTERS) !== void 0;
     return {
       message: `GitHub ignores this key: the \`${event}\` event does not support \`${key.name}\`${hint}, ${filter2 ? "so the workflow runs regardless of it" : "so it has no effect"}`,
@@ -130694,6 +130731,15 @@ function ignoredKey(kind, key, schema3, root) {
     };
   }
   return void 0;
+}
+function merged(key, what = "keys") {
+  const aliases = key.merge?.aliases ?? [];
+  return aliases.length > 0 ? `the ${what} in ${aliases.map((a) => `\`${a}\``).join(", ")}` : `the ${what} merged here`;
+}
+function mergeFix(key, where2, whole) {
+  const repeat = `GitHub does not support YAML merge keys (\`<<\`): repeat the keys ${where2}`;
+  const single = key.merge?.aliases.length === 1 && key.map.keys.length === 1;
+  return whole && single ? `${repeat}, or alias ${whole} instead.` : `${repeat}.`;
 }
 
 // ../core/src/project.ts
@@ -132062,7 +132108,7 @@ function expandMatrix(m) {
     for (const [k, v] of Object.entries(entry.values)) {
       entryCells[k] = entry.dynamicKeys.includes(k) ? { known: false } : { known: true, value: v };
     }
-    let merged = false;
+    let merged2 = false;
     for (const combo of originals) {
       let fits = true;
       for (const [k, cell2] of Object.entries(entryCells)) {
@@ -132083,9 +132129,9 @@ function expandMatrix(m) {
         if (!dimNames.includes(k)) combo.values[k] = cell2;
       }
       combo.includes.push(idx);
-      merged = true;
+      merged2 = true;
     }
-    if (!merged) created.push({ values: { ...entryCells }, origin: "include", includes: [idx] });
+    if (!merged2) created.push({ values: { ...entryCells }, origin: "include", includes: [idx] });
   });
   const combos = [...originals, ...created];
   const keys = [];
@@ -133450,8 +133496,8 @@ var schemaViolation = defineRule({
   defaultSeverity: "error",
   docs: {
     summary: "The file does not match GitHub\u2019s workflow / action schema (validated with GitHub\u2019s own parser).",
-    why: "GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it accepts and ignores instead, such as a top-level `env:` in action.yml or a filter the event does not support. Those are reported as warnings: the file runs, but without the setting.",
-    fix: "Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub\u2019s tooling uses.",
+    why: "GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it accepts and ignores instead, such as a top-level `env:` in action.yml, a filter the event does not support or a YAML merge key under an event. Those are reported as warnings: the file runs, but without the setting. The configured severity caps both kinds, so `FP503: warning` also reports schema errors as warnings, and ignored keys are never reported above warning.",
+    fix: "Correct the key or value reported. Most messages come from @actions/workflow-parser, the parser GitHub\u2019s tooling uses; for a key GitHub ignores, the warning says what is lost and how to fix it.",
     examples: {
       bad: `# action.yml
 env:

@@ -237,6 +237,70 @@ describe('FP503 keys GitHub ignores', () => {
     ]);
   });
 
+  it('warns that a YAML merge key under an event drops what it names, so the filters are not applied', () => {
+    const r = lint(
+      {
+        [`${WF}/w.yml`]: yaml`
+          on:
+            push: &filters
+              branches: [main]
+            pull_request:
+              <<: *filters
+            pull_request_target:
+              <<: *filters
+              types: [opened]
+            workflow_dispatch:
+              <<:
+                inputs:
+                  x: { type: string }
+          jobs:
+            j:
+              runs-on: x
+              steps: [{ run: x }]
+        `,
+        '.github/actions/a/action.yml': yaml`
+          name: a
+          description: d
+          runs:
+            using: composite
+            steps: []
+          <<: { author: me }
+        `,
+      },
+      { schema: true },
+    );
+    expect(byCode(r, 'FP503').map((f) => `${f.severity} ${at(f)} ${f.message} | ${f.fix}`)).toEqual([
+      'warning .github/actions/a/action.yml:6:1 GitHub ignores this key: YAML merge keys (`<<`) are not supported, so the keys merged here are not applied | GitHub does not support YAML merge keys (`<<`): repeat the keys at the top level.',
+      `warning ${WF}/w.yml:5:5 GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so the filters in \`*filters\` are not applied to \`pull_request\` and the workflow runs regardless of them | GitHub does not support YAML merge keys (\`<<\`): repeat the keys under \`pull_request\`, or alias the whole event (\`pull_request: *filters\`) instead.`,
+      `warning ${WF}/w.yml:7:5 GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so the filters in \`*filters\` are not applied to \`pull_request_target\` and the workflow runs regardless of them | GitHub does not support YAML merge keys (\`<<\`): repeat the keys under \`pull_request_target\`.`,
+      `warning ${WF}/w.yml:10:5 GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so the keys merged here are not applied to \`workflow_dispatch\` | GitHub does not support YAML merge keys (\`<<\`): repeat the keys under \`workflow_dispatch\`.`,
+    ]);
+  });
+
+  it('keeps a YAML merge key in a job or step an error, and says how to replace it', () => {
+    const r = lint(
+      {
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            a: &defaults
+              runs-on: x
+              steps: [{ run: x }]
+            b:
+              <<: *defaults
+              steps: [{ run: y }]
+        `,
+      },
+      { schema: true },
+    );
+    const findings = byCode(r, 'FP503');
+    expect(findings.map((f) => `${f.severity} ${at(f)} ${f.message}`)).toEqual([
+      `error ${WF}/w.yml:7:5 Unexpected value '<<'`,
+      `error ${WF}/w.yml:7:5 Required property is missing: runs-on`,
+    ]);
+    expect(findings[0]?.fix).toBe('GitHub does not support YAML merge keys (`<<`): repeat the keys here.');
+  });
+
   it('caps the warning at the configured severity and never raises it', () => {
     const files = {
       '.github/actions/a/action.yml': 'env: {}\nrunz: {}\n',
@@ -292,7 +356,7 @@ describe('FP503 steps and jobs that mix two shapes', () => {
     ).toEqual([`error ${WF}/w.yml:4:5 Unexpected value 'runs-on' (not allowed together with \`uses\`)`]);
   });
 
-  it('lists every misplaced key and missing property of the closest shape', () => {
+  it('keeps the parser’s errors when it guessed the closest shape, saying which key a misplaced one conflicts with', () => {
     expect(
       schema503({
         '.github/actions/a/action.yml': yaml`
@@ -306,7 +370,87 @@ describe('FP503 steps and jobs that mix two shapes', () => {
         `,
       }),
     ).toEqual([
-      "error .github/actions/a/action.yml:6:7 Unexpected value 'with' (not allowed together with `shell`); Required property is missing: run",
+      'error .github/actions/a/action.yml:4:7 Required property is missing: run',
+      "error .github/actions/a/action.yml:6:7 Unexpected value 'with' (not allowed together with `shell`)",
+    ]);
+  });
+
+  it('reports each typo at its own key, without blaming a valid one', () => {
+    expect(
+      schema503({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            a:
+              runs_on: ubuntu-latest
+              steps:
+                - run: echo
+                  shel: bash
+                  wth: x
+                - uses: actions/checkout@v4
+                  wth:
+                    a: 1
+                  evn:
+                    A: 1
+            b:
+              runs-on: ubuntu-latest
+              run-on: x
+              step:
+                - run: echo
+            c:
+              uses: ./.github/workflows/r.yml
+              with: {}
+              secret: inherit
+              needz: [a]
+        `,
+        [`${WF}/r.yml`]: 'on: workflow_call\njobs:\n  r:\n    runs-on: x\n    steps: [{ run: x }]\n',
+      }),
+    ).toEqual([
+      `error ${WF}/w.yml:4:5 Unexpected value 'runs_on'`,
+      `error ${WF}/w.yml:4:5 Required property is missing: runs-on`,
+      `error ${WF}/w.yml:7:9 Unexpected value 'shel'`,
+      `error ${WF}/w.yml:8:9 Unexpected value 'wth'`,
+      `error ${WF}/w.yml:10:9 Unexpected value 'wth'`,
+      `error ${WF}/w.yml:12:9 Unexpected value 'evn'`,
+      `error ${WF}/w.yml:16:5 Unexpected value 'run-on'`,
+      `error ${WF}/w.yml:17:5 Unexpected value 'step'`,
+      `error ${WF}/w.yml:22:5 Unexpected value 'secret'`,
+      `error ${WF}/w.yml:23:5 Unexpected value 'needz'`,
+    ]);
+  });
+
+  it('reports a misplaced key and a typo in a step the parser guessed wrong at their own keys', () => {
+    expect(
+      schema503({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            j:
+              runs-on: x
+              steps:
+                - working-directory: x
+                  uses: actions/checkout@v4
+                  wth:
+                    fetch-depth: 0
+        `,
+      }),
+    ).toEqual([
+      `error ${WF}/w.yml:6:9 Unexpected value 'working-directory' (not allowed together with \`uses\`)`,
+      `error ${WF}/w.yml:8:9 Unexpected value 'wth'`,
+    ]);
+  });
+
+  it('explains a misplaced key the same way whichever key comes first', () => {
+    const step = (keys: string) =>
+      schema503({
+        [`${WF}/w.yml`]: `on: push\njobs:\n  j:\n    runs-on: x\n    steps:\n      - ${keys}\n`,
+      }).map((f) => f.replace(/^.*?:\d+:\d+ /, ''));
+    const misplaced = "Unexpected value 'working-directory' (not allowed together with `uses`)";
+    expect(step('uses: a/b@v1\n        working-directory: x')).toEqual([misplaced]);
+    expect(step('working-directory: x\n        uses: a/b@v1')).toEqual([misplaced]);
+    // A tie (one key of each shape): the parser’s guess stands, and its error says what it conflicts with.
+    expect(step('run: echo\n        uses: a/b@v1')).toEqual([
+      "Unexpected value 'uses' (not allowed together with `run`)",
     ]);
   });
 

@@ -1,12 +1,13 @@
 import { FeatureFlags } from '@actions/expressions/features';
 import { NoOperationTraceWriter, parseWorkflow } from '@actions/workflow-parser';
 import { parseAction } from '@actions/workflow-parser/actions/action-parser';
+import type { MappingDefinition } from '@actions/workflow-parser/templates/schema/mapping-definition';
 import type { TemplateSchema } from '@actions/workflow-parser/templates/schema/template-schema';
 import {
   TemplateContext,
   TemplateValidationErrors,
 } from '@actions/workflow-parser/templates/template-context';
-import { isMap, isScalar, isSeq, LineCounter, parseDocument } from 'yaml';
+import { isAlias, isMap, isScalar, isSeq, LineCounter, parseDocument } from 'yaml';
 import { CONTEXT_FUNCTIONS, KNOWN_CONTEXTS } from './expressions';
 import type { Diagnostic, UnitDecl } from './ir';
 import type { Logger } from './logger';
@@ -118,12 +119,15 @@ type Path = (string | number)[];
 interface MapNode {
   path: Path;
   keys: KeyNode[];
+  loc: Loc;
 }
 
 interface KeyNode {
   name: string;
   map: MapNode;
   loc: Loc;
+  /** For a YAML merge key (`<<`): the aliases it names (`*filters`) and the keys of the mappings they point to. */
+  merge?: { aliases: string[]; keys: string[] };
 }
 
 /** Every mapping and key of the file, by the `line:column` where the parser reports problems with them. */
@@ -139,27 +143,36 @@ function shapeOf(unit: UnitDecl): Shape | undefined {
   const doc = parseDocument(unit.source.text, { lineCounter, prettyErrors: false, strict: false });
   if (doc.errors.length > 0) return undefined;
   const shape: Shape = { maps: new Map(), keys: new Map() };
+  const locOf = (range: [number, number, number?]): Loc => {
+    const a = lineCounter.linePos(range[0]);
+    const b = lineCounter.linePos(range[1]);
+    return { file: unit.file, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
+  };
+  const mergeOf = (value: unknown): KeyNode['merge'] => {
+    const sources = isSeq(value) ? value.items : [value];
+    const maps = sources.map((s) => (isAlias(s) ? s.resolve(doc) : s)).filter(isMap);
+    const keys = maps.flatMap((m) => m.items.flatMap((p) => (isScalar(p.key) ? [String(p.key.value)] : [])));
+    const aliases = sources.filter(isAlias).map((a) => `*${a.source}`);
+    return { aliases: [...new Set(aliases)], keys };
+  };
   const walk = (node: unknown, path: Path): void => {
     if (isSeq(node)) {
       for (const [i, item] of node.items.entries()) walk(item, [...path, i]);
       return;
     }
     // Aliases are not followed: the parser reports problems in aliased content at the anchored node.
-    if (!isMap(node)) return;
-    const map: MapNode = { path, keys: [] };
-    if (node.range) {
-      const p = lineCounter.linePos(node.range[0]);
-      shape.maps.set(posKey(p.line, p.col), map);
-    }
+    if (!isMap(node) || !node.range) return;
+    const map: MapNode = { path, keys: [], loc: locOf(node.range) };
+    shape.maps.set(posKey(map.loc.line, map.loc.column), map);
     for (const pair of node.items) {
       if (!isScalar(pair.key) || !pair.key.range) continue;
       const name = String(pair.key.value);
-      const a = lineCounter.linePos(pair.key.range[0]);
-      const b = lineCounter.linePos(pair.key.range[1]);
-      const loc = { file: unit.file, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
-      const key: KeyNode = { name, map, loc };
+      const key: KeyNode = { name, map, loc: locOf(pair.key.range) };
+      // Merge keys are a YAML 1.1 extension. GitHub's parser, like @actions/workflow-parser, reads `<<` as an ordinary
+      // key: the mapping it names is not merged.
+      if (name === '<<') key.merge = mergeOf(pair.value);
       map.keys.push(key);
-      shape.keys.set(posKey(a.line, a.col), key);
+      shape.keys.set(posKey(key.loc.line, key.loc.column), key);
       walk(pair.value, [...path, name]);
     }
   };
@@ -167,9 +180,16 @@ function shapeOf(unit: UnitDecl): Shape | undefined {
   return shape;
 }
 
+const unexpectedValue = (name: string) => `Unexpected value '${name}'`;
+
+/** The property a mapping shape defines for a key (own properties only: a key may be named `toString`). */
+const propertyOf = (def: MappingDefinition, name: string) =>
+  Object.hasOwn(def.properties, name) ? def.properties[name] : undefined;
+
 /**
- * Turns parser errors into what GitHub actually does: one finding per step (or job) whose keys mix two shapes, and
- * keys GitHub silently ignores marked as such instead of as errors that stop the run.
+ * Turns parser errors into what GitHub actually does: keys of steps (or jobs) that mix two shapes are reported against
+ * the shape the step fits best, and keys GitHub silently ignores are marked as such instead of as errors that stop
+ * the run.
  */
 function explain(unit: UnitDecl, diagnostics: Diagnostic[]): Diagnostic[] {
   if (!diagnostics.some((d) => !d.kind)) return diagnostics;
@@ -178,6 +198,7 @@ function explain(unit: UnitDecl, diagnostics: Diagnostic[]): Diagnostic[] {
   const schema = schemaFor(unit.kind);
   const root = SCHEMA_ROOT[unit.kind];
 
+  // The key an `Unexpected value 'k'` diagnostic is about.
   const keyOf = new Map<Diagnostic, KeyNode>();
   const groups = new Map<MapNode, Diagnostic[]>();
   for (const d of diagnostics) {
@@ -195,46 +216,51 @@ function explain(unit: UnitDecl, diagnostics: Diagnostic[]): Diagnostic[] {
     if (map) groups.set(map, [...(groups.get(map) ?? []), d]);
   }
 
-  // `undefined`: drop the diagnostic, it is covered by the merged one.
-  const replaced = new Map<Diagnostic, Diagnostic | undefined>();
+  // The first diagnostic of a group stands for the group's new diagnostics, the others for none.
+  const replaced = new Map<Diagnostic, Diagnostic[]>();
   for (const [map, group] of groups) {
-    if (group.length < 2) continue;
-    const merged = mergeAlternatives(map, group, schema, root);
-    if (!merged) continue;
-    for (const [i, d] of group.entries()) replaced.set(d, i === 0 ? merged : undefined);
+    const resolved = resolveAlternatives(map, group, keyOf, schema, root);
+    if (!resolved) continue;
+    for (const [i, d] of group.entries()) replaced.set(d, i === 0 ? resolved : []);
   }
 
   const out: Diagnostic[] = [];
-  for (const d of diagnostics) {
-    if (replaced.has(d)) {
-      const merged = replaced.get(d);
-      if (merged) out.push(merged);
+  for (const d of diagnostics.flatMap((d) => replaced.get(d) ?? [d])) {
+    const key = keyOf.get(d);
+    // Only the parser's own `Unexpected value 'k'`: an explained key is about the step's shape, not the key itself.
+    if (!key || d.message !== unexpectedValue(key.name)) {
+      out.push(d);
       continue;
     }
-    const key = keyOf.get(d);
-    const ignored = key ? ignoredKey(unit.kind, key, schema, root) : undefined;
-    out.push(ignored ? { ...d, kind: 'ignored', ...ignored } : d);
+    const ignored = ignoredKey(unit.kind, key, schema, root);
+    if (ignored) out.push({ ...d, kind: 'ignored', ...ignored });
+    else if (key.merge) out.push({ ...d, fix: mergeFix(key, 'here', 'the whole mapping') });
+    else out.push(d);
   }
   return out;
 }
 
 /**
  * The parser picks between alternative shapes (a `run` or a `uses` step, a job that runs steps or calls a workflow)
- * by the first key that only some of them allow, then reports every other key against that choice. One wrong key can
- * produce four errors that blame the right ones. Report the shape the mapping fits best instead, once.
+ * by the first key that only some of them allow, then reports every other key against that choice. When that guess
+ * is wrong, one misplaced key produces errors that blame the right ones; those are reported against the shape the
+ * mapping fits best instead: one error per key it does not allow, at that key, and one per required key it lacks.
+ * When the guess is right, the parser's errors stay. Either way, a key another shape allows says which key it
+ * conflicts with. Returns `undefined` to keep the parser's errors as they are.
  */
-function mergeAlternatives(
+function resolveAlternatives(
   map: MapNode,
   group: Diagnostic[],
+  keyOf: Map<Diagnostic, KeyNode>,
   schema: TemplateSchema,
   root: string,
-): Diagnostic | undefined {
+): Diagnostic[] | undefined {
   const shapes = mappingsAt(schema, root, map.path);
   if (shapes.length < 2) return undefined;
   const names = new Set(map.keys.map((k) => k.name));
   const scored = shapes
     .map((def) => {
-      const unexpected = def.looseKeyType ? [] : map.keys.filter((k) => !def.properties[k.name]);
+      const unexpected = def.looseKeyType ? [] : map.keys.filter((k) => !propertyOf(def, k.name));
       const missing = Object.entries(def.properties)
         .filter(([name, p]) => p.required && !names.has(name))
         .map(([name]) => name);
@@ -242,32 +268,49 @@ function mergeAlternatives(
     })
     .sort((a, b) => a.score - b.score);
   const [best, runnerUp] = scored;
-  // No clear winner: the parser's own errors are as good an explanation as any.
-  if (!best || !runnerUp || best.score === 0 || best.score === runnerUp.score) return undefined;
+  if (!best || !runnerUp || best.score === 0) return undefined;
 
-  const others = shapes.filter((s) => s !== best.def);
-  const own = map.keys.filter(
-    (k) => best.def.properties[k.name] && !others.some((o) => o.properties[k.name]),
-  );
-  const anchor = own.find((k) => best.def.properties[k.name]!.required) ?? own[0];
-  const parts: string[] = [];
-  if (best.unexpected.length > 0) {
-    const list = best.unexpected.map((k) => `'${k.name}'`).join(', ');
-    const s = best.unexpected.length > 1 ? 's' : '';
-    parts.push(
-      `Unexpected value${s} ${list}${anchor ? ` (not allowed together with \`${anchor.name}\`)` : ''}`,
-    );
+  // Whether every parser error is a problem with this shape too.
+  const agrees = (def: MappingDefinition) =>
+    group.every((d) => {
+      const key = keyOf.get(d);
+      if (key) return !def.looseKeyType && !propertyOf(def, key.name);
+      return propertyOf(def, d.message.slice('Required property is missing: '.length))?.required === true;
+    });
+  // `k (not allowed together with `uses`)`, when another shape allows k and the mapping has a key only `def` allows.
+  const explained = (def: MappingDefinition) => {
+    const others = shapes.filter((s) => s !== def);
+    const own = map.keys.filter((k) => propertyOf(def, k.name) && !others.some((o) => propertyOf(o, k.name)));
+    const anchor = own.find((k) => propertyOf(def, k.name)!.required) ?? own[0];
+    return (key: KeyNode, d: Diagnostic): Diagnostic => {
+      if (!anchor || !others.some((o) => propertyOf(o, key.name))) return d;
+      const e = { ...d, message: `${d.message} (not allowed together with \`${anchor.name}\`)` };
+      keyOf.set(e, key);
+      return e;
+    };
+  };
+
+  if (best.score < runnerUp.score && !agrees(best.def)) {
+    const explain = explained(best.def);
+    return [
+      ...best.unexpected.map((key) => {
+        const parsed = group.find((d) => keyOf.get(d) === key);
+        const d = parsed ?? { message: unexpectedValue(key.name), loc: key.loc };
+        keyOf.set(d, key);
+        return explain(key, d);
+      }),
+      ...best.missing.map((name) => {
+        const message = `Required property is missing: ${name}`;
+        return group.find((d) => d.message === message) ?? { message, loc: map.loc };
+      }),
+    ];
   }
-  if (best.missing.length > 0) {
-    parts.push(
-      best.missing.length > 1
-        ? `Required properties are missing: ${best.missing.join(', ')}`
-        : `Required property is missing: ${best.missing[0]}`,
-    );
-  }
-  const mapLoc =
-    group.find((d) => d.message.startsWith('Required property is missing: '))?.loc ?? group[0]!.loc;
-  return { message: parts.join('; '), loc: best.unexpected[0]?.loc ?? mapLoc };
+
+  // The parser guessed a shape that fits as well as any: keep its errors, and say why a misplaced key is wrong.
+  const guesses = scored.filter((s) => s.score === best.score && agrees(s.def));
+  if (guesses.length !== 1) return undefined;
+  const explain = explained(guesses[0]!.def);
+  return group.map((d) => (keyOf.has(d) ? explain(keyOf.get(d)!, d) : d));
 }
 
 /**
@@ -275,6 +318,7 @@ function mergeAlternatives(
  * - unknown top-level keys of action metadata: the runner reads action.yml with a schema that allows any extra key;
  * - unknown keys under an event in `on:`: GitHub reads only the filters each event supports (`workflow_call`, which
  *   declares an interface, is validated in full).
+ * A YAML merge key (`<<`) is such a key too, and what it loses is the keys it was meant to merge.
  */
 function ignoredKey(
   kind: UnitDecl['kind'],
@@ -292,6 +336,12 @@ function ignoredKey(
   const rename = guess ? `Rename it to \`${guess}\`.` : undefined;
 
   if (kind === 'action' && path.length === 0) {
+    if (key.merge) {
+      return {
+        message: `GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so ${merged(key)} are not applied`,
+        fix: mergeFix(key, 'at the top level'),
+      };
+    }
     if (key.name === 'env') {
       return {
         message:
@@ -314,6 +364,13 @@ function ignoredKey(
     event !== 'workflow_call' &&
     shapes.length > 0
   ) {
+    if (key.merge) {
+      const filters = key.merge.keys.some((k) => EVENT_FILTERS.includes(k));
+      return {
+        message: `GitHub ignores this key: YAML merge keys (\`<<\`) are not supported, so ${merged(key, filters ? 'filters' : 'keys')} are not applied to \`${event}\`${filters ? ' and the workflow runs regardless of them' : ''}`,
+        fix: mergeFix(key, `under \`${event}\``, `the whole event (\`${event}: ${key.merge.aliases[0]}\`)`),
+      };
+    }
     const filter = didYouMean(key.name, EVENT_FILTERS) !== undefined;
     return {
       message: `GitHub ignores this key: the \`${event}\` event does not support \`${key.name}\`${hint}, ${filter ? 'so the workflow runs regardless of it' : 'so it has no effect'}`,
@@ -321,4 +378,19 @@ function ignoredKey(
     };
   }
   return undefined;
+}
+
+/** What a merge key was meant to bring in: "the filters in `*filters`". */
+function merged(key: KeyNode, what = 'keys'): string {
+  const aliases = key.merge?.aliases ?? [];
+  return aliases.length > 0
+    ? `the ${what} in ${aliases.map((a) => `\`${a}\``).join(', ')}`
+    : `the ${what} merged here`;
+}
+
+/** How to replace a merge key: repeat the keys, or alias the whole mapping when it adds nothing of its own. */
+function mergeFix(key: KeyNode, where: string, whole?: string): string {
+  const repeat = `GitHub does not support YAML merge keys (\`<<\`): repeat the keys ${where}`;
+  const single = key.merge?.aliases.length === 1 && key.map.keys.length === 1;
+  return whole && single ? `${repeat}, or alias ${whole} instead.` : `${repeat}.`;
 }

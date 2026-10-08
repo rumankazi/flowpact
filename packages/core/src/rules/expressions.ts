@@ -117,9 +117,13 @@ export const schemaViolation = defineRule({
       'The file does not match GitHub’s workflow / action schema (validated with GitHub’s own parser).',
     why:
       'GitHub refuses to run a workflow or action with schema errors, often only when the trigger fires. Some keys it ' +
-      'accepts and ignores instead, such as a top-level `env:` in action.yml or a filter the event does not support. ' +
-      'Those are reported as warnings: the file runs, but without the setting.',
-    fix: 'Correct the key or value reported; the message comes from @actions/workflow-parser, the parser GitHub’s tooling uses.',
+      'accepts and ignores instead, such as a top-level `env:` in action.yml, a filter the event does not support or a ' +
+      'YAML merge key under an event. Those are reported as warnings: the file runs, but without the setting. ' +
+      'The configured severity caps both kinds, so `FP503: warning` also reports schema errors as warnings, and ' +
+      'ignored keys are never reported above warning.',
+    fix:
+      'Correct the key or value reported. Most messages come from @actions/workflow-parser, the parser GitHub’s ' +
+      'tooling uses; for a key GitHub ignores, the warning says what is lost and how to fix it.',
     examples: {
       bad: `# action.yml
 env:
