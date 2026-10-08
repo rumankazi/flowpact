@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFil
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { reportSchema, VERSION } from '@flowpact/core';
+import { DOCS_BASE_URL, reportSchema, VERSION } from '@flowpact/core';
 import { execa } from 'execa';
 import { describe, expect, it } from 'vitest';
 
@@ -291,6 +291,16 @@ describe('flowpact explain / rules / --version', () => {
     const r = await flowpact(['--version']);
     const banner = `flowpact v${VERSION} · config schema v1 · contract schema v1 · report schema v1 · node v`;
     expect(r.stdout.trim().slice(0, banner.length)).toBe(banner);
+  });
+
+  it('points --help at the docs, without color codes when piped (#43)', async () => {
+    const root = await flowpact(['--help']);
+    expect(root.stdout).toContain(`Docs: ${DOCS_BASE_URL}/docs`);
+    expect(root.stdout).toContain(`CLI reference: ${DOCS_BASE_URL}/docs/cli`);
+    const lint = await flowpact(['lint', '--help']);
+    expect(lint.stdout).toContain(`Docs: ${DOCS_BASE_URL}/docs/cli#flowpact-lint`);
+    expect(lint.stdout).not.toMatch(/\u001B\[/);
+    expect((await flowpact(['generate', '--help'])).stdout).toContain('/docs/cli#flowpact-generate');
   });
 
   it('is an executable single-file bundle', () => {

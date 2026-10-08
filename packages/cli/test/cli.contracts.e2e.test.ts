@@ -170,6 +170,24 @@ describe('flowpact generate / flowpact check', () => {
     expect((await flowpact(['check', '--root', root, '--only', CONTRACT_RULES])).exitCode).toBe(0);
   });
 
+  it('generate with paths writes their contracts and the ones that list them as a consumer (#41)', async () => {
+    const root = repo();
+    const r = await flowpact(['generate', '.github/workflows/pipeline.yml', '--root', root]);
+    expect(r.exitCode).toBe(0);
+    // build.yml's contract lists pipeline.yml as a consumer; package.yml and publish.yml are left alone.
+    expect(contractsIn(root)).toEqual(['build.contract.yml', 'pipeline.contract.yml']);
+    const check = await flowpact([
+      'check',
+      '.github/workflows/pipeline.yml',
+      '--root',
+      root,
+      '--only',
+      CONTRACT_RULES,
+    ]);
+    expect(check.exitCode).toBe(0);
+    expect((await flowpact(['generate', 'nope.yml', '--root', root])).exitCode).toBe(2);
+  });
+
   it('generate --out writes every contract to another directory and leaves the repository alone', async () => {
     const root = repo();
     await flowpact(['generate', '--root', root]);

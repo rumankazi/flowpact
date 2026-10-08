@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import {
   ConfigError,
@@ -9,6 +9,7 @@ import {
   type LogRecord,
   loadConfig,
   neutralizeWorkflowCommands,
+  type Project,
   RuleRegistryError,
   resolveLogLevel,
   toolMeta,
@@ -198,3 +199,32 @@ export async function guard(fn: () => Promise<number> | number): Promise<void> {
 }
 
 export class UsageError extends Error {}
+
+/**
+ * Positional paths of `lint`, `check` and `generate`. They are relative to --root; a path that only exists relative to
+ * the working directory is taken from there.
+ */
+export function pathArgs(positionals: string[], command: string, root: string): string[] {
+  return positionals
+    .filter((p) => p !== command)
+    .map((p) =>
+      isAbsolute(p) || existsSync(resolve(root, p)) || !existsSync(resolve(process.cwd(), p))
+        ? p
+        : resolve(process.cwd(), p),
+    );
+}
+
+/** Refuses paths that do not exist, or that name no workflow or action. */
+export function checkTargets(project: Project, paths: string[], root: string): void {
+  const missing = project.missingTargets ?? [];
+  if (missing.length) {
+    throw new UsageError(
+      `Path${missing.length > 1 ? 's' : ''} not found under ${displayPath(root)}: ${missing.join(', ')}`,
+    );
+  }
+  if (paths.length && project.targets.size === 0 && !project.wholeRepository) {
+    throw new UsageError(
+      `None of the paths is a workflow (.github/workflows/*.yml) or an action (action.yml): ${(project.ignoredTargets ?? paths).join(', ')}`,
+    );
+  }
+}
