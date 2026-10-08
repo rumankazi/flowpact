@@ -1,6 +1,6 @@
 {
   "name": "flowpact",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "flowpact — lint, trace and lock the data flow between your GitHub Actions workflows.",
   "keywords": [
     "github-actions",
