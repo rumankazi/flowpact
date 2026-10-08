@@ -60,7 +60,7 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
-      - name: Rebuild the action bundle on the release branch
+      - name: Rebuild the action bundle and move the docs to the new version on the release branch
         if: steps.rp.outputs.prs_created == 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -68,11 +68,13 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @flowpact/action build
-          if [ -n "$(git status --porcelain packages/action/dist)" ]; then
+          # `uses: rumankazi/flowpact@v0.<minor>` and friends in the docs and READMEs follow the new release line.
+          node scripts/sync-version-refs.mjs
+          if [ -n "$(git status --porcelain)" ]; then
             git config user.name "$BOT"
             git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
-            git add packages/action/dist
-            git commit -m "build(action): rebuild the bundle for the release"
+            git add -A packages/action/dist README.md SECURITY.md CONTRIBUTING.md packages/cli/README.md apps/docs/content/docs
+            git commit -m "build: rebuild the action bundle and update version references for the release"
             git push
           fi
 

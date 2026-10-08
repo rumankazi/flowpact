@@ -61,3 +61,36 @@ describe('rule counts in prose', () => {
     }
   });
 });
+
+describe('version references', () => {
+  it('are on the current release line (run `node scripts/sync-version-refs.mjs`)', async () => {
+    // @ts-expect-error -- plain JavaScript module without types
+    const { FILES, currentVersion, syncRefs } = await import('../sync-version-refs.mjs');
+    const version: string = currentVersion();
+    for (const file of FILES as string[]) {
+      const text = readFileSync(join(import.meta.dirname, '../..', file), 'utf8');
+      expect({ file, text: syncRefs(text, version) }).toEqual({ file, text });
+    }
+  });
+
+  it('move to the next release line', async () => {
+    // @ts-expect-error -- plain JavaScript module without types
+    const { syncRefs } = await import('../sync-version-refs.mjs');
+    const text =
+      'uses: rumankazi/flowpact@v0.3\nuses: rumankazi/flowpact@v0.3.2\nnpx flowpact@0.3 lint\n`flowpact` on npm, flowpact@ v0';
+    expect(syncRefs(text, '0.4.0')).toBe(
+      'uses: rumankazi/flowpact@v0.4\nuses: rumankazi/flowpact@v0.4.0\nnpx flowpact@0.4 lint\n`flowpact` on npm, flowpact@ v0',
+    );
+    expect(
+      syncRefs(
+        ' flowpact  v0.1.0  config schema v1\n<sub>flowpact v0.1.0 · config schema v1</sub>\n"tool": "flowpact", "version": "0.1.0"',
+        '0.4.0',
+      ),
+    ).toBe(
+      ' flowpact  v0.4.0  config schema v1\n<sub>flowpact v0.4.0 · config schema v1</sub>\n"tool": "flowpact", "version": "0.4.0"',
+    );
+    expect(syncRefs(text, '1.2.0')).toBe(
+      'uses: rumankazi/flowpact@v1\nuses: rumankazi/flowpact@v1.2.0\nnpx flowpact@1 lint\n`flowpact` on npm, flowpact@ v0',
+    );
+  });
+});

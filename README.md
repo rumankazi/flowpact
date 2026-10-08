@@ -31,7 +31,7 @@ In CI, use the action:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: rumankazi/flowpact@v0.2
+- uses: rumankazi/flowpact@v0.4
   with:
     mode: check
 ```
@@ -66,6 +66,7 @@ bring the findings back.
 | `packages/core` | Engine: YAML → IR → expressions → graph → matrix expansion → rules |
 | `packages/reporters` | Terminal (pretty), JSON, Markdown, SARIF, trace, graph and contract renderers |
 | `packages/cli` | The `flowpact` command (published as `flowpact`) |
+| `packages/action` | The GitHub Action (`action.yml` at the root runs `packages/action/dist/index.js`): job summary, annotations, SARIF, contract patch artifact |
 | `apps/docs` | Fumadocs site, deployed to GitHub Pages |
 | `fixtures/` | Small repositories used by tests, screenshots and docs |
 | `scripts/` | Rule-doc, schema and screenshot generators; link checker |
