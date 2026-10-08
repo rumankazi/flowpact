@@ -21598,8 +21598,8 @@ var require_readdir_glob = __commonJS({
           useStat = true;
         }
         const filename = dir2 + "/" + name;
-        const relative5 = filename.slice(1);
-        const absolute = path4 + "/" + relative5;
+        const relative6 = filename.slice(1);
+        const absolute = path4 + "/" + relative6;
         let stats = null;
         if (useStat || followSymlinks) {
           stats = await stat2(absolute, followSymlinks);
@@ -21611,12 +21611,12 @@ var require_readdir_glob = __commonJS({
           stats = { isDirectory: () => false };
         }
         if (stats.isDirectory()) {
-          if (!shouldSkip(relative5)) {
-            yield { relative: relative5, absolute, stats };
+          if (!shouldSkip(relative6)) {
+            yield { relative: relative6, absolute, stats };
             yield* exploreWalkAsync(filename, path4, followSymlinks, useStat, shouldSkip, false);
           }
         } else {
-          yield { relative: relative5, absolute, stats };
+          yield { relative: relative6, absolute, stats };
         }
       }
     }
@@ -21686,11 +21686,11 @@ var require_readdir_glob = __commonJS({
         }
         setTimeout(() => this._next(), 0);
       }
-      _shouldSkipDirectory(relative5) {
-        return this.skipMatchers.some((m) => m.match(relative5));
+      _shouldSkipDirectory(relative6) {
+        return this.skipMatchers.some((m) => m.match(relative6));
       }
-      _fileMatches(relative5, isDirectory2) {
-        const file2 = relative5 + (isDirectory2 ? "/" : "");
+      _fileMatches(relative6, isDirectory2) {
+        const file2 = relative6 + (isDirectory2 ? "/" : "");
         return (this.matchers.length === 0 || this.matchers.some((m) => m.match(file2))) && !this.ignoreMatchers.some((m) => m.match(file2)) && (!this.options.nodir || !isDirectory2);
       }
       _next() {
@@ -21699,16 +21699,16 @@ var require_readdir_glob = __commonJS({
             if (!obj.done) {
               const isDirectory2 = obj.value.stats.isDirectory();
               if (this._fileMatches(obj.value.relative, isDirectory2)) {
-                let relative5 = obj.value.relative;
+                let relative6 = obj.value.relative;
                 let absolute = obj.value.absolute;
                 if (this.options.mark && isDirectory2) {
-                  relative5 += "/";
+                  relative6 += "/";
                   absolute += "/";
                 }
                 if (this.options.stat) {
-                  this.emit("match", { relative: relative5, absolute, stat: obj.value.stats });
+                  this.emit("match", { relative: relative6, absolute, stat: obj.value.stats });
                 } else {
-                  this.emit("match", { relative: relative5, absolute });
+                  this.emit("match", { relative: relative6, absolute });
                 }
               }
               this._next(this.iterator);
@@ -24684,7 +24684,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join8(s) {
+      BufferList.prototype.join = function join9(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -40421,10 +40421,10 @@ var require_ignore = __commonJS({
       ignored(p) {
         const fullpath = p.fullpath();
         const fullpaths = `${fullpath}/`;
-        const relative5 = p.relative() || ".";
-        const relatives = `${relative5}/`;
+        const relative6 = p.relative() || ".";
+        const relatives = `${relative6}/`;
         for (const m of this.relative) {
-          if (m.match(relative5) || m.match(relatives))
+          if (m.match(relative6) || m.match(relatives))
             return true;
         }
         for (const m of this.absolute) {
@@ -40435,9 +40435,9 @@ var require_ignore = __commonJS({
       }
       childrenIgnored(p) {
         const fullpath = p.fullpath() + "/";
-        const relative5 = (p.relative() || ".") + "/";
+        const relative6 = (p.relative() || ".") + "/";
         for (const m of this.relativeChildren) {
-          if (m.match(relative5))
+          if (m.match(relative6))
             return true;
         }
         for (const m of this.absoluteChildren) {
@@ -50624,13 +50624,13 @@ var require_directives = __commonJS({
             onError("Verbatim tags must end with a >");
           return verbatim;
         }
-        const [, handle, suffix] = source.match(/^(.*!)([^!]*)$/s);
-        if (!suffix)
+        const [, handle, suffix2] = source.match(/^(.*!)([^!]*)$/s);
+        if (!suffix2)
           onError(`The ${source} tag has no suffix`);
         const prefix2 = this.tags[handle];
         if (prefix2) {
           try {
-            return prefix2 + decodeURIComponent(suffix);
+            return prefix2 + decodeURIComponent(suffix2);
           } catch (error63) {
             onError(String(error63));
             return null;
@@ -58700,9 +58700,10 @@ var require_cronstrue = __commonJS({
 });
 
 // src/main.ts
+import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync3, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname4, join as join7, posix as posix2, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname4, join as join8, posix as posix3, relative as relative5, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -93411,9 +93412,9 @@ function getAccountNameFromUrl(url3) {
     if (parsedUrl.hostname.split(".")[1] === "blob") {
       accountName = parsedUrl.hostname.split(".")[0];
       for (let i = 0; i < accountNameSuffixes.length; ++i) {
-        const suffix = accountNameSuffixes[i];
-        if (accountName.endsWith(suffix)) {
-          accountName = accountName.substring(0, accountName.length - suffix.length);
+        const suffix2 = accountNameSuffixes[i];
+        if (accountName.endsWith(suffix2)) {
+          accountName = accountName.substring(0, accountName.length - suffix2.length);
           break;
         }
       }
@@ -93687,9 +93688,9 @@ var BlobSASPermissions = class _BlobSASPermissions {
    *
    * @param permissions -
    */
-  static parse(permissions) {
+  static parse(permissions2) {
     const blobSASPermissions = new _BlobSASPermissions();
-    for (const char of permissions) {
+    for (const char of permissions2) {
       switch (char) {
         case "r":
           blobSASPermissions.read = true;
@@ -93824,41 +93825,41 @@ var BlobSASPermissions = class _BlobSASPermissions {
    * @returns A string which represents the BlobSASPermissions
    */
   toString() {
-    const permissions = [];
+    const permissions2 = [];
     if (this.read) {
-      permissions.push("r");
+      permissions2.push("r");
     }
     if (this.add) {
-      permissions.push("a");
+      permissions2.push("a");
     }
     if (this.create) {
-      permissions.push("c");
+      permissions2.push("c");
     }
     if (this.write) {
-      permissions.push("w");
+      permissions2.push("w");
     }
     if (this.delete) {
-      permissions.push("d");
+      permissions2.push("d");
     }
     if (this.deleteVersion) {
-      permissions.push("x");
+      permissions2.push("x");
     }
     if (this.tag) {
-      permissions.push("t");
+      permissions2.push("t");
     }
     if (this.move) {
-      permissions.push("m");
+      permissions2.push("m");
     }
     if (this.execute) {
-      permissions.push("e");
+      permissions2.push("e");
     }
     if (this.setImmutabilityPolicy) {
-      permissions.push("i");
+      permissions2.push("i");
     }
     if (this.permanentDelete) {
-      permissions.push("y");
+      permissions2.push("y");
     }
-    return permissions.join("");
+    return permissions2.join("");
   }
 };
 
@@ -93870,9 +93871,9 @@ var ContainerSASPermissions = class _ContainerSASPermissions {
    *
    * @param permissions -
    */
-  static parse(permissions) {
+  static parse(permissions2) {
     const containerSASPermissions = new _ContainerSASPermissions();
-    for (const char of permissions) {
+    for (const char of permissions2) {
       switch (char) {
         case "r":
           containerSASPermissions.read = true;
@@ -94029,47 +94030,47 @@ var ContainerSASPermissions = class _ContainerSASPermissions {
    *
    */
   toString() {
-    const permissions = [];
+    const permissions2 = [];
     if (this.read) {
-      permissions.push("r");
+      permissions2.push("r");
     }
     if (this.add) {
-      permissions.push("a");
+      permissions2.push("a");
     }
     if (this.create) {
-      permissions.push("c");
+      permissions2.push("c");
     }
     if (this.write) {
-      permissions.push("w");
+      permissions2.push("w");
     }
     if (this.delete) {
-      permissions.push("d");
+      permissions2.push("d");
     }
     if (this.deleteVersion) {
-      permissions.push("x");
+      permissions2.push("x");
     }
     if (this.list) {
-      permissions.push("l");
+      permissions2.push("l");
     }
     if (this.tag) {
-      permissions.push("t");
+      permissions2.push("t");
     }
     if (this.move) {
-      permissions.push("m");
+      permissions2.push("m");
     }
     if (this.execute) {
-      permissions.push("e");
+      permissions2.push("e");
     }
     if (this.setImmutabilityPolicy) {
-      permissions.push("i");
+      permissions2.push("i");
     }
     if (this.permanentDelete) {
-      permissions.push("y");
+      permissions2.push("y");
     }
     if (this.filterByTags) {
-      permissions.push("f");
+      permissions2.push("f");
     }
-    return permissions.join("");
+    return permissions2.join("");
   }
 };
 
@@ -101932,8 +101933,8 @@ function toErrorMessage(data) {
   }
   if (typeof data === "object" && data !== null && "message" in data) {
     const objectData = data;
-    const suffix = "documentation_url" in objectData ? ` - ${objectData.documentation_url}` : "";
-    return Array.isArray(objectData.errors) ? `${objectData.message}: ${objectData.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix}` : `${objectData.message}${suffix}`;
+    const suffix2 = "documentation_url" in objectData ? ` - ${objectData.documentation_url}` : "";
+    return Array.isArray(objectData.errors) ? `${objectData.message}: ${objectData.errors.map((v) => JSON.stringify(v)).join(", ")}${suffix2}` : `${objectData.message}${suffix2}`;
   }
   return `Unknown error: ${JSON.stringify(data)}`;
 }
@@ -114912,22 +114913,22 @@ var error33 = () => {
         return `\uC798\uBABB\uB41C \uC635\uC158: ${joinValues(issue3.values, "\uB610\uB294 ")} \uC911 \uD558\uB098\uC5EC\uC57C \uD569\uB2C8\uB2E4`;
       case "too_big": {
         const adj = issue3.inclusive ? "\uC774\uD558" : "\uBBF8\uB9CC";
-        const suffix = adj === "\uBBF8\uB9CC" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+        const suffix2 = adj === "\uBBF8\uB9CC" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         const sizing = getSizing(issue3.origin);
         const unit = sizing?.unit ?? "\uC694\uC18C";
         if (sizing)
-          return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue3.maximum.toString()}${unit} ${adj}${suffix}`;
-        return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue3.maximum.toString()} ${adj}${suffix}`;
+          return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue3.maximum.toString()}${unit} ${adj}${suffix2}`;
+        return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue3.maximum.toString()} ${adj}${suffix2}`;
       }
       case "too_small": {
         const adj = issue3.inclusive ? "\uC774\uC0C1" : "\uCD08\uACFC";
-        const suffix = adj === "\uC774\uC0C1" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+        const suffix2 = adj === "\uC774\uC0C1" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
         const sizing = getSizing(issue3.origin);
         const unit = sizing?.unit ?? "\uC694\uC18C";
         if (sizing) {
-          return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue3.minimum.toString()}${unit} ${adj}${suffix}`;
+          return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue3.minimum.toString()}${unit} ${adj}${suffix2}`;
         }
-        return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue3.minimum.toString()} ${adj}${suffix}`;
+        return `${issue3.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue3.minimum.toString()} ${adj}${suffix2}`;
       }
       case "invalid_format": {
         const _issue = issue3;
@@ -119112,8 +119113,8 @@ function generateStringFormatCheck(doc, ctx, def, accessor, needsValue = true) {
       break;
     }
     case "ends_with": {
-      const suffix = def.suffix;
-      doc.write(`if (${accessor}.slice(-${suffix.length}) !== ${esc(suffix)}) return INVALID;`);
+      const suffix2 = def.suffix;
+      doc.write(`if (${accessor}.slice(-${suffix2.length}) !== ${esc(suffix2)}) return INVALID;`);
       break;
     }
     default: {
@@ -120802,12 +120803,12 @@ function _startsWith(prefix2, params) {
   });
 }
 // @__NO_SIDE_EFFECTS__
-function _endsWith(suffix, params) {
+function _endsWith(suffix2, params) {
   return new $ZodCheckEndsWith({
     check: "string_format",
     format: "ends_with",
     ...normalizeParams(params),
-    suffix
+    suffix: suffix2
   });
 }
 // @__NO_SIDE_EFFECTS__
@@ -125323,6 +125324,19 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// ../core/src/glob.ts
+function matchesPattern(path4, pattern) {
+  if (!pattern.includes("*"))
+    return path4 === pattern || path4.startsWith(pattern.endsWith("/") ? pattern : `${pattern}/`);
+  const re = new RegExp(
+    `^${pattern.split("**/").map(
+      (chunk) => chunk.split("**").map((part) => part.split("*").map(escapeRe).join("[^/]*")).join(".*")
+    ).join("(?:[^/]*/)*")}$`
+  );
+  return re.test(path4);
+}
+var escapeRe = (s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+
 // ../core/src/project.ts
 import { existsSync as existsSync5, readdirSync, readFileSync as readFileSync2, realpathSync, statSync as statSync2 } from "fs";
 import { basename as basename3, dirname, isAbsolute, join as join3, relative, resolve as resolve2 } from "path";
@@ -127213,6 +127227,7 @@ function classify(kind, p) {
       }
       const f = p[2];
       if (f === "if" && p.length === 3) return { field: "job.if", job, cond: true };
+      if (f === "name" && p.length === 3) return { field: "job.name", job, cond: false };
       if (f === "with" && typeof p[3] === "string") return { field: "job.with", job, key: p[3], cond: false };
       if (f === "secrets" && typeof p[3] === "string")
         return { field: "job.secrets", job, key: p[3], cond: false };
@@ -127580,12 +127595,21 @@ function jobs(unit, node2, ctx) {
     const secretsInherit2 = (0, import_yaml2.isScalar)(secretsPair?.value) && String(secretsPair.value.value) === "inherit";
     const ifSite = unit.siteByPath.get(pathKey([...p, "if"]));
     const name = str(get(j, "name"));
+    const nameSite = unit.siteByPath.get(pathKey([...p, "name"]));
+    const namePair = getPair(j, "name");
+    const perms = permissions(get(j, "permissions"));
+    const ifNode = get(j, "if");
+    const ifValue = (0, import_yaml2.isScalar)(ifNode) && typeof ifNode.value === "boolean" ? ifNode.value : void 0;
     const strategy = get(j, "strategy");
     const m = matrix(unit, strategy, [...p, "strategy"]);
     out[id] = {
       id,
       loc: nodeLoc(unit.source, pair.key),
-      ...name ? { name } : {},
+      ...name !== void 0 ? { name } : {},
+      ...nameSite ? { nameSite } : {},
+      ...namePair?.value ? { nameLoc: nodeLoc(unit.source, namePair.value) } : {},
+      ...perms ? { permissions: perms } : {},
+      ...ifValue !== void 0 ? { ifValue } : {},
       needs,
       ...ifSite ? { ifSite } : {},
       ...usesRaw ? { uses: classifyUses(usesRaw, "job", nodeLoc(unit.source, usesNode), ctx) } : {},
@@ -127598,6 +127622,20 @@ function jobs(unit, node2, ctx) {
       ...m ? { matrix: m } : {},
       steps: steps(unit, get(j, "steps"), [...p, "steps"], "workflow", ctx)
     };
+  }
+  return out;
+}
+function permissions(node2) {
+  if ((0, import_yaml2.isScalar)(node2)) {
+    const v = String(node2.value);
+    return v === "read-all" || v === "write-all" ? v : void 0;
+  }
+  if (!(0, import_yaml2.isMap)(node2)) return void 0;
+  const out = {};
+  for (const pair of node2.items) {
+    const key = (0, import_yaml2.isScalar)(pair.key) ? String(pair.key.value) : void 0;
+    const value = (0, import_yaml2.isScalar)(pair.value) ? String(pair.value.value) : void 0;
+    if (key && (value === "read" || value === "write" || value === "none")) out[key] = value;
   }
   return out;
 }
@@ -127677,6 +127715,7 @@ function parseWorkflowFile(path4, text2, ctx) {
     inputs: inputDecls(unit, get(dispatchPair?.value, "inputs"))
   } : void 0;
   const name = str(get(root, "name"));
+  const workflowPermissions = permissions(get(root, "permissions"));
   return {
     kind: "workflow",
     path: path4,
@@ -127690,6 +127729,7 @@ function parseWorkflowFile(path4, text2, ctx) {
     ...call ? { call } : {},
     ...dispatch ? { dispatch } : {},
     env: bindings(unit, get(root, "env"), ["env"]),
+    ...workflowPermissions ? { permissions: workflowPermissions } : {},
     jobs: jobs(unit, get(root, "jobs"), ctx)
   };
 }
@@ -130377,7 +130417,7 @@ function nodeFileSystem(root) {
     },
     walk: (dir2) => {
       if (!inside(dir2) || !statSync2(abs(dir2)).isDirectory()) return [];
-      return readdirSync(abs(dir2), { recursive: true, withFileTypes: true }).map((e) => toPosix(relative(root, join3(e.parentPath, e.name)))).filter((f) => isFile(f));
+      return readdirSync(abs(dir2), { recursive: true, withFileTypes: true }).map((e) => toPosix(relative(root, join3(e.parentPath, e.name)))).filter((f) => !/(^|\/)(node_modules|\.git)\//.test(f) && isFile(f));
     },
     isDir: (p) => inside(p) && statSync2(abs(p)).isDirectory()
   };
@@ -130430,6 +130470,22 @@ function loadProject(opts) {
   };
   const discovered = fs8.list(WORKFLOWS_DIR).filter(isYaml).sort();
   const actionFiles = fs8.walk(ACTIONS_DIR).filter(isActionFile).sort();
+  if (["action.yml", "action.yaml"].some((f) => fs8.read(f) !== void 0)) actionFiles.push("action.yml");
+  for (const pattern of opts.publish ?? []) {
+    if (!/[*?[]/.test(pattern)) {
+      const file2 = isActionFile(pattern) ? pattern : `${pattern.replace(/\/$/, "")}/action.yml`;
+      if (isActionFile(file2) && !file2.startsWith(".github/actions/") && fs8.read(file2) !== void 0)
+        actionFiles.push(file2);
+      continue;
+    }
+    const literal2 = pattern.split(/[*?[]/)[0];
+    const dir2 = literal2.includes("/") ? literal2.slice(0, literal2.lastIndexOf("/")) : "";
+    for (const f of dir2 ? fs8.walk(dir2) : fs8.walk(".")) {
+      if (!isActionFile(f) || f.startsWith(".github/actions/")) continue;
+      const unitDir = f.replace(/\/?action\.ya?ml$/i, "") || ".";
+      if (matchesPattern(f, pattern) || matchesPattern(unitDir, pattern)) actionFiles.push(f);
+    }
+  }
   logger7.info(`discovered ${discovered.length} workflow(s) and ${actionFiles.length} local action(s)`);
   logger7.debug("files", { workflows: discovered, actions: actionFiles });
   const targets = /* @__PURE__ */ new Set();
@@ -130465,7 +130521,7 @@ function loadProject(opts) {
     else if (isYaml(t)) loadWorkflow(t);
   }
   for (const f of discovered) loadWorkflow(f);
-  for (const f of actionFiles) loadAction(f.replace(/\/action\.ya?ml$/i, ""));
+  for (const f of actionFiles) loadAction(f.replace(/\/?action\.ya?ml$/i, "") || ".");
   const resolveRefs = (unit) => {
     const note = (uses, extra) => {
       if (!uses.target) return;
@@ -130592,7 +130648,36 @@ var configSchema = external_exports.object({
   ),
   plugins: external_exports.array(external_exports.string()).default([]).describe(
     "Repo-relative JavaScript modules (.js/.mjs) exporting extra rules (default export: rule or array of rules)."
-  )
+  ),
+  impact: external_exports.object({
+    publish: external_exports.array(external_exports.string()).optional().describe(
+      "Files or globs of the units other repositories use. Default: every workflow with `workflow_call` and every action outside `.github/`."
+    ),
+    declaredBy: external_exports.enum(["explicit", "title", "labels"]).optional().describe(
+      "The authoritative source of the declared impact; others are advisory. Default: `explicit` when given, else `title`."
+    ),
+    labels: external_exports.object({
+      major: external_exports.string().default("semver:major"),
+      minor: external_exports.string().default("semver:minor"),
+      patch: external_exports.string().default("semver:patch"),
+      none: external_exports.string().default("semver:none")
+    }).strict().default({
+      major: "semver:major",
+      minor: "semver:minor",
+      patch: "semver:patch",
+      none: "semver:none"
+    }).describe("Pull request labels that declare each impact level."),
+    types: external_exports.record(external_exports.string(), external_exports.enum(["none", "patch", "minor", "major"])).default({ feat: "minor", fix: "patch", perf: "patch" }).describe(
+      "Conventional Commits types and the impact they declare; other types declare `none`, `!` declares `major`."
+    ),
+    uncertain: external_exports.enum(["warn", "fail"]).default("warn").describe(
+      "Changes flowpact cannot fully resolve: only warn (default), or count them towards the required impact."
+    )
+  }).strict().default({
+    labels: { major: "semver:major", minor: "semver:minor", patch: "semver:patch", none: "semver:none" },
+    types: { feat: "minor", fix: "patch", perf: "patch" },
+    uncertain: "warn"
+  }).describe("Impact mode: which units are published and how pull requests declare their release impact.")
 }).strict();
 var defaultConfig = () => configSchema.parse({});
 var ConfigError = class extends Error {
@@ -130662,15 +130747,6 @@ function parseConfig(raw, file2) {
   }
   return result.data;
 }
-function matchesPattern(path4, pattern) {
-  if (!pattern.includes("*"))
-    return path4 === pattern || path4.startsWith(pattern.endsWith("/") ? pattern : `${pattern}/`);
-  const re = new RegExp(
-    `^${pattern.split("**").map((part) => part.split("*").map(escapeRe).join("[^/]*")).join(".*")}$`
-  );
-  return re.test(path4);
-}
-var escapeRe = (s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
 
 // ../core/src/contracts.ts
 import { existsSync as existsSync7, lstatSync as lstatSync2, mkdirSync, rmSync, writeFileSync } from "fs";
@@ -132264,6 +132340,507 @@ function scopePlan(plan, keep) {
   };
 }
 
+// ../core/src/checks.ts
+function formatNumber(n) {
+  if (!Number.isFinite(n)) return String(n);
+  if (n === 0) return "0";
+  const exp = Math.floor(Math.log10(Math.abs(n)));
+  const [mantissa, e] = n.toPrecision(15).split("e");
+  const trim = (s) => s.includes(".") ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+  if (exp > -5 && exp < 15 && e === void 0) return trim(mantissa);
+  const sci = n.toExponential(14);
+  const [m, x] = sci.split("e");
+  const power = Number(x);
+  return `${trim(m)}E${power < 0 ? "-" : "+"}${String(Math.abs(power)).padStart(2, "0")}`;
+}
+function suffixValues(value) {
+  if (value === null || value === "") return [];
+  if (typeof value === "boolean") return [value ? "true" : "false"];
+  if (typeof value === "number") return [formatNumber(value)];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(suffixValues);
+  return Object.values(value).flatMap(suffixValues);
+}
+var toText = (v) => {
+  if (!v.known) return void 0;
+  const value = v.value;
+  if (value === null) return "";
+  if (typeof value === "number") return formatNumber(value);
+  if (typeof value === "string" || typeof value === "boolean") return String(value);
+  return void 0;
+};
+function nameKind(job) {
+  const raw = job.name ?? "";
+  const segments = findTemplateSegments(raw);
+  if (segments.length === 0) return { kind: "static", text: raw.trim() };
+  const only = segments.length === 1 && raw.trim() === raw.slice(segments[0].start, segments[0].end).trim();
+  const ast = segments[0].expr.ast;
+  if (only && ast instanceof Literal) {
+    return { kind: "static", text: (toText(evaluate(ast, () => void 0)) ?? "").trim() };
+  }
+  return { kind: "dynamic", template: raw, segments };
+}
+function suffix(combo, exp, job) {
+  const m = job.matrix;
+  const keys = combo.origin === "include" ? Object.keys(m.include[combo.includes[0]]?.values ?? {}) : m.dims.map((d) => d.name);
+  let certain = exp.exact;
+  const parts = [];
+  for (const key of keys) {
+    const cell2 = lookup(combo.values, key);
+    if (!cell2) continue;
+    if (!cell2.known) {
+      certain = false;
+      continue;
+    }
+    parts.push(...suffixValues(cell2.value));
+  }
+  return { text: parts.length ? ` (${parts.join(", ")})` : "", certain };
+}
+function templateStem(template, segments) {
+  let out = "";
+  let at = 0;
+  for (const seg of segments) {
+    out += `${template.slice(at, seg.start)}\u2026`;
+    at = seg.end;
+  }
+  return (out + template.slice(at)).trim();
+}
+function nameResolver(combo, inputs) {
+  const matrix2 = combo ? matrixResolver(combo) : void 0;
+  return (ref) => {
+    if (ref.context === "matrix") return matrix2 ? matrix2(ref) : known(null);
+    if (ref.context === "inputs") {
+      if (ref.path.length !== 1) return UNKNOWN;
+      const v = lookup(inputs, ref.path[0]);
+      return v?.known ? known(v.value) : UNKNOWN;
+    }
+    return void 0;
+  };
+}
+function jobSegments(job, inputs = {}) {
+  const kind = nameKind(job);
+  const exp = job.matrix ? expandMatrix(job.matrix) : void 0;
+  const combos = exp && !exp.dynamic && !exp.truncated && exp.combos.length ? exp.combos : [void 0];
+  const matrixUnknown = !!exp && (exp.dynamic || exp.truncated);
+  const stem = kind.kind === "static" ? `${kind.text || job.id}${exp ? " (\u2026)" : ""}` : templateStem(kind.template, kind.segments);
+  return combos.map((combo) => {
+    if (kind.kind === "static") {
+      const base = kind.text || job.id;
+      if (!combo || !exp)
+        return { name: matrixUnknown ? `${base} (\u2026)` : base, stem, certain: !matrixUnknown };
+      const s = suffix(combo, exp, job);
+      return { name: `${base}${s.text}`, stem, certain: s.certain, combo };
+    }
+    const text2 = toText(evaluateTemplate(kind.template, nameResolver(combo, inputs)))?.trim();
+    const certain = text2 !== void 0 && !matrixUnknown && (!exp || exp.exact);
+    return {
+      name: text2 === void 0 ? kind.template.trim() : text2 || job.id,
+      stem,
+      certain,
+      ...combo ? { combo } : {}
+    };
+  });
+}
+function callerInputs(job, combo, own2) {
+  const out = {};
+  for (const [name, b] of Object.entries(job.with)) {
+    if (!b.site) {
+      out[name] = { known: true, value: b.value };
+      continue;
+    }
+    const v = evaluateTemplate(b.site.text, nameResolver(combo, own2));
+    out[name] = v.known ? { known: true, value: v.value } : { known: false };
+  }
+  return out;
+}
+var MAX_DEPTH = 12;
+function workflowChecks(index2, wf, inputs = {}, depth = 0, seen = /* @__PURE__ */ new Set()) {
+  const values = {};
+  for (const [name, input3] of Object.entries(wf.call?.inputs ?? {})) {
+    const given = inputs === "consumer" ? { known: false } : lookup(inputs, name);
+    if (given) values[name] = given;
+    else if (input3.hasDefault) values[name] = { known: true, value: input3.default };
+    else values[name] = { known: true, value: null };
+  }
+  const out = [];
+  for (const job of Object.values(wf.jobs)) {
+    const id = `${wf.path}#${job.id}`;
+    const callee = job.uses ? index2.calleeOf(job) : void 0;
+    for (const seg of jobSegments(job, values)) {
+      if (!callee) {
+        out.push({ name: seg.name, stem: seg.stem, certain: seg.certain, jobs: [id] });
+        continue;
+      }
+      if (depth >= MAX_DEPTH || seen.has(callee.path)) continue;
+      const nested = workflowChecks(
+        index2,
+        callee,
+        callerInputs(job, seg.combo, values),
+        depth + 1,
+        /* @__PURE__ */ new Set([...seen, wf.path])
+      );
+      for (const c of nested) {
+        out.push({
+          name: `${seg.name} / ${c.name}`,
+          stem: `${seg.stem} / ${c.stem}`,
+          certain: seg.certain && c.certain,
+          jobs: [id, ...c.jobs]
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// ../core/src/impact.ts
+var IMPACT_LEVELS = ["none", "patch", "minor", "major"];
+var levelRank = (l) => IMPACT_LEVELS.indexOf(l);
+var maxLevel = (levels) => levels.reduce((a, b) => levelRank(b) > levelRank(a) ? b : a, "none");
+function isPublished(unit, policy) {
+  if (policy.publish)
+    return policy.publish.some((p) => matchesPattern(unit.file, p) || matchesPattern(unit.path, p));
+  if (unit.kind === "workflow")
+    return unit.triggers.includes("workflow_call") && !unit.path.split("/").pop().startsWith("_");
+  return unit.path === ".";
+}
+var fileStart = (file2) => ({ file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 });
+function jobChecks(index2, wf) {
+  const out = /* @__PURE__ */ new Map();
+  for (const c of workflowChecks(index2, wf, "consumer")) {
+    const chain = c.jobs.map((j) => j.split("#")[1]).join(" > ");
+    const cur = out.get(chain);
+    if (cur) {
+      cur.names.push(c);
+      cur.certain &&= c.certain;
+    } else out.set(chain, { chain, stem: c.stem, names: [c], certain: c.certain });
+  }
+  return out;
+}
+var quoteName = (n) => `"\u2026 / ${n}"`;
+function checkNameChanges(base, head, b, h) {
+  const before = jobChecks(base, b);
+  const after = jobChecks(head, h);
+  const jobLoc = (chain) => {
+    const id = chain.split(" > ")[0];
+    const job = h.jobs[id];
+    return job?.nameLoc ?? job?.loc ?? fileStart(h.file);
+  };
+  const out = [];
+  const add = (level, certain, message, loc) => out.push({ unit: h.path, kind: "check-name", level, certain, message, loc });
+  const headNames = new Set([...after.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const baseNames = new Set([...before.values()].flatMap((j) => j.names.map((n) => n.name)));
+  const matchedHead = /* @__PURE__ */ new Set();
+  for (const bj of before.values()) {
+    let hj = after.get(bj.chain);
+    if (!hj) hj = [...after.values()].find((x) => !before.has(x.chain) && x.stem === bj.stem);
+    if (!hj) {
+      const gone = bj.names.filter((n) => !headNames.has(n.name));
+      if (gone.length)
+        add(
+          "major",
+          true,
+          `${bj.names.length > 1 ? `checks ${quoteName(bj.stem)}` : `check ${quoteName(bj.names[0].name)}`} no longer reported; consumers that require ${bj.names.length > 1 ? "them" : "it"} wait forever`,
+          fileStart(h.file)
+        );
+      continue;
+    }
+    matchedHead.add(hj.chain);
+    if (bj.stem !== hj.stem) {
+      add(
+        "major",
+        true,
+        `check ${quoteName(bj.stem)} is now ${quoteName(hj.stem)}; consumers that require the old name wait forever`,
+        jobLoc(hj.chain)
+      );
+      continue;
+    }
+    const removed = bj.names.filter((n) => n.certain && !headNames.has(n.name));
+    const added = hj.names.filter((n) => n.certain && !baseNames.has(n.name));
+    for (const n of removed)
+      add(
+        "major",
+        true,
+        `check ${quoteName(n.name)} no longer reported; consumers that require it wait forever`,
+        jobLoc(hj.chain)
+      );
+    for (const n of added) add("minor", true, `new check ${quoteName(n.name)}`, jobLoc(hj.chain));
+    const unsure = bj.names.some((n) => !n.certain) || hj.names.some((n) => !n.certain);
+    if (unsure && JSON.stringify(bj.names.map((n) => n.name)) !== JSON.stringify(hj.names.map((n) => n.name)))
+      add("major", false, `checks ${quoteName(bj.stem)} may report different names`, jobLoc(hj.chain));
+  }
+  for (const hj of after.values()) {
+    if (matchedHead.has(hj.chain) || before.has(hj.chain)) continue;
+    const fresh = hj.names.filter((n) => !baseNames.has(n.name));
+    if (fresh.length)
+      add(
+        "minor",
+        true,
+        `new check${hj.names.length > 1 ? "s" : ""} ${quoteName(hj.names.length > 1 ? hj.stem : hj.names[0].name)}`,
+        jobLoc(hj.chain)
+      );
+  }
+  return out;
+}
+function contractLevel(path4, breaking, message) {
+  const root = path4.split(".")[0];
+  if (!["inputs", "secrets", "outputs"].includes(root)) return "none";
+  if (breaking) return "major";
+  if (/was added|now optional/.test(message)) return "minor";
+  if (/default/.test(message)) return "minor";
+  if (/description changed/.test(message)) return "none";
+  return "patch";
+}
+function interfaceLoc(h, path4) {
+  const dot = path4.indexOf(".");
+  const kind = path4.slice(0, dot);
+  const name = path4.slice(dot + 1);
+  const decls = h.kind === "workflow" ? kind === "inputs" || kind === "secrets" || kind === "outputs" ? h.call?.[kind] : void 0 : kind === "inputs" || kind === "outputs" ? h[kind] : void 0;
+  return (dot > 0 && decls && Object.hasOwn(decls, name) ? decls[name]?.loc : void 0) ?? fileStart(h.file);
+}
+function interfaceChanges(base, head, b, h) {
+  const out = [];
+  for (const c of diffContracts(buildContract(base, b), buildContract(head, h))) {
+    const level = contractLevel(c.path, c.breaking, c.message);
+    if (level === "none") continue;
+    out.push({
+      unit: h.path,
+      kind: "interface",
+      level,
+      certain: true,
+      message: c.message,
+      loc: interfaceLoc(h, c.path)
+    });
+  }
+  return out;
+}
+var RANK = { none: 0, read: 1, write: 2 };
+var LEVEL_NAMES = ["none", "read", "write"];
+var SCOPES = [
+  "actions",
+  "attestations",
+  "checks",
+  "contents",
+  "deployments",
+  "discussions",
+  "id-token",
+  "issues",
+  "models",
+  "packages",
+  "pages",
+  "pull-requests",
+  "security-events",
+  "statuses"
+];
+function scopesOf(p) {
+  if (p === void 0) return "inherit";
+  if (p === "read-all" || p === "write-all") {
+    const level = p === "read-all" ? 1 : 2;
+    return Object.fromEntries(SCOPES.map((s) => [s, s === "id-token" && level === 1 ? 0 : level]));
+  }
+  return Object.fromEntries(Object.entries(p).map(([k, v]) => [k, RANK[v] ?? 0]));
+}
+function requestedByJob(index2, wf, depth = 0, seen = /* @__PURE__ */ new Set()) {
+  const out = /* @__PURE__ */ new Map();
+  for (const job of Object.values(wf.jobs)) {
+    const callee = job.uses ? index2.calleeOf(job) : void 0;
+    if (callee) {
+      if (depth >= 10 || seen.has(callee.path)) continue;
+      for (const [chain, s] of requestedByJob(index2, callee, depth + 1, /* @__PURE__ */ new Set([...seen, wf.path])))
+        out.set(`${job.id} > ${chain}`, s);
+      continue;
+    }
+    if (!job.uses) out.set(job.id, scopesOf(job.permissions ?? wf.permissions));
+  }
+  return out;
+}
+function permissionChanges(base, head, b, h) {
+  const before = requestedByJob(base, b);
+  const after = requestedByJob(head, h);
+  const workflowLevel = scopesOf(b.permissions);
+  const out = [];
+  for (const [chain, hs] of after) {
+    if (hs === "inherit") continue;
+    const bs = before.get(chain) ?? workflowLevel;
+    const widened = Object.entries(hs).filter(
+      ([k, v]) => bs === "inherit" ? v >= 2 || k === "id-token" && v > 0 : v > (bs[k] ?? 0)
+    );
+    if (!widened.length) continue;
+    const job = h.jobs[chain.split(" > ")[0]];
+    out.push({
+      unit: h.path,
+      kind: "permissions",
+      level: "major",
+      // From an explicit set we know it widened; from inherited permissions it depends on what callers grant.
+      certain: bs !== "inherit",
+      message: `jobs.${chain.replaceAll(" > ", " \u203A ")} now requests ${widened.map(([k, v]) => `${k}: ${LEVEL_NAMES[v]}`).join(", ")}; callers that grant less fail when the run starts`,
+      loc: job?.loc ?? fileStart(h.file)
+    });
+  }
+  return out;
+}
+function remoteUses(unit) {
+  const out = /* @__PURE__ */ new Set();
+  const steps2 = unit.kind === "workflow" ? Object.values(unit.jobs).flatMap((j) => j.steps) : unit.steps;
+  for (const s of steps2) if (s.uses?.kind === "remote-action") out.add(s.uses.raw.split("@")[0]);
+  if (unit.kind === "workflow") {
+    for (const j of Object.values(unit.jobs))
+      if (j.uses?.kind === "remote-workflow") out.add(j.uses.raw.split("@")[0]);
+  }
+  return out;
+}
+function usesChanges(b, h) {
+  const before = remoteUses(b);
+  return [...remoteUses(h)].filter((u) => !before.has(u)).sort().map((u) => ({
+    unit: h.path,
+    kind: "uses",
+    level: "minor",
+    certain: true,
+    message: `now uses ${u}; consumers whose organization only allows listed actions (or requires SHA pinning) must allow it`,
+    loc: fileStart(h.file)
+  }));
+}
+function runtimeChanges(b, h) {
+  if ((b.using ?? "") === (h.using ?? "")) return [];
+  return [
+    {
+      unit: h.path,
+      kind: "runtime",
+      level: "major",
+      certain: true,
+      message: `runs.using changed from ${b.using ?? "(none)"} to ${h.using ?? "(none)"}; runners or GHES versions without it cannot run the action`,
+      loc: fileStart(h.file)
+    }
+  ];
+}
+var describeUnit = (u) => u.kind === "workflow" ? `reusable workflow ${u.path}` : `action ${u.path}`;
+function impactChanges(base, head, policy, headExists = () => false) {
+  const out = [];
+  const baseUnits = new Map(base.units().map((u) => [u.path, u]));
+  const headUnits = new Map(head.units().map((u) => [u.path, u]));
+  for (const [path4, b] of baseUnits) {
+    if (!isPublished(b, policy)) continue;
+    const h = headUnits.get(path4);
+    if (!h || h.kind !== b.kind) {
+      if (!h && headExists(b.file)) continue;
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "major",
+        certain: true,
+        message: `${describeUnit(b)} was removed or moved; consumers that reference it fail`,
+        loc: fileStart(b.file)
+      });
+      continue;
+    }
+    if (!isPublished(h, policy)) {
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "major",
+        certain: true,
+        message: h.kind === "workflow" ? `${path4} can no longer be called (no workflow_call)` : `${path4} is no longer published`,
+        loc: fileStart(h.file)
+      });
+      continue;
+    }
+    if (h.parseErrors.length) {
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "major",
+        certain: !b.parseErrors.length,
+        message: `${describeUnit(h)} has YAML errors (${h.parseErrors[0].message}); consumers' runs fail`,
+        loc: h.parseErrors[0].loc
+      });
+      continue;
+    }
+    if (b.parseErrors.length) {
+      out.push({
+        unit: path4,
+        kind: "unit",
+        level: "patch",
+        certain: false,
+        message: `${describeUnit(h)} could not be compared: the baseline has YAML errors`,
+        loc: fileStart(h.file)
+      });
+      continue;
+    }
+    out.push(...interfaceChanges(base, head, b, h), ...usesChanges(b, h));
+    if (b.kind === "workflow" && h.kind === "workflow")
+      out.push(...checkNameChanges(base, head, b, h), ...permissionChanges(base, head, b, h));
+    if (b.kind === "action" && h.kind === "action") out.push(...runtimeChanges(b, h));
+  }
+  for (const [path4, h] of headUnits) {
+    if (!isPublished(h, policy)) continue;
+    const b = baseUnits.get(path4);
+    if (b && isPublished(b, policy)) continue;
+    out.push({
+      unit: path4,
+      kind: "unit",
+      level: "minor",
+      certain: true,
+      message: `new ${describeUnit(h)}`,
+      loc: fileStart(h.file)
+    });
+  }
+  return out;
+}
+function levelFromTitle(title, types) {
+  const m = /^([a-z]+)(\([^)]*\))?(!)?: \S/i.exec(title.trim());
+  if (!m) return void 0;
+  if (m[3]) return "major";
+  return types[m[1].toLowerCase()] ?? "none";
+}
+function levelFromLabels(labels, map3) {
+  const found = IMPACT_LEVELS.filter((l) => labels.some((x) => x.toLowerCase() === map3[l].toLowerCase()));
+  return found.length ? maxLevel([...found]) : void 0;
+}
+function levelFromVersions(previous, next, bumps) {
+  const parse6 = (v) => v.replace(/^v/, "").split(/[.-]/).slice(0, 3).map(Number);
+  const [pa, pb, pc] = parse6(previous);
+  const [na, nb, nc] = parse6(next);
+  if (na > pa) return "major";
+  if (nb > pb) return na === 0 && bumps.bumpMinorPreMajor ? "major" : "minor";
+  if (nc > pc) return na === 0 && bumps.bumpPatchForMinorPreMajor ? "minor" : "patch";
+  return "none";
+}
+var countedChanges = (changes, policy) => changes.filter((c) => c.certain || policy.uncertain === "fail");
+function impactVerdict(changes, input3, policy) {
+  const required2 = maxLevel(countedChanges(changes, policy).map((c) => c.level));
+  const sources = [];
+  if (input3.explicit) sources.push({ kind: "explicit", value: input3.explicit, level: input3.explicit });
+  if (input3.release) {
+    const level = levelFromVersions(input3.release.previous, input3.release.version, input3.release);
+    sources.push({ kind: "version", value: `${input3.release.previous} \u2192 ${input3.release.version}`, level });
+  } else if (input3.title !== void 0) {
+    const level = levelFromTitle(input3.title, policy.types);
+    if (level) sources.push({ kind: "title", value: input3.title, level });
+  }
+  if (input3.labels?.length) {
+    const level = levelFromLabels(input3.labels, policy.labels);
+    if (level) sources.push({ kind: "labels", value: input3.labels.join(", "), level });
+  }
+  const authority = input3.explicit ? "explicit" : input3.release ? "version" : policy.declaredBy ?? "title";
+  const declared = sources.find((s) => s.kind === authority);
+  const advisory = sources.filter((s) => s !== declared);
+  const conflict = declared ? advisory.find((s) => levelRank(s.level) > levelRank(declared.level)) : void 0;
+  const under = declared && levelRank(required2) > levelRank(declared.level) && levelRank(required2) >= levelRank("minor");
+  return {
+    required: required2,
+    ...declared ? { declared } : {},
+    advisory,
+    ...conflict ? { conflict } : {},
+    ok: !under && !conflict
+  };
+}
+function computeImpact(base, head, baseline, declared, policy, headExists) {
+  const changes = impactChanges(base, head, policy, headExists);
+  const publishedFiles = [
+    ...new Set([...head.units(), ...base.units()].filter((u) => isPublished(u, policy)).map((u) => u.file))
+  ].sort();
+  return { baseline, changes, verdict: impactVerdict(changes, declared, policy), policy, publishedFiles };
+}
+
 // ../core/src/rules/types.ts
 var CATEGORIES = {
   1: { id: "inputs", title: "Inputs" },
@@ -132379,7 +132956,7 @@ function isCallOnly(wf) {
 }
 
 // ../core/src/rules/contracts.ts
-var fileStart = (file2) => ({ file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 });
+var fileStart2 = (file2) => ({ file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 });
 function locFor(unit, path4, fallback2) {
   if (!unit) return fallback2;
   const [kind, name] = path4.split(".");
@@ -132418,7 +132995,7 @@ var contractMissing = defineRule({
     for (const { entry, unit } of entries(ctx, ["create"])) {
       ctx.report({
         message: `${entry.unit} has no contract (expected ${entry.file})`,
-        loc: unit ? fileStart(unit.file) : fileStart(entry.file),
+        loc: unit ? fileStart2(unit.file) : fileStart2(entry.file),
         ...entry.unit ? { symbol: entry.unit } : {}
       });
     }
@@ -132444,8 +133021,8 @@ var contractOutdated = defineRule({
           changes.map((c) => c.message),
           4
         ) : "formatting or ordering changed"}`,
-        loc: unit ? locFor(unit, changes[0]?.path ?? "", fileStart(unit.file)) : fileStart(entry.file),
-        related: [{ loc: fileStart(entry.file), message: "locked contract" }],
+        loc: unit ? locFor(unit, changes[0]?.path ?? "", fileStart2(unit.file)) : fileStart2(entry.file),
+        related: [{ loc: fileStart2(entry.file), message: "locked contract" }],
         ...entry.unit ? { symbol: entry.unit } : {}
       });
     }
@@ -132484,9 +133061,9 @@ on:
       for (const change of entry.changes.filter((c) => c.breaking)) {
         ctx.report({
           message: `Breaking change to ${entry.unit}: ${change.message}`,
-          loc: unit ? locFor(unit, change.path, fileStart(unit.file)) : fileStart(entry.file),
+          loc: unit ? locFor(unit, change.path, fileStart2(unit.file)) : fileStart2(entry.file),
           symbol: `${entry.unit}#${change.path}`,
-          related: [{ loc: fileStart(entry.file), message: "locked contract" }, ...consumers.slice(0, 5)]
+          related: [{ loc: fileStart2(entry.file), message: "locked contract" }, ...consumers.slice(0, 5)]
         });
       }
     }
@@ -132507,7 +133084,7 @@ var orphanContract = defineRule({
       if (entry.invalid) continue;
       ctx.report({
         message: `Contract ${entry.file} describes ${entry.unit ?? "a workflow"} which no longer exists`,
-        loc: fileStart(entry.file),
+        loc: fileStart2(entry.file),
         ...entry.unit ? { symbol: entry.unit } : {}
       });
     }
@@ -132528,7 +133105,7 @@ var contractInvalid = defineRule({
       if (!entry.invalid) continue;
       ctx.report({
         message: `Contract ${entry.file} is invalid: ${entry.invalid}`,
-        loc: fileStart(entry.file)
+        loc: fileStart2(entry.file)
       });
     }
   }
@@ -132796,6 +133373,135 @@ var expressionRules = [
   schemaViolation,
   yamlSyntaxError
 ];
+
+// ../core/src/rules/impact.ts
+var describeSource = (s) => s.kind === "explicit" ? "the explicit impact" : s.kind === "version" ? `the version bump ${s.value}` : `the ${s.kind === "title" ? "title" : "labels"} "${s.value}"`;
+var related = (changes) => changes.slice(0, 20).map((c) => ({ loc: c.loc, message: `${c.level}: ${c.message}` }));
+var verdictLoc = (impact, changes) => changes[0]?.loc ?? impact.changes[0]?.loc ?? {
+  file: impact.publishedFiles[0] ?? "action.yml",
+  line: 1,
+  column: 1,
+  endLine: 1,
+  endColumn: 1
+};
+var driving = (impact, level) => countedChanges(impact.changes, impact.policy).filter((c) => c.level === level);
+var impactUnderDeclared = defineRule({
+  code: "FP810",
+  name: "impact-under-declared",
+  category: "contracts",
+  defaultSeverity: "error",
+  docs: {
+    summary: "The changes to published workflows or actions need a bigger release than the pull request declares.",
+    why: "Consumers pin a floating tag (`@v1`) or a version range and take every release in it. A breaking change released as a minor or patch reaches them without warning: a renamed job leaves their required status check waiting forever, a removed input fails their run.",
+    fix: "Declare the required impact (for example retitle the pull request `feat!: \u2026` for a major release), or keep the published interface and check names compatible.",
+    examples: {
+      bad: `# PR title: "fix: tidy the test job"
+jobs:
+  test:
+    name: Unit tests   # was "Test": consumers' required check "\u2026 / Test" never reports`,
+      good: `# PR title: "fix!: rename the test job's check to Unit tests"`
+    }
+  },
+  check(ctx) {
+    const v = ctx.impact?.verdict;
+    if (!v?.declared || levelRank(v.required) <= levelRank(v.declared.level) || levelRank(v.required) < levelRank("minor"))
+      return;
+    const changes = driving(ctx.impact, v.required);
+    ctx.report({
+      message: `Declared ${v.declared.level} (${describeSource(v.declared)}), but the changes require ${v.required}: ${changes[0]?.message ?? ""}${changes.length > 1 ? ` (+${changes.length - 1} more)` : ""}`,
+      loc: verdictLoc(ctx.impact, changes),
+      related: related(changes),
+      symbol: `impact#${v.required}`
+    });
+  }
+});
+var impactConflict = defineRule({
+  code: "FP811",
+  name: "impact-declaration-conflict",
+  category: "contracts",
+  defaultSeverity: "error",
+  docs: {
+    summary: "Another source declares a bigger impact than the one the release tool reads.",
+    why: "Release tools read one thing \u2014 usually the squashed commit title. A `semver:major` label on a `fix:` pull request looks right in review, but the release is cut as a patch.",
+    fix: "Make the authoritative source (`impact.declaredBy`, the title by default) declare the impact, for example `feat!: \u2026`."
+  },
+  check(ctx) {
+    const v = ctx.impact?.verdict;
+    if (!v?.declared || !v.conflict) return;
+    ctx.report({
+      message: `${describeSource(v.conflict)} declares ${v.conflict.level}, but ${describeSource(v.declared)} \u2014 what the release tool reads \u2014 declares ${v.declared.level}`,
+      loc: verdictLoc(ctx.impact, []),
+      symbol: "impact#conflict"
+    });
+  }
+});
+var impactOverDeclared = defineRule({
+  code: "FP812",
+  name: "impact-over-declared",
+  category: "contracts",
+  defaultSeverity: "info",
+  docs: {
+    summary: "The pull request declares a bigger impact than its workflow and action changes require.",
+    why: "Not a problem: the release may contain changes flowpact does not grade. Reported so the declaration is visible.",
+    fix: "Nothing to fix if the release has other changes; otherwise declare the smaller impact."
+  },
+  check(ctx) {
+    const v = ctx.impact?.verdict;
+    if (!v?.declared || levelRank(v.declared.level) <= levelRank(v.required)) return;
+    ctx.report({
+      message: `Declared ${v.declared.level} (${describeSource(v.declared)}); the workflow and action changes require ${v.required}`,
+      loc: verdictLoc(ctx.impact, []),
+      symbol: "impact#over"
+    });
+  }
+});
+var impactUndeclared = defineRule({
+  code: "FP813",
+  name: "impact-undeclared",
+  category: "contracts",
+  defaultSeverity: "info",
+  docs: {
+    summary: "No release impact is declared; flowpact reports the impact the changes require.",
+    why: "Without a declaration there is nothing to check against. The required impact is still useful when cutting a release.",
+    fix: "Declare the impact: a Conventional Commits pull request title (`feat: \u2026`, `fix!: \u2026`), a `semver:*` label, or `--expect`."
+  },
+  check(ctx) {
+    const v = ctx.impact?.verdict;
+    if (!v || v.declared) return;
+    const changes = driving(ctx.impact, v.required);
+    ctx.report({
+      message: `No impact declared; the changes to published workflows and actions require ${v.required}`,
+      loc: verdictLoc(ctx.impact, changes),
+      related: related(changes),
+      symbol: "impact#undeclared"
+    });
+  }
+});
+var impactUncertain = defineRule({
+  code: "FP814",
+  name: "impact-uncertain",
+  category: "contracts",
+  defaultSeverity: "warning",
+  docs: {
+    summary: "A change to a published unit depends on something flowpact cannot evaluate statically.",
+    why: "For example a check name built from the triggering event, `needs` outputs or `vars`, or a matrix computed at runtime. flowpact cannot tell whether consumers see a different check name, so it does not count the change (`impact.uncertain: fail` counts it).",
+    fix: "Review the change by hand, or make the name static (a literal `name:` or one built only from `matrix` and `inputs`)."
+  },
+  check(ctx) {
+    for (const c of ctx.impact?.changes ?? []) {
+      if (c.certain) continue;
+      ctx.report({ message: `Possibly ${c.level}: ${c.message}`, loc: c.loc, symbol: `${c.unit}#impact` });
+    }
+  }
+});
+var impactRules = [
+  impactUnderDeclared,
+  impactConflict,
+  impactOverDeclared,
+  impactUndeclared,
+  impactUncertain
+];
+var IMPACT_CODES = impactRules.map((r) => r.code);
 
 // ../core/src/rules/inputs.ts
 function eventInputReadsByRoot(index2) {
@@ -134481,6 +135187,7 @@ var builtinRules = [
   ...expressionRules,
   ...structureRules,
   ...contractRules,
+  ...impactRules,
   ...overrideRules
 ];
 function createRegistry() {
@@ -134530,6 +135237,13 @@ function analyze(opts) {
   const started = performance.now();
   const logger7 = opts.logger ?? silentLogger;
   const config2 = opts.config ?? defaultConfig();
+  const publishPatterns = [
+    .../* @__PURE__ */ new Set([
+      ...config2.impact.publish ?? [],
+      ...opts.impact?.policy.publish ?? [],
+      ...opts.impact?.publishedFiles ?? []
+    ])
+  ];
   const registry2 = opts.registry ?? createRegistry();
   const repository = opts.repository ?? config2.repository ?? detectRepository(opts.root);
   logger7.debug("config resolved", {
@@ -134543,6 +135257,7 @@ function analyze(opts) {
       root: opts.root,
       ...opts.fs ? { fs: opts.fs } : {},
       ...opts.paths ? { paths: opts.paths } : {},
+      ...publishPatterns.length ? { publish: publishPatterns } : {},
       ...repository ? { repository } : {},
       validateSchema: opts.validateSchema ?? true,
       logger: logger7
@@ -134615,6 +135330,16 @@ function analyze(opts) {
     ...opts.configFile?.startsWith(`${LEGACY_CONFIG_DIR}/`) ? [opts.configFile] : [],
     ...legacyContracts.slice(0, 1)
   ];
+  const impact = opts.impact ? logger7.time(
+    "impact",
+    () => computeImpact(
+      opts.impact.base,
+      index2,
+      opts.impact.baseline,
+      opts.impact.declared,
+      opts.impact.policy
+    )
+  ) : void 0;
   const runRules = (phase, extra) => {
     const out = [];
     for (const rule of registry2.all()) {
@@ -134633,6 +135358,7 @@ function analyze(opts) {
         ...opts.configFile ? { configFile: opts.configFile } : {},
         ...contracts ? { contracts } : {},
         ...legacyFiles.length ? { legacyFiles } : {},
+        ...impact ? { impact } : {},
         ...extra,
         report: (input3) => out.push(toFinding(rule, severity, input3, registry2))
       };
@@ -134665,7 +135391,7 @@ function analyze(opts) {
     const code2 = registry2.get(u.override.rule)?.code ?? "";
     const severity = severities.get(code2);
     const rule = registry2.get(code2);
-    const notRun = !rule || rule.category === "contracts" && !opts.checkContracts;
+    const notRun = !rule || (IMPACT_CODES.includes(rule.code) ? !opts.impact : rule.category === "contracts" && !opts.checkContracts);
     if (severity === "off" || only && !only.includes(code2) || notRun) u.inactive = true;
   }
   const scopedEntries = (contracts?.entries ?? []).filter(contractInScope);
@@ -134716,6 +135442,7 @@ function analyze(opts) {
     suppressed,
     ...contracts ? { contracts } : {},
     ...unloaded.length ? { unloadedRules: unloaded } : {},
+    ...impact ? { impact } : {},
     ...opts.configFile && opts.configText !== void 0 ? { configSource: new SourceFile(opts.configFile, opts.configText) } : {},
     durationMs
   };
@@ -134836,18 +135563,333 @@ function exitCodeFor(summary2, failOn) {
   return 0;
 }
 
+// ../core/src/git.ts
+import { execFileSync } from "child_process";
+import { posix as posix2 } from "path";
+var GitError = class extends Error {
+};
+var MAX_BUFFER = 256 * 1024 * 1024;
+function git(root, args, input3) {
+  try {
+    return execFileSync("git", ["-C", root, ...args], {
+      maxBuffer: MAX_BUFFER,
+      stdio: ["pipe", "pipe", "pipe"],
+      ...input3 !== void 0 ? { input: input3 } : {}
+    });
+  } catch (err) {
+    const e = err;
+    if (e.code === "ENOENT") throw new GitError("git is not installed or not on PATH");
+    const detail = e.stderr?.toString().trim().split("\n")[0] ?? err.message;
+    throw new GitError(detail);
+  }
+}
+function resolveCommit(root, ref) {
+  if (!ref || ref.startsWith("-")) throw new GitError(`invalid ref: ${JSON.stringify(ref)}`);
+  try {
+    return git(root, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]).toString().trim();
+  } catch {
+    throw new GitError(
+      `${ref} is not available in this clone. Fetch it first (for example \`git fetch origin ${ref}\`, or check out with fetch-depth: 0).`
+    );
+  }
+}
+function gitFileSystem(root, commit) {
+  const prefix2 = git(root, ["rev-parse", "--show-prefix"]).toString().trim();
+  const files = /* @__PURE__ */ new Set();
+  const links = [];
+  const out = git(root, ["ls-tree", "-r", "-z", "--full-tree", commit]).toString();
+  for (const entry of out.split("\0")) {
+    if (!entry) continue;
+    const tab = entry.indexOf("	");
+    const [mode, type] = entry.slice(0, tab).split(" ");
+    const path4 = entry.slice(tab + 1);
+    if (prefix2 && !path4.startsWith(prefix2)) continue;
+    if (type === "blob" && mode === "120000") links.push(path4);
+    else if (type === "blob" && (mode === "100644" || mode === "100755"))
+      files.add(path4.slice(prefix2.length));
+  }
+  const alias = /* @__PURE__ */ new Map();
+  for (const link of links) {
+    const target = posix2.normalize(
+      posix2.join(posix2.dirname(link), git(root, ["cat-file", "blob", `${commit}:${link}`]).toString())
+    );
+    if (target.startsWith("../") || target === ".." || target === ".git" || target.startsWith(".git/"))
+      continue;
+    if (prefix2 && !target.startsWith(prefix2)) continue;
+    const from = link.slice(prefix2.length);
+    const to = target.slice(prefix2.length);
+    if (files.has(to)) {
+      alias.set(from, to);
+      files.add(from);
+      continue;
+    }
+    for (const f of [...files]) {
+      if (!f.startsWith(`${to}/`)) continue;
+      const virtual = `${from}/${f.slice(to.length + 1)}`;
+      alias.set(virtual, f);
+      files.add(virtual);
+    }
+  }
+  const cache = /* @__PURE__ */ new Map();
+  const norm = (p) => {
+    const s = p.startsWith("./") ? p.slice(2) : p;
+    let end = s.length;
+    while (end > 0 && s[end - 1] === "/") end--;
+    return s.slice(0, end);
+  };
+  const under = (dir2) => {
+    const d = norm(dir2);
+    return d === "" || d === "." ? "" : `${d}/`;
+  };
+  return {
+    commit,
+    read(path4) {
+      const p = norm(path4);
+      if (!files.has(p)) return void 0;
+      if (!cache.has(p))
+        cache.set(
+          p,
+          git(root, ["cat-file", "blob", `${commit}:${prefix2}${alias.get(p) ?? p}`]).toString("utf8")
+        );
+      return cache.get(p);
+    },
+    list(dir2) {
+      const d = under(dir2);
+      return [...files].filter((f) => f.startsWith(d) && !f.slice(d.length).includes("/")).sort();
+    },
+    walk(dir2) {
+      const d = under(dir2);
+      return [...files].filter((f) => f.startsWith(d)).sort();
+    },
+    isDir(path4) {
+      const d = under(path4);
+      return [...files].some((f) => f.startsWith(d));
+    }
+  };
+}
+
+// ../core/src/impact-run.ts
+import { readFileSync as readFileSync4 } from "fs";
+import { join as join6, relative as relative3 } from "path";
+var ImpactSetupError = class extends Error {
+};
+function githubEvent(env = process.env) {
+  if (!env.GITHUB_EVENT_NAME) return void 0;
+  let payload;
+  try {
+    if (env.GITHUB_EVENT_PATH) payload = JSON.parse(readFileSync4(env.GITHUB_EVENT_PATH, "utf8"));
+  } catch {
+    payload = void 0;
+  }
+  return { name: env.GITHUB_EVENT_NAME, ...payload ? { payload } : {} };
+}
+var RELEASE_TITLE = /^chore(\([^)]*\))?: release\b/i;
+var RELEASE_LABEL = "autorelease: pending";
+function isReleasePullRequest(title, labels) {
+  return title !== void 0 && RELEASE_TITLE.test(title) || labels.includes(RELEASE_LABEL);
+}
+function readJson(fs8, path4) {
+  const text2 = fs8.read(path4);
+  if (text2 === void 0) return void 0;
+  try {
+    return JSON.parse(text2);
+  } catch {
+    return void 0;
+  }
+}
+function versionOf(fs8) {
+  const manifest = readJson(fs8, ".release-please-manifest.json");
+  const v = manifest?.["."];
+  if (typeof v === "string") return v;
+  const pkg = readJson(fs8, "package.json");
+  return typeof pkg?.version === "string" ? pkg.version : void 0;
+}
+function releaseSettings(fs8) {
+  const config2 = readJson(fs8, "release-please-config.json") ?? {};
+  const pkg = config2.packages?.["."] ?? {};
+  const get2 = (key) => pkg[key] ?? config2[key];
+  const component = get2("component") ?? get2("package-name");
+  return {
+    bumpMinorPreMajor: get2("bump-minor-pre-major") === true,
+    bumpPatchForMinorPreMajor: get2("bump-patch-for-minor-pre-major") === true,
+    includeV: get2("include-v-in-tag") !== false,
+    component: get2("include-component-in-tag") === true && typeof component === "string" ? component : void 0
+  };
+}
+function baselineConfig(fs8, configPath, notes) {
+  const candidates = configPath ? [configPath] : [
+    ...CONFIG_FILES.map((f) => `${CONFIG_DIR}/${f}`),
+    ...LEGACY_CONFIG_FILES.map((f) => `${LEGACY_CONFIG_DIR}/${f}`)
+  ];
+  for (const path4 of candidates) {
+    const text2 = fs8.read(path4);
+    if (text2 === void 0) continue;
+    try {
+      return parseConfigText(text2, path4).config;
+    } catch (err) {
+      if (!(err instanceof ConfigError)) throw err;
+      notes.push(`the baseline's ${path4} is invalid (${err.message}); using the default impact settings`);
+      return void 0;
+    }
+  }
+  return void 0;
+}
+var workingTree = (root) => ({
+  read: (p) => {
+    try {
+      return readFileSync4(join6(root, p), "utf8");
+    } catch {
+      return void 0;
+    }
+  },
+  list: () => [],
+  walk: () => [],
+  isDir: () => false
+});
+function commitOf(root, ref, fetch2) {
+  try {
+    return resolveCommit(root, ref);
+  } catch (err) {
+    if (!fetch2) throw new ImpactSetupError(err.message);
+    fetch2([ref]);
+    try {
+      return resolveCommit(root, ref);
+    } catch (again) {
+      throw new ImpactSetupError(again.message);
+    }
+  }
+}
+function defaultBase(root) {
+  for (const ref of ["origin/HEAD", "origin/main", "origin/master"]) {
+    try {
+      resolveCommit(root, ref);
+      return ref;
+    } catch {
+    }
+  }
+  throw new ImpactSetupError("No baseline: pass --base <ref> (for example --base origin/main).");
+}
+var ZERO_SHA = /^0+$/;
+function prepareImpact(root, headConfig, req, logger7) {
+  const eventName = req.event?.name;
+  if (eventName === "merge_group") return { skip: "merge_group: impact was checked on the pull request" };
+  if (eventName === "pull_request_target" && !req.base) {
+    throw new ImpactSetupError(
+      "pull_request_target runs on the default branch, so it would compare the default branch with itself. Run impact mode on pull_request (or pass a base and check out the pull request head)."
+    );
+  }
+  const payload = req.event?.payload;
+  const pr = payload?.pull_request;
+  const title = req.title ?? pr?.title;
+  const labels = req.labels ?? (pr?.labels ?? []).map((l) => l.name ?? "").filter(Boolean);
+  const notes = [];
+  let baseRef;
+  if (req.base) baseRef = req.base;
+  else if (pr?.base?.sha) baseRef = pr.base.sha;
+  else if (eventName === "push" && payload?.before && !ZERO_SHA.test(payload.before))
+    baseRef = payload.before;
+  else if (eventName === "push") return { skip: "push without a previous commit (new branch or tag)" };
+  else baseRef = defaultBase(root);
+  let kind = "ref";
+  let release;
+  let commit = commitOf(root, baseRef, req.fetch);
+  if (isReleasePullRequest(title, labels)) {
+    const previous = versionOf(gitFileSystem(root, commit));
+    const next = versionOf(workingTree(root));
+    if (previous && next && previous !== next) {
+      const settings = releaseSettings(workingTree(root));
+      const tags2 = [
+        ...settings.component ? [`${settings.component}-v${previous}`, `${settings.component}-${previous}`] : [],
+        settings.includeV ? `v${previous}` : previous,
+        settings.includeV ? previous : `v${previous}`
+      ];
+      const found = () => tags2.find((t) => {
+        try {
+          resolveCommit(root, `refs/tags/${t}`);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      let tag = found();
+      if (!tag && req.fetch) {
+        req.fetch(tags2.map((t) => `+refs/tags/${t}:refs/tags/${t}`));
+        tag = found();
+      }
+      if (!tag)
+        throw new ImpactSetupError(
+          `No release tag for ${previous} (tried ${tags2.join(", ")}); fetch tags first.`
+        );
+      release = {
+        previous,
+        version: next,
+        bumpMinorPreMajor: settings.bumpMinorPreMajor,
+        bumpPatchForMinorPreMajor: settings.bumpPatchForMinorPreMajor
+      };
+      baseRef = tag;
+      kind = "release";
+      commit = commitOf(root, `refs/tags/${tag}`, void 0);
+      notes.push(`release pull request: ${previous} \u2192 ${next}, compared with ${tag}`);
+    }
+  }
+  let head;
+  try {
+    head = resolveCommit(root, "HEAD");
+  } catch {
+    head = void 0;
+  }
+  if (head === commit) return { skip: `the baseline ${baseRef} is the checked-out commit` };
+  let fs8;
+  try {
+    fs8 = gitFileSystem(root, commit);
+  } catch (err) {
+    throw new ImpactSetupError(err.message);
+  }
+  const configPath = req.configPath ? relative3(root, join6(root, req.configPath)).split("\\").join("/") : void 0;
+  const baseConfig = baselineConfig(fs8, configPath, notes);
+  const policy = { ...(baseConfig ?? defaultConfig()).impact };
+  if (JSON.stringify(policy) !== JSON.stringify(headConfig.impact)) {
+    notes.push("this pull request changes impact settings; they apply after it is merged");
+  }
+  logger7?.debug("impact baseline", { ref: baseRef, commit, kind });
+  const base = analyze({
+    root,
+    fs: fs8,
+    config: baseConfig ?? defaultConfig(),
+    validateSchema: false,
+    only: [],
+    ...req.repository ? { repository: req.repository } : {}
+  });
+  return {
+    options: {
+      base: base.index,
+      baseline: { kind, ref: baseRef, commit },
+      declared: {
+        ...req.expect ? { explicit: req.expect } : {},
+        ...title !== void 0 && !release ? { title } : {},
+        ...labels.length ? { labels } : {},
+        ...release ? { release } : {}
+      },
+      policy,
+      // Load the head's copies of what the baseline published, so a unit that still exists is compared, not "removed".
+      publishedFiles: base.index.units().filter((u) => isPublished(u, policy)).map((u) => u.file)
+    },
+    notes
+  };
+}
+
 // ../core/src/migrate.ts
 import {
   existsSync as existsSync8,
   lstatSync as lstatSync3,
   mkdirSync as mkdirSync2,
   readdirSync as readdirSync2,
-  readFileSync as readFileSync4,
+  readFileSync as readFileSync5,
   rmdirSync,
   rmSync as rmSync2,
   writeFileSync as writeFileSync2
 } from "fs";
-import { dirname as dirname3, join as join6, relative as relative3 } from "path";
+import { dirname as dirname3, join as join7, relative as relative4 } from "path";
 
 // ../core/src/plugins.ts
 import { existsSync as existsSync9 } from "fs";
@@ -134961,6 +136003,26 @@ var reportSchema = external_exports.object({
       })
     )
   }).optional(),
+  impact: external_exports.object({
+    baseline: external_exports.object({ kind: external_exports.enum(["ref", "release"]), ref: external_exports.string(), commit: external_exports.string() }),
+    required: external_exports.enum(["none", "patch", "minor", "major"]),
+    declared: external_exports.object({
+      kind: external_exports.enum(["explicit", "title", "labels", "version"]),
+      value: external_exports.string(),
+      level: external_exports.enum(["none", "patch", "minor", "major"])
+    }).optional(),
+    ok: external_exports.boolean(),
+    changes: external_exports.array(
+      external_exports.object({
+        unit: external_exports.string(),
+        kind: external_exports.string(),
+        level: external_exports.enum(["none", "patch", "minor", "major"]),
+        certain: external_exports.boolean(),
+        message: external_exports.string(),
+        loc: locSchema
+      })
+    )
+  }).optional(),
   rules: external_exports.array(
     external_exports.object({ code: external_exports.string(), name: external_exports.string(), severity: external_exports.enum(["error", "warning", "info", "off"]) })
   ),
@@ -134999,6 +136061,15 @@ function toJsonReport(result, opts = {}) {
         counts: result.contracts.counts,
         // File contents are omitted; use `flowpact generate --dry-run` or the patch for those.
         entries: result.contracts.entries.map(({ before: _b, after: _a3, ...e }) => e)
+      }
+    } : {},
+    ...result.impact ? {
+      impact: {
+        baseline: result.impact.baseline,
+        required: result.impact.verdict.required,
+        ...result.impact.verdict.declared ? { declared: result.impact.verdict.declared } : {},
+        ok: result.impact.verdict.ok,
+        changes: result.impact.changes
       }
     } : {},
     rules: result.rules,
@@ -135149,6 +136220,19 @@ function renderJson(result, opts = {}) {
   return `${JSON.stringify(toJsonReport(result, opts), null, 2)}
 `;
 }
+
+// ../reporters/src/impact.ts
+var ORDER2 = ["major", "minor", "patch", "none"];
+function describeDeclared(impact) {
+  const d = impact.verdict.declared;
+  if (!d) return "nothing declared";
+  const from = d.kind === "explicit" ? "explicit" : d.kind === "version" ? `release ${d.value}` : `${d.kind} "${d.value}"`;
+  return `${d.level} (${from})`;
+}
+function listedChanges(impact) {
+  return [...impact.changes].filter((c) => c.level !== "none").sort((a, b) => ORDER2.indexOf(a.level) - ORDER2.indexOf(b.level) || a.unit.localeCompare(b.unit));
+}
+var shortCommit = (sha) => sha.slice(0, 7);
 
 // ../reporters/src/markdown.ts
 var SEVERITY = {
@@ -135325,6 +136409,34 @@ function renderContracts(plan, opts) {
   }
   return out;
 }
+function renderImpactMarkdown(impact, opts) {
+  const v = impact.verdict;
+  const icon = v.ok ? "\u2705" : "\u274C";
+  const out = [
+    "### Impact",
+    "",
+    `${icon} Declared **${text(describeDeclared(impact))}** \xB7 required **${v.required}**`
+  ];
+  const changes = listedChanges(impact);
+  if (changes.length) {
+    out.push("", "| Impact | Unit | Change |", "| --- | --- | --- |");
+    const limit = Math.max(1, opts.maxFindings ?? 50);
+    for (const c of changes.slice(0, limit)) {
+      out.push(
+        `| ${c.level === "major" ? "**major**" : c.level}${c.certain ? "" : " (uncertain)"} | ${cell(code(c.unit))} | ${cell(c.message)} |`
+      );
+    }
+    if (changes.length > limit)
+      out.push("", `_\u2026 ${changes.length - limit} more changes (see the JSON report)._`);
+  } else {
+    out.push("", "No changes to published workflows or actions.");
+  }
+  out.push(
+    "",
+    `<sub>Baseline: ${impact.baseline.kind === "release" ? "last release " : ""}${code(impact.baseline.ref)} (${shortCommit(impact.baseline.commit)})</sub>`
+  );
+  return out;
+}
 function renderMarkdown(result, opts = {}) {
   const s = result.summary;
   const m = result.meta;
@@ -135366,6 +136478,10 @@ function renderMarkdown(result, opts = {}) {
   if (result.contracts) {
     out.push("");
     out.push(...renderContracts(result.contracts, opts));
+  }
+  if (result.impact) {
+    out.push("");
+    out.push(...renderImpactMarkdown(result.impact, opts));
   }
   if (result.suppressed.length) {
     out.push("");
@@ -135515,6 +136631,10 @@ var DEFAULTS2 = {
   "artifact-name": "flowpact-contracts",
   "retention-days": "7",
   plugins: "auto",
+  impact: "off",
+  "expected-impact": "",
+  "base-ref": "",
+  token: "${{ github.token }}",
   debug: "false"
 };
 var UNTRUSTED_EVENTS = /* @__PURE__ */ new Set(["pull_request_target", "workflow_run"]);
@@ -135562,8 +136682,94 @@ function readInputs() {
     artifactName: input2("artifact-name"),
     retentionDays: int2("retention-days"),
     plugins: pluginsAllowed(oneOf("plugins", ["auto", "true", "false"])),
+    impact: oneOf("impact", ["off", "auto", "on"]),
+    ...input2("expected-impact") ? { expectedImpact: oneOf("expected-impact", ["none", "patch", "minor", "major"]) } : {},
+    baseRef: input2("base-ref"),
     debug: bool("debug")
   };
+}
+function fetchRefs(root, refs, token, logger7) {
+  const env = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+  if (token && !token.startsWith("${{")) {
+    const host = new URL(process.env.GITHUB_SERVER_URL || "https://github.com").host;
+    const key = `http.https://${host}/.extraheader`;
+    const n = Number(env.GIT_CONFIG_COUNT) || 0;
+    Object.assign(env, {
+      [`GIT_CONFIG_KEY_${n}`]: key,
+      [`GIT_CONFIG_VALUE_${n}`]: "",
+      [`GIT_CONFIG_KEY_${n + 1}`]: key,
+      [`GIT_CONFIG_VALUE_${n + 1}`]: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`,
+      GIT_CONFIG_COUNT: String(n + 2)
+    });
+  }
+  for (const ref of refs) {
+    const spec = /^[0-9a-f]{7,64}$/i.test(ref) ? ref : ref.startsWith("origin/") ? `+refs/heads/${ref.slice("origin/".length)}:refs/remotes/${ref}` : ref;
+    try {
+      execFileSync2("git", ["-C", root, "fetch", "--no-tags", "--depth=1", "origin", spec], {
+        env,
+        stdio: "pipe"
+      });
+      logger7.debug(`fetched ${spec}`);
+    } catch (err) {
+      const stderr = String(err.stderr ?? "").replace(/AUTHORIZATION: [^\s]+ [^\s]+/gi, "AUTHORIZATION: ***").trim().split("\n").slice(-2).join(" ");
+      logger7.warn(`could not fetch ${spec}${stderr ? `: ${stderr}` : ""}`);
+    }
+  }
+}
+function impactSetup(root, config2, configPath, inputs, logger7) {
+  if (inputs.impact === "off") return {};
+  const event = githubEvent();
+  const auto2 = inputs.impact === "auto";
+  if (auto2 && event?.name === "pull_request_target")
+    return { note: "impact: auto skips pull_request_target" };
+  if (auto2 && event?.name !== "pull_request" && !inputs.baseRef)
+    return { note: "impact: auto runs on pull requests" };
+  const resolves = (ref) => {
+    try {
+      resolveCommit(root, ref);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let base = inputs.baseRef;
+  if (base && !/^[0-9a-f]{7,64}$/i.test(base) && !base.startsWith("refs/")) {
+    const tracking = `origin/${base.replace(/^origin\//, "")}`;
+    if (resolves(tracking) || !resolves(base)) base = tracking;
+  }
+  let prepared;
+  try {
+    prepared = prepareImpact(
+      root,
+      config2,
+      {
+        ...base ? { base } : {},
+        ...inputs.expectedImpact ? { expect: inputs.expectedImpact } : {},
+        ...event ? { event } : {},
+        ...process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {},
+        ...configPath ? { configPath } : {},
+        fetch: (refs) => fetchRefs(root, refs, getInput("token"), logger7)
+      },
+      logger7
+    );
+  } catch (err) {
+    if (err instanceof ImpactSetupError) throw new InputError(`impact: ${err.message}`);
+    throw err;
+  }
+  if ("skip" in prepared) return { note: `impact: skipped (${prepared.skip})` };
+  for (const n of prepared.notes) logger7.info(`impact: ${n}`);
+  if (auto2 && prepared.options.publishedFiles?.length === 0) {
+    const project = loadProject({
+      root,
+      logger: logger7,
+      ...prepared.options.policy.publish ? { publish: prepared.options.policy.publish } : {}
+    });
+    const units = [...project.workflows.values(), ...project.actions.values()];
+    if (!units.some((u) => isPublished(u, prepared.options.policy))) {
+      return { note: "impact: no published workflows or actions (see impact.publish)" };
+    }
+  }
+  return { options: prepared.options };
 }
 function pluginsAllowed(value) {
   if (value !== "auto") return value === "true";
@@ -135613,7 +136819,7 @@ function actionsSink(runnerDebug, groups) {
 var toPosix2 = (p) => p.split(sep3).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function inWorkspace(prefix2, file2) {
-  return prefix2 ? posix2.join(prefix2, file2) : file2;
+  return prefix2 ? posix3.join(prefix2, file2) : file2;
 }
 function annotate(f, prefix2) {
   const loc = f.loc;
@@ -135642,7 +136848,7 @@ function sarifInWorkspace(sarif, prefix2) {
     }
     if (!v || typeof v !== "object") return;
     const o = v;
-    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix2.join(prefix2, o.uri);
+    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix3.join(prefix2, o.uri);
     for (const value of Object.values(o)) visit3(value);
   };
   visit3(doc);
@@ -135653,7 +136859,7 @@ function writeReport(workspace, file2, content) {
   const abs = resolve4(workspace, file2);
   mkdirSync3(dirname4(abs), { recursive: true });
   writeFileSync3(abs, content);
-  const shown = toPosix2(relative4(workspace, abs));
+  const shown = toPosix2(relative5(workspace, abs));
   info(`wrote ${shown.startsWith("..") ? abs : shown}`);
   return abs;
 }
@@ -135681,7 +136887,7 @@ function artifactReadme(plan, artifactName, runId) {
   ].join("\n");
 }
 async function driftArtifact(plan, prefix2, inputs, runId) {
-  const dir2 = join7(
+  const dir2 = join8(
     process.env.RUNNER_TEMP || tmpdir(),
     `flowpact-contracts-artifact-${slug(process.env.GITHUB_ACTION ?? "flowpact")}-${slug(prefix2)}`
   );
@@ -135691,14 +136897,14 @@ async function driftArtifact(plan, prefix2, inputs, runId) {
     ...plan,
     entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix2, e.file) }))
   };
-  const patch = join7(dir2, PATCH_FILE);
+  const patch = join8(dir2, PATCH_FILE);
   writeFileSync3(patch, contractPatch(repoPlan));
-  const contracts = writeContracts(dir2, repoPlan, join7(dir2, ARTIFACT_DIR));
-  writeFileSync3(join7(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
+  const contracts = writeContracts(dir2, repoPlan, join8(dir2, ARTIFACT_DIR));
+  writeFileSync3(join8(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
   const files = [
     patch,
-    join7(dir2, ARTIFACT_DIR, "README.md"),
-    ...contracts.map((f) => join7(dir2, ARTIFACT_DIR, f))
+    join8(dir2, ARTIFACT_DIR, "README.md"),
+    ...contracts.map((f) => join8(dir2, ARTIFACT_DIR, f))
   ];
   info(`wrote ${PATCH_FILE} and ${plural3(contracts.length, "contract file")} to ${dir2}`);
   const out = { dir: dir2, patch };
@@ -135769,7 +136975,7 @@ async function run() {
     info(bannerText());
     const workspace = resolve4(process.env.GITHUB_WORKSPACE || process.cwd());
     const root = resolve4(workspace, inputs.workingDirectory);
-    const rel = toPosix2(relative4(workspace, root));
+    const rel = toPosix2(relative5(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
     const loaded = loadConfig(root, inputs.config ? resolve4(root, inputs.config) : void 0);
     info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
@@ -135779,6 +136985,11 @@ async function run() {
       const why = getInput("plugins").trim().toLowerCase() === "false" ? "the plugins input is false" : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
       warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
     }
+    const impact = await group2(
+      "flowpact: impact baseline",
+      async () => impactSetup(root, loaded.config, inputs.config || void 0, inputs, logger7)
+    );
+    if (impact.note) info(impact.note);
     const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry2 = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry2, logger7);
@@ -135792,7 +137003,8 @@ async function run() {
         logger: logger7,
         registry: registry2,
         checkContracts: inputs.mode === "check",
-        pluginsSkipped: loaded.config.plugins.length > 0 && !inputs.plugins
+        pluginsSkipped: loaded.config.plugins.length > 0 && !inputs.plugins,
+        ...impact.options ? { impact: impact.options } : {}
       });
     });
     if (result.unloadedRules?.length) {
@@ -135870,6 +137082,9 @@ async function run() {
     setOutput("report-sarif", reports.sarif ?? "");
     setOutput("patch", drift?.patch ?? "");
     setOutput("artifact-id", drift?.uploaded?.id ?? "");
+    setOutput("required-impact", result.impact?.verdict.required ?? "");
+    setOutput("declared-impact", result.impact?.verdict.declared?.level ?? "");
+    setOutput("impact-ok", result.impact ? String(result.impact.verdict.ok) : "");
     info(
       `flowpact ${inputs.mode}: ${plural3(s.errors, "error")}, ${plural3(s.warnings, "warning")}, ${s.infos} info, ${s.suppressed} suppressed \xB7 ${plural3(s.workflows, "workflow")} \xB7 ${result.durationMs} ms`
     );

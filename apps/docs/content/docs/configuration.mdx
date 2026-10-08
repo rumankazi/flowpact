@@ -162,4 +162,9 @@ error, so a typo is never hidden.
 | `ignore` | list of paths or globs | `[]` | Findings in matching files are suppressed. |
 | `overrides` | list of `{rule, target?, file?, reason, expires?, owner?}` | `[]` | Accepted findings, each with a reason and an optional expiry date ([details](#overrides)). |
 | `matrixShapes` | map of `<workflow path>#<job id>` → `{ keys: [...] }` | `{}` | Declared keys of runtime-computed matrices ([details](#matrix-shapes)). |
+| `impact.publish` | list of paths or globs | reusable workflows (except `_`-prefixed files) and the root `action.yml` | Units other repositories use ([impact mode](/docs/impact-mode)). |
+| `impact.declaredBy` | `explicit` \| `title` \| `labels` | `explicit` when given, else `title` | The authoritative source of the declared impact. |
+| `impact.labels` | `{ major, minor, patch, none }` | `semver:*` | Label names that declare each level. |
+| `impact.types` | map of type → level | `feat: minor`, `fix` / `perf: patch` | Conventional Commits types; others declare `none`, `!` declares `major`. |
+| `impact.uncertain` | `warn` \| `fail` | `warn` | Whether changes flowpact cannot fully resolve count towards the required impact. |
 | `plugins` | list of paths | `[]` | JavaScript modules exporting extra rules ([details](#plugins)). |

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
@@ -5,6 +6,7 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import * as core from '@actions/core';
 import {
   type AnalysisResult,
+  type AnalyzeOptions,
   analyze,
   bannerText,
   ConfigError,
@@ -14,14 +16,23 @@ import {
   createRegistry,
   exitCodeFor,
   type Finding,
+  githubEvent,
+  type ImpactLevel,
+  ImpactSetupError,
+  isPublished,
   type LoadedConfig,
+  type Logger,
   type LogLevel,
   type LogRecord,
   type LogSink,
   loadConfig,
   loadPlugins,
+  loadProject,
   neutralizeWorkflowCommands,
+  prepareImpact,
+  resolveCommit,
   resolveLogLevel,
+  type WfcConfig,
   writeContracts,
 } from '@flowpact/core';
 import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@flowpact/reporters';
@@ -44,6 +55,10 @@ export const DEFAULTS = {
   'artifact-name': 'flowpact-contracts',
   'retention-days': '7',
   plugins: 'auto',
+  impact: 'off',
+  'expected-impact': '',
+  'base-ref': '',
+  token: '${{ github.token }}',
   debug: 'false',
 } as const;
 
@@ -84,6 +99,9 @@ interface Inputs {
   retentionDays: number;
   /** Whether `plugins:` from the checked-out config may run. */
   plugins: boolean;
+  impact: 'off' | 'auto' | 'on';
+  expectedImpact?: ImpactLevel;
+  baseRef: string;
   debug: boolean;
 }
 
@@ -130,8 +148,123 @@ function readInputs(): Inputs {
     artifactName: input('artifact-name'),
     retentionDays: int('retention-days'),
     plugins: pluginsAllowed(oneOf('plugins', ['auto', 'true', 'false'])),
+    impact: oneOf('impact', ['off', 'auto', 'on']),
+    ...(input('expected-impact')
+      ? { expectedImpact: oneOf('expected-impact', ['none', 'patch', 'minor', 'major']) as ImpactLevel }
+      : {}),
+    baseRef: input('base-ref'),
     debug: bool('debug'),
   };
+}
+
+/**
+ * Makes `refs` available in a shallow checkout: fetched at depth 1 with a one-off authorization header passed through
+ * the environment (never in argv, never written to .git/config). An empty value first clears the header
+ * actions/checkout persists, since GitHub rejects a request with two Authorization headers.
+ */
+function fetchRefs(root: string, refs: string[], token: string, logger: Logger): void {
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
+  if (token && !token.startsWith('${{')) {
+    const host = new URL(process.env.GITHUB_SERVER_URL || 'https://github.com').host;
+    const key = `http.https://${host}/.extraheader`;
+    const n = Number(env.GIT_CONFIG_COUNT) || 0;
+    Object.assign(env, {
+      [`GIT_CONFIG_KEY_${n}`]: key,
+      [`GIT_CONFIG_VALUE_${n}`]: '',
+      [`GIT_CONFIG_KEY_${n + 1}`]: key,
+      [`GIT_CONFIG_VALUE_${n + 1}`]: `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString('base64')}`,
+      GIT_CONFIG_COUNT: String(n + 2),
+    });
+  }
+  for (const ref of refs) {
+    // A commit is fetched as is; `origin/<branch>` into its remote-tracking ref; refspecs (tags) unchanged.
+    const spec = /^[0-9a-f]{7,64}$/i.test(ref)
+      ? ref
+      : ref.startsWith('origin/')
+        ? `+refs/heads/${ref.slice('origin/'.length)}:refs/remotes/${ref}`
+        : ref;
+    try {
+      execFileSync('git', ['-C', root, 'fetch', '--no-tags', '--depth=1', 'origin', spec], {
+        env,
+        stdio: 'pipe',
+      });
+      logger.debug(`fetched ${spec}`);
+    } catch (err) {
+      const stderr = String((err as { stderr?: Buffer }).stderr ?? '')
+        .replace(/AUTHORIZATION: [^\s]+ [^\s]+/gi, 'AUTHORIZATION: ***')
+        .trim()
+        .split('\n')
+        .slice(-2)
+        .join(' ');
+      logger.warn(`could not fetch ${spec}${stderr ? `: ${stderr}` : ''}`);
+    }
+  }
+}
+
+/** Impact mode's options for analyze(), or why it does not run. */
+function impactSetup(
+  root: string,
+  config: WfcConfig,
+  configPath: string | undefined,
+  inputs: Inputs,
+  logger: Logger,
+): { options?: NonNullable<AnalyzeOptions['impact']>; note?: string } {
+  if (inputs.impact === 'off') return {};
+  const event = githubEvent();
+  const auto = inputs.impact === 'auto';
+  if (auto && event?.name === 'pull_request_target')
+    return { note: 'impact: auto skips pull_request_target' };
+  if (auto && event?.name !== 'pull_request' && !inputs.baseRef)
+    return { note: 'impact: auto runs on pull requests' };
+  // A branch name prefers its remote-tracking ref (a local branch can be stale on a reused workspace), then the ref as
+  // given; when the clone has neither, the remote-tracking ref is fetched.
+  const resolves = (ref: string) => {
+    try {
+      resolveCommit(root, ref);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let base = inputs.baseRef;
+  if (base && !/^[0-9a-f]{7,64}$/i.test(base) && !base.startsWith('refs/')) {
+    const tracking = `origin/${base.replace(/^origin\//, '')}`;
+    if (resolves(tracking) || !resolves(base)) base = tracking;
+  }
+  let prepared: ReturnType<typeof prepareImpact>;
+  try {
+    prepared = prepareImpact(
+      root,
+      config,
+      {
+        ...(base ? { base } : {}),
+        ...(inputs.expectedImpact ? { expect: inputs.expectedImpact } : {}),
+        ...(event ? { event } : {}),
+        ...(process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}),
+        ...(configPath ? { configPath } : {}),
+        fetch: (refs) => fetchRefs(root, refs, core.getInput('token'), logger),
+      },
+      logger,
+    );
+  } catch (err) {
+    if (err instanceof ImpactSetupError) throw new InputError(`impact: ${err.message}`);
+    throw err;
+  }
+  if ('skip' in prepared) return { note: `impact: skipped (${prepared.skip})` };
+  for (const n of prepared.notes) logger.info(`impact: ${n}`);
+  if (auto && prepared.options.publishedFiles?.length === 0) {
+    // Decided on both sides: a pull request that deletes or unpublishes the only published unit is still checked.
+    const project = loadProject({
+      root,
+      logger,
+      ...(prepared.options.policy.publish ? { publish: prepared.options.policy.publish } : {}),
+    });
+    const units = [...project.workflows.values(), ...project.actions.values()];
+    if (!units.some((u) => isPublished(u, prepared.options.policy))) {
+      return { note: 'impact: no published workflows or actions (see impact.publish)' };
+    }
+  }
+  return { options: prepared.options };
 }
 
 function pluginsAllowed(value: 'auto' | 'true' | 'false'): boolean {
@@ -399,6 +532,11 @@ export async function run(): Promise<void> {
       core.warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
     }
 
+    const impact = await group('flowpact: impact baseline', async () =>
+      impactSetup(root, loaded.config, inputs.config || undefined, inputs, logger),
+    );
+    if (impact.note) core.info(impact.note);
+
     const result = await group(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry, logger);
@@ -413,6 +551,7 @@ export async function run(): Promise<void> {
         registry,
         checkContracts: inputs.mode === 'check',
         pluginsSkipped: loaded.config.plugins.length > 0 && !inputs.plugins,
+        ...(impact.options ? { impact: impact.options } : {}),
       });
     });
     if (result.unloadedRules?.length) {
@@ -500,6 +639,9 @@ export async function run(): Promise<void> {
     core.setOutput('report-sarif', reports.sarif ?? '');
     core.setOutput('patch', drift?.patch ?? '');
     core.setOutput('artifact-id', drift?.uploaded?.id ?? '');
+    core.setOutput('required-impact', result.impact?.verdict.required ?? '');
+    core.setOutput('declared-impact', result.impact?.verdict.declared?.level ?? '');
+    core.setOutput('impact-ok', result.impact ? String(result.impact.verdict.ok) : '');
 
     core.info(
       `flowpact ${inputs.mode}: ${plural(s.errors, 'error')}, ${plural(s.warnings, 'warning')}, ${s.infos} info, ${s.suppressed} suppressed · ${plural(s.workflows, 'workflow')} · ${result.durationMs} ms`,
