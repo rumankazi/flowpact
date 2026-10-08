@@ -2,12 +2,12 @@
 
 [![CI](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml)
 [![Release](https://github.com/rumankazi/flowpact/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/release.yml)
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-flowpact-blue?logo=github)](https://github.com/marketplace/actions/flowpact)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-flowpact-blue?logo=github)](https://github.com/marketplace/actions/wfc-workflow-contracts)
 [![npm](https://img.shields.io/npm/v/flowpact?logo=npm)](https://www.npmjs.com/package/flowpact)
 [![Node.js](https://img.shields.io/node/v/flowpact?logo=nodedotjs)](https://www.npmjs.com/package/flowpact)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rumankazi/flowpact/badge)](https://scorecard.dev/viewer/?uri=github.com/rumankazi/flowpact)
 [![License: MIT](https://img.shields.io/github/license/rumankazi/flowpact)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-rumankazi.github.io%2Fwfc-blue)](https://rumankazi.github.io/flowpact)
+[![Docs](https://img.shields.io/badge/docs-rumankazi.github.io%2Fflowpact-blue)](https://rumankazi.github.io/flowpact)
 
 **Lint, trace and lock the data flow between your GitHub Actions workflows.**
 
@@ -31,7 +31,7 @@ In CI, use the action:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: rumankazi/flowpact@v0
+- uses: rumankazi/flowpact@v0.2
   with:
     mode: check
 ```

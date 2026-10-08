@@ -10,7 +10,6 @@ import {
 import {
   type ContractPlan,
   type ContractPlanEntry,
-  contractsDirFor,
   entryConsumers,
   LEGACY_CONTRACTS_DIR,
   planContracts,
@@ -258,15 +257,13 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
 
   // Files still at wfc's pre-0.2.0 location: they keep working, FP904 suggests `flowpact migrate`.
   const layoutFs = opts.fs ?? nodeFileSystem(opts.root);
+  const legacyContracts = layoutFs
+    .walk(LEGACY_CONTRACTS_DIR)
+    .filter((f) => f.endsWith('.contract.yml'))
+    .sort();
   const legacyFiles = [
     ...(opts.configFile?.startsWith(`${LEGACY_CONFIG_DIR}/`) ? [opts.configFile] : []),
-    ...(contractsDirFor(layoutFs) === LEGACY_CONTRACTS_DIR
-      ? layoutFs
-          .walk(LEGACY_CONTRACTS_DIR)
-          .filter((f) => f.endsWith('.contract.yml'))
-          .sort()
-          .slice(0, 1)
-      : []),
+    ...legacyContracts.slice(0, 1),
   ];
 
   const runRules = (phase: 'main' | 'post', extra: Partial<RuleContext>): Finding[] => {

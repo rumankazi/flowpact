@@ -20,9 +20,14 @@ export const migrateCommand = defineCommand({
     guard(async () => {
       const ctx = createContext(args, rawArgs);
       printBanner(ctx, `root ${displayPath(ctx.root)}`);
-      const plan = planMigration(ctx.root);
+      let plan: ReturnType<typeof planMigration>;
+      try {
+        plan = planMigration(ctx.root);
+      } catch (err) {
+        throw new UsageError((err as Error).message);
+      }
       const c = pc.createColors(ctx.render.color);
-      if (plan.moves.length === 0) {
+      if (plan.moves.length === 0 && plan.leftovers.length === 0) {
         ctx.stdout('Nothing to migrate: no .github/workflow-contracts/ config or contracts found.');
         return EXIT.ok;
       }
@@ -30,8 +35,7 @@ export const migrateCommand = defineCommand({
         const changes = m.changes.length ? c.dim(` (${m.changes.join(', ')})`) : '';
         ctx.stdout(`  ${m.from} ${c.dim('→')} ${m.to}${changes}`);
       }
-      for (const f of plan.leftovers)
-        ctx.stdout(c.yellow(`  ${f} is not a flowpact file and stays where it is`));
+      for (const l of plan.leftovers) ctx.stdout(c.yellow(`  ${l.file} ${l.reason}`));
       if (plan.conflicts.length) {
         throw new UsageError(
           `Not migrating: ${plan.conflicts.join(', ')} already exist. Remove or merge them, then run flowpact migrate again.`,
@@ -42,8 +46,11 @@ export const migrateCommand = defineCommand({
         return EXIT.ok;
       }
       applyMigration(ctx.root, plan);
+      const left = plan.leftovers.length
+        ? c.yellow(` ${plan.leftovers.length} file(s) left in place (see above).`)
+        : '';
       ctx.stdout(
-        `\n${c.green('✔')} Moved ${plan.moves.length} file(s). Run ${c.bold('flowpact check')} to confirm the contracts, then commit.`,
+        `\n${c.green('✔')} Moved ${plan.moves.length} file(s).${left} Run ${c.bold('flowpact check')} to confirm the contracts, then commit.`,
       );
       return EXIT.ok;
     }),

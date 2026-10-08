@@ -28,7 +28,7 @@ setup over. See [Migrating from wfc](https://rumankazi.github.io/flowpact/docs/m
 Requires Node.js 22 or newer. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` usage or
 configuration error, `3` internal error.
 
-In GitHub Actions, use the action instead: `uses: rumankazi/flowpact@v0` (job summary, annotations, SARIF and a
+In GitHub Actions, use the action instead: `uses: rumankazi/flowpact@v0.2` (job summary, annotations, SARIF and a
 downloadable patch when contracts drift).
 
 📖 **Docs:** https://rumankazi.github.io/flowpact — every rule has its own page.

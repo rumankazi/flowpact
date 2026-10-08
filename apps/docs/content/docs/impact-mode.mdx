@@ -12,7 +12,7 @@ options may change before it ships. Discuss it in a [GitHub issue](https://githu
 
 **Does the release impact a pull request declares cover what its workflow changes actually require?**
 
-Repositories that publish reusable workflows or actions version them, and consumers pin a major tag (`@v1`). Some
+Repositories that publish reusable workflows or actions version them, and consumers pin a floating tag (`@v1`). Some
 changes break those consumers without any error in the publishing repository — the classic one is renaming a job:
 consumers' branch protection requires the check `ci / Test`, the job now reports `ci / Unit tests`, and their pull
 requests wait forever on _Expected — Waiting for status to be reported_. Released as a patch, nobody notices until the
@@ -136,7 +136,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
-      - uses: rumankazi/flowpact@v0
+      - uses: rumankazi/flowpact@v0.2
         with:
           mode: check
           impact: auto   # off (default) | auto | on

@@ -3,7 +3,7 @@ title: GitHub Action
 description: Run flowpact in GitHub Actions with inline annotations, a job summary, SARIF for code scanning and the regenerated contracts as an artifact.
 ---
 
-The flowpact action ([GitHub Marketplace](https://github.com/marketplace/actions/flowpact)) runs the same
+The flowpact action ([GitHub Marketplace](https://github.com/marketplace/actions/wfc-workflow-contracts)) runs the same
 engine as the [CLI](/docs/cli), bundled into the action itself, so the job does not need Node.js or a package install. On top of the CLI's checks it:
 
 - **annotates** every finding on the file and line it is about, in the run and in the pull request diff;
@@ -13,8 +13,9 @@ engine as the [CLI](/docs/cli), bundled into the action itself, so the job does 
   artifact, so anyone can update them without running flowpact.
 
 <Callout title="Version tag">
-  `rumankazi/flowpact@v0` follows the latest `0.x` release. flowpact is before 1.0, so a minor release can add rules or change
-  defaults; pin an exact release (`@v0.1.0`) or a commit SHA to upgrade on your own schedule.
+  `rumankazi/flowpact@v0.2` follows the 0.2.x patch releases. flowpact is before 1.0, where a minor release may be
+  breaking, so each minor line has its own tag (`v0.2`, `v0.3`, …) and moving to the next one is your choice. Pin an
+  exact release (`@v0.2.0`) or a commit SHA to control every update.
 </Callout>
 
 ## Usage
@@ -38,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: rumankazi/flowpact@v0
+      - uses: rumankazi/flowpact@v0.2
 ```
 
 The step fails when there are errors. Use `fail-on: warning` to be stricter or `fail-on: never` to report without
@@ -52,7 +53,7 @@ rule and also fails when the contracts no longer match the workflows:
 ```yaml
     steps:
       - uses: actions/checkout@v7
-      - uses: rumankazi/flowpact@v0
+      - uses: rumankazi/flowpact@v0.2
         with:
           mode: check
 ```
@@ -71,7 +72,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v7
-      - uses: rumankazi/flowpact@v0
+      - uses: rumankazi/flowpact@v0.2
         with:
           report-sarif: flowpact.sarif
       - if: always()
@@ -89,7 +90,7 @@ results, with the override's reason.
 
 ```yaml
       - id: flowpact
-        uses: rumankazi/flowpact@v0
+        uses: rumankazi/flowpact@v0.2
         with:
           mode: check
           fail-on: never

@@ -1,7 +1,7 @@
 name: Release
 # Every push to main updates the release pull request (version bump and changelog from Conventional Commits).
 # Merging that pull request tags the release and creates the GitHub release; this workflow then publishes to npm,
-# moves the major tag (v0) and smoke-tests the published package.
+# moves the floating tag (v0.2 before 1.0, v1 after) and smoke-tests the published package.
 on:
   push:
     branches: [main]
@@ -170,7 +170,7 @@ jobs:
           fi
 
   major-tag:
-    name: Move the major tag
+    name: Move the floating tag
     needs: resolve
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.prerelease == 'false' }}
     runs-on: ubuntu-latest
@@ -187,24 +187,31 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app.outputs.token }}
-      - name: Point the major tag (e.g. v0) at the release
+      - name: Point the floating tag at the release
         env:
           TAG: ${{ needs.resolve.outputs.tag }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
           BOT: ${{ steps.app.outputs.app-slug }}[bot]
         run: |
           git fetch --force --tags origin
+          # Before 1.0 a minor release may be breaking, so each minor line gets its own tag (v0.2); from 1.0, the major (v1).
           major="${TAG%%.*}"
-          # A re-publish of an older release must not move the major tag backwards.
-          latest=$(git tag --list "$major.*" --sort=-v:refname | grep -v -- - | head -n 1)
+          if [ "$major" = v0 ]; then
+            rest="${TAG#v0.}"
+            float="v0.${rest%%.*}"
+          else
+            float="$major"
+          fi
+          # A re-publish of an older release must not move the floating tag backwards.
+          latest=$(git tag --list "$float.*" --sort=-v:refname | grep -v -- - | head -n 1)
           if [ "$latest" != "$TAG" ]; then
-            echo "$TAG is not the latest $major release ($latest); leaving $major alone."
+            echo "$TAG is not the latest $float release ($latest); leaving $float alone."
             exit 0
           fi
           git config user.name "$BOT"
           git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
-          git tag -fa "$major" -m "$major → $TAG" "$TAG^{commit}"
-          git push origin "refs/tags/$major" --force
+          git tag -fa "$float" -m "$float → $TAG" "$TAG^{commit}"
+          git push origin "refs/tags/$float" --force
 
   smoke-published:
     name: Smoke test the published package (${{ matrix.os }})
