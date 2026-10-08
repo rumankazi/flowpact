@@ -130528,7 +130528,7 @@ function loadProject(opts) {
 
 // ../core/src/version.ts
 var TOOL_NAME = "wfc";
-var VERSION10 = "0.1.0";
+var VERSION10 = "0.1.1";
 var SCHEMA_VERSIONS = {
   config: 1,
   contract: 1,
