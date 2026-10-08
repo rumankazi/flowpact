@@ -64,7 +64,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 3. The release workflow then publishes `flowpact` to npm with provenance through npm trusted publishing (no
    token; only the very first publish of a new package name needs a short-lived `NPM_TOKEN` secret, because a trusted
    publisher can be configured only once the package exists), moves the floating tag used by
-   `uses: rumankazi/flowpact@v0.6` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
+   `uses: rumankazi/flowpact@v0.7` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
    the major, `v1`), and smoke-tests the published package on Linux, macOS and Windows.
 
 4. For stable releases it also packages the VS Code extension, smoke-tests the package in VS Code, attaches the
