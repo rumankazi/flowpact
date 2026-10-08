@@ -132378,7 +132378,7 @@ function nameKind(job) {
   if (only && ast instanceof Literal) {
     return { kind: "static", text: (toText(evaluate(ast, () => void 0)) ?? "").trim() };
   }
-  return { kind: "dynamic", template: raw };
+  return { kind: "dynamic", template: raw, segments };
 }
 function suffix(combo, exp, job) {
   const m = job.matrix;
@@ -132395,6 +132395,15 @@ function suffix(combo, exp, job) {
     parts.push(...suffixValues(cell2.value));
   }
   return { text: parts.length ? ` (${parts.join(", ")})` : "", certain };
+}
+function templateStem(template, segments) {
+  let out = "";
+  let at = 0;
+  for (const seg of segments) {
+    out += `${template.slice(at, seg.start)}\u2026`;
+    at = seg.end;
+  }
+  return (out + template.slice(at)).trim();
 }
 function nameResolver(combo, inputs) {
   const matrix2 = combo ? matrixResolver(combo) : void 0;
@@ -132413,7 +132422,7 @@ function jobSegments(job, inputs = {}) {
   const exp = job.matrix ? expandMatrix(job.matrix) : void 0;
   const combos = exp && !exp.dynamic && !exp.truncated && exp.combos.length ? exp.combos : [void 0];
   const matrixUnknown = !!exp && (exp.dynamic || exp.truncated);
-  const stem = kind.kind === "static" ? `${kind.text || job.id}${exp ? " (\u2026)" : ""}` : kind.template.trim().replace(/\$\{\{[\s\S]*?\}\}/g, "\u2026");
+  const stem = kind.kind === "static" ? `${kind.text || job.id}${exp ? " (\u2026)" : ""}` : templateStem(kind.template, kind.segments);
   return combos.map((combo) => {
     if (kind.kind === "static") {
       const base = kind.text || job.id;

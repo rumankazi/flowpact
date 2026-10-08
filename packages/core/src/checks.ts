@@ -21,6 +21,7 @@ import {
   findTemplateSegments,
   type Json,
   known,
+  type TemplateSegment,
   UNKNOWN,
 } from './expressions';
 import type { ProjectIndex } from './graph';
@@ -75,7 +76,9 @@ const toText = (v: EvalValue): string | undefined => {
 };
 
 /** How a job's `name` decides the check name. */
-type NameKind = { kind: 'static'; text: string } | { kind: 'dynamic'; template: string };
+type NameKind =
+  | { kind: 'static'; text: string }
+  | { kind: 'dynamic'; template: string; segments: TemplateSegment[] };
 
 function nameKind(job: JobDecl): NameKind {
   const raw = job.name ?? '';
@@ -87,7 +90,7 @@ function nameKind(job: JobDecl): NameKind {
   if (only && ast instanceof Literal) {
     return { kind: 'static', text: (toText(evaluate(ast, () => undefined)) ?? '').trim() };
   }
-  return { kind: 'dynamic', template: raw };
+  return { kind: 'dynamic', template: raw, segments };
 }
 
 function suffix(combo: Combination, exp: MatrixExpansion, job: JobDecl): { text: string; certain: boolean } {
@@ -108,6 +111,17 @@ function suffix(combo: Combination, exp: MatrixExpansion, job: JobDecl): { text:
     parts.push(...suffixValues(cell.value));
   }
   return { text: parts.length ? ` (${parts.join(', ')})` : '', certain };
+}
+
+/** The template with `…` for each expression (`Build …`), from the parsed segments rather than a backtracking regex. */
+function templateStem(template: string, segments: TemplateSegment[]): string {
+  let out = '';
+  let at = 0;
+  for (const seg of segments) {
+    out += `${template.slice(at, seg.start)}…`;
+    at = seg.end;
+  }
+  return (out + template.slice(at)).trim();
 }
 
 /** A workflow's inputs: absent = not passed (the default applies), `known: false` = passed but not known statically. */
@@ -143,7 +157,7 @@ export function jobSegments(
   const stem =
     kind.kind === 'static'
       ? `${kind.text || job.id}${exp ? ' (…)' : ''}`
-      : kind.template.trim().replace(/\$\{\{[\s\S]*?\}\}/g, '…');
+      : templateStem(kind.template, kind.segments);
   return combos.map((combo) => {
     if (kind.kind === 'static') {
       const base = kind.text || job.id;

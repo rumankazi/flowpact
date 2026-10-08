@@ -121,6 +121,27 @@ describe('composition', () => {
   });
 });
 
+describe('stems', () => {
+  const stems = (name: string) => {
+    const r = lint({
+      [`${WF}/r.yml`]: `on: workflow_call\njobs:\n  t:\n    name: ${JSON.stringify(name)}\n    runs-on: x\n    steps: [{ run: x }]\n`,
+    });
+    return workflowChecks(r.index, r.project.workflows.get(`${WF}/r.yml`)!, 'consumer').map((c) => c.stem);
+  };
+
+  it('replaces each expression with …, including a closing brace inside a string', () => {
+    expect(stems('  Build ${{ inputs.os }} on ${{ inputs.arch }}  ')).toEqual(['Build … on …']);
+    expect(stems("Test ${{ format('{0}}}', inputs.os) }}")).toEqual(['Test …']);
+  });
+
+  it('stays linear on unterminated expressions (CodeQL js/polynomial-redos)', () => {
+    const name = `x ${'${{'.repeat(200_000)}`;
+    const started = performance.now();
+    expect(stems(name)).toEqual(['x …']);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
 describe('parsed job fields used for check names and impact', () => {
   it('reads permissions, name expressions and boolean if', () => {
     const r = lint({
