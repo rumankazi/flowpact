@@ -319,7 +319,7 @@ describe('plugins in rules / explain', () => {
 describe('review fixes', () => {
   it('exits 2 for argument errors, unknown --only rules and missing paths', async () => {
     const root = fixture('broken');
-    for (const args of [
+    const cases = [
       ['lint', '--format', 'xml'],
       ['lint', '--fail-on', 'bogus'],
       ['frob'],
@@ -330,13 +330,15 @@ describe('review fixes', () => {
       ['trace', 'x.yml', '--depth', '0', '--root', root],
       ['generate', '--root', mkdtempSync(join(tmpdir(), 'wfc-empty-gen-'))],
       ['lint', '--root', fixture('clean'), '-o', '/proc/definitely/not/writable/report.json'],
-    ]) {
-      const r = await wfc(args);
-      expect({ args, code: r.exitCode }).toEqual({ args, code: 2 });
-    }
+    ];
+    // Independent processes: run them together so slow CI runners stay well within the timeout.
+    const results = await Promise.all(cases.map((args) => wfc(args)));
+    expect(results.map((r, i) => ({ args: cases[i], code: r.exitCode }))).toEqual(
+      cases.map((args) => ({ args, code: 2 })),
+    );
     const typo = await wfc(['lint', '--root', root, '--only', 'unused-inptu']);
     expect(typo.stderr).toContain('did you mean unused-input?');
-  });
+  }, 120_000);
 
   it('only treats real workflows and actions under a directory argument as targets', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wfc-dirs-'));
