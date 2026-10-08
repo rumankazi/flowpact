@@ -76,14 +76,7 @@ export interface Project {
   /** Requested paths that exist but are neither workflows nor action metadata. */
   ignoredTargets?: string[];
   /** Local `uses:` targets that do not exist. */
-  missing: {
-    uses: UsesRef;
-    from: string;
-    job?: string;
-    step?: number;
-    /** The checkout of this repository a step's `./path` was mapped through, when it is not the workspace root. */
-    checkout?: { path: string; loc: Loc };
-  }[];
+  missing: MissingTarget[];
   /**
    * Local `uses:` GitHub rejects, not loaded: job-level paths outside .github/workflows (`not-callable`), and `$/` with
    * an `@ref` suffix (`self-ref`).
@@ -101,6 +94,46 @@ export interface Project {
   wholeRepository?: boolean;
 }
 
+/** A local `uses:` whose target does not exist. */
+export interface MissingTarget {
+  uses: UsesRef;
+  from: string;
+  job?: string;
+  step?: number;
+  /**
+   * The missing path, when it is not `uses.target`: a composite action's step that resolves in one caller's workspace
+   * (its target) and not in another's (this).
+   */
+  target?: string;
+  /**
+   * The target is in this repository (and verified as the best guess), but not where the step's `./path` points:
+   * nothing puts this repository at the workspace root (see `elsewhere`).
+   */
+  inRepository?: boolean;
+  /** The checkout of this repository a step's `./path` was mapped through, when it is not the workspace root. */
+  checkout?: { path: string; loc: Loc };
+  /**
+   * Set when no checkout of this repository is at the workspace root, where a step's `./path` points: the checkouts
+   * of this repository elsewhere in the workspace (none when the job only checks out other repositories).
+   */
+  elsewhere?: { path: string; loc: Loc }[];
+  /**
+   * For a composite action's step that resolves differently for other callers: the steps leading here, from the
+   * job that sets up the workspace in which the path is missing.
+   */
+  via?: WorkspaceCaller[];
+}
+
+/** A step that runs a composite action, so the action's steps resolve `./path` in that step's workspace. */
+export interface WorkspaceCaller {
+  /** The workflow or action the step is in. */
+  from: string;
+  job?: string;
+  loc: Loc;
+  /** The composite action it runs. */
+  action: string;
+}
+
 /** Why a step's `./path` cannot be verified. */
 export interface UnverifiedUse {
   uses: UsesRef;
@@ -110,13 +143,18 @@ export interface UnverifiedUse {
   /**
    * `other-repository`: inside a checkout of another repository. `outside-workspace`: the path leaves the workspace.
    * `not-checked-out`: no checkout of this repository covers it (the job checks this repository out elsewhere, or to a
-   * path computed at runtime). `created-at-runtime`: an earlier step's script writes to it.
+   * path computed at runtime), and it is not in one of this repository's top-level directories. `created-at-runtime`:
+   * an earlier step's script writes there. `other-ref`: inside a checkout of this repository at another ref than the
+   * running commit, which may hold it.
    */
-  reason: 'other-repository' | 'outside-workspace' | 'not-checked-out' | 'created-at-runtime';
-  /** The checkout involved: the other repository's, or one whose path or repository is computed at runtime. */
-  checkout?: { repository?: string; path: string; loc: Loc };
-  /** The earlier step whose script writes to the path (`created-at-runtime`). */
-  writer?: Loc;
+  reason: 'other-repository' | 'outside-workspace' | 'not-checked-out' | 'created-at-runtime' | 'other-ref';
+  /**
+   * The checkout involved: the other repository's, one whose path or repository is computed at runtime, or this
+   * repository's at another `ref`.
+   */
+  checkout?: { repository?: string; ref?: string; path: string; loc: Loc };
+  /** The earlier step whose script writes there (`created-at-runtime`): the path it writes and the command. */
+  writer?: { loc: Loc; path: string; command: string };
 }
 
 export const sym = {

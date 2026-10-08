@@ -182,6 +182,39 @@ describe('$/ and workspace-relative uses:', () => {
   });
 });
 
+describe('local uses: outside the workspace (review of workspace-relative uses:)', () => {
+  it('draws an action that is in the repository but not in the workspace as itself, and a missing one as missing', async () => {
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
+    const r = analyze({
+      root: '/v',
+      fs: memoryFileSystem({
+        '.github/workflows/a.yml': [
+          'on: push',
+          'jobs:',
+          '  y:',
+          '    runs-on: x',
+          '    steps:',
+          '      - uses: actions/checkout@v5',
+          '        with: { path: src }',
+          '      - uses: ./.github/actions/act',
+          '      - uses: ./.github/actions/gone',
+          '',
+        ].join('\n'),
+        '.github/actions/act/action.yml': 'runs:\n  using: composite\n  steps: []\n',
+      }),
+      validateSchema: false,
+      repository: 'a/b',
+    });
+    expect(r.findings.filter((f) => f.code === 'FP606')).toHaveLength(2);
+    const g = buildCallGraph(r.index);
+    expect(g.nodes.map((n) => [n.kind, n.id])).toEqual([
+      ['workflow', '.github/workflows/a.yml'],
+      ['action', '.github/actions/act'],
+      ['missing', '.github/actions/gone'],
+    ]);
+  });
+});
+
 describe('mermaid ids', () => {
   it('trims underscores in linear time (js/polynomial-redos)', async () => {
     const { memoryFileSystem } = await import('@flowpact/core');

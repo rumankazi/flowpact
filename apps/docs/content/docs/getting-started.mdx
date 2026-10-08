@@ -56,7 +56,9 @@ flowpact lint
 ```
 
 flowpact reads `.github/workflows/*.yml` and every local action (`action.yml` under `.github/actions/`, the
-repository's own `action.yml` at the root, plus any other directory a `uses: ./path` points to). It always loads the whole repository, because most problems span files.
+repository's own `action.yml` at the root, plus any other directory a `uses: ./path` or `uses: $/path` points to; a
+step's `./path` is mapped through the job's `actions/checkout` steps, since it is relative to the runner's workspace).
+It always loads the whole repository, because most problems span files.
 </Step>
 <Step>
 ### Read a finding

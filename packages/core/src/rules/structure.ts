@@ -1,5 +1,6 @@
 import { type CallSite, sym } from '../graph';
 import { lookup } from '../ir';
+import type { Loc } from '../source';
 import { defineRule, type RelatedLocation, type RuleDefinition } from './types';
 import { chainRelated, isCallOnly, listNames, quote, refsOf } from './util';
 
@@ -283,15 +284,16 @@ export const missingLocalTarget = defineRule({
   defaultSeverity: 'error',
   docs: {
     summary:
-      'A local `uses: ./...` or `uses: $/...` points to a workflow or action that does not exist in this repository, or is written in a form GitHub rejects.',
+      'A local `uses: ./...` or `uses: $/...` points to a workflow or action that does not exist where GitHub looks for it, or is written in a form GitHub rejects.',
     why:
       'The job or step fails as soon as it is reached, usually after a rename or move. A step’s `./path` is relative to the ' +
-      'runner’s workspace, so flowpact maps it through the job’s `actions/checkout` steps and reports only paths that land in ' +
-      'this repository (others are FP610).',
+      'runner’s workspace: flowpact maps it through the `actions/checkout` steps before it (for a composite action, each ' +
+      'caller’s) and reports it when it lands in this repository but is missing, or when no checkout puts this repository ' +
+      'where it points. Paths it cannot read are FP610.',
     fix:
-      'Fix the path or restore the missing file. A step’s `./path` includes the `path:` this repository is checked out to; ' +
-      '`$/path` and a job’s `./path` are relative to the repository root, and `$/` takes no `@ref` (it always runs the ' +
-      'running commit).',
+      'Fix the path or restore the missing file. A step’s `./path` includes the `path:` this repository is checked out to, ' +
+      'and needs a checkout that puts it there; `$/path` and a job’s `./path` are relative to the repository root whatever ' +
+      'the checkout, and `$/` takes no `@ref` (it always runs the running commit).',
     examples: {
       bad: `- uses: actions/checkout@v5
   with:
@@ -323,20 +325,39 @@ export const missingLocalTarget = defineRule({
       });
     }
     for (const m of ctx.index.project.missing) {
-      const via = m.checkout
-        ? ` (${m.uses.raw.trim()} is in the checkout of this repository at ${quote(m.checkout.path)})`
-        : '';
+      const target = m.target ?? m.uses.target ?? m.uses.raw;
+      const related: RelatedLocation[] = [];
+      const checkedOut = (c: { path: string; loc: Loc }) =>
+        related.push({ loc: c.loc, message: `checks this repository out at ${quote(c.path)}` });
+      let where = '';
+      let fix: string | undefined;
+      if (m.checkout) {
+        where = ` (${m.uses.raw.trim()} is in the checkout of this repository at ${quote(m.checkout.path)})`;
+        checkedOut(m.checkout);
+      } else if (m.elsewhere) {
+        const first = m.elsewhere[0];
+        where = first
+          ? ` (this repository is checked out at ${listNames(m.elsewhere.map((c) => quote(c.path)))}, not at the workspace root)`
+          : ' (no step checks this repository out at the workspace root)';
+        m.elsewhere.forEach(checkedOut);
+        fix = first
+          ? `A step’s ./path is relative to the workspace, where this repository is at ${quote(first.path)}: a path in it starts with ./${first.path}/. Or use $/${target}, which always means this repository.`
+          : `A step’s ./path is relative to the workspace, and no step puts this repository at its root: check it out there first (actions/checkout without path:), or use $/${target}, which always means this repository.`;
+      }
+      // A composite action's step that resolves for other callers: name the one it fails for.
+      let when = '';
+      const caller = m.via?.[0];
+      if (caller) {
+        when = ` when ${m.from} runs in ${caller.job !== undefined ? `job ${quote(caller.job)} of ` : ''}${caller.from}`;
+        for (const v of m.via ?? []) related.push({ loc: v.loc, message: `uses ${v.action} here` });
+      }
+      const what = `${m.uses.kind === 'local-workflow' ? 'Workflow' : 'Action'} ${quote(target)}`;
       ctx.report({
-        message: `${m.uses.kind === 'local-workflow' ? 'Workflow' : 'Action'} ${quote(m.uses.target ?? m.uses.raw)} does not exist${via}`,
+        message: `${what} ${m.inRepository ? 'is not in the workspace' : 'does not exist'}${when}${where}`,
         loc: m.uses.loc,
-        symbol: m.uses.target ?? m.uses.raw,
-        ...(m.checkout
-          ? {
-              related: [
-                { loc: m.checkout.loc, message: `checks this repository out at ${quote(m.checkout.path)}` },
-              ],
-            }
-          : {}),
+        symbol: target,
+        ...(related.length ? { related } : {}),
+        ...(fix !== undefined ? { fix } : {}),
       });
     }
   },
@@ -349,11 +370,12 @@ export const workspaceUnverified = defineRule({
   defaultSeverity: 'info',
   docs: {
     summary:
-      'A step’s `uses: ./...` points into the runner’s workspace outside this repository’s files, so the action is not verified.',
+      'A step’s `uses: ./...` points to a place in the runner’s workspace that flowpact cannot read, so the action is not verified.',
     why:
       'GitHub resolves a step’s `./path` against the workspace, not the repository. When the path lies in another repository’s ' +
-      'checkout, outside the workspace, or where only an earlier step puts files, flowpact cannot read the action: its inputs, ' +
-      'outputs and the path itself are taken on trust.',
+      'checkout, in a checkout of this repository at another ref, outside the workspace, where an earlier step’s script ' +
+      'writes, or where no checkout of this repository puts it, flowpact cannot read the action: its inputs, outputs and the ' +
+      'path itself are taken on trust.',
     fix:
       'Nothing to fix if this is intended. To have it checked, reference another repository’s action as `owner/repo/path@ref`, ' +
       'and this repository’s as `$/path` (or check this repository out where the path points).',
@@ -379,7 +401,10 @@ export const workspaceUnverified = defineRule({
           message = `${path} points outside the workspace, so it only exists at runtime; it is not verified`;
           break;
         case 'created-at-runtime':
-          message = `${path} is not in this repository; an earlier step creates it, so it is not verified`;
+          message = `${path} is not in this repository; an earlier step writes there (\`${u.writer?.command}\`), so it is not verified`;
+          break;
+        case 'other-ref':
+          message = `${path} is not in this repository’s working tree, but may be at ${quote(u.checkout?.ref ?? '')}, the ref checked out at ${quote(u.checkout?.path ?? '.')}; it is not verified`;
           break;
         default:
           message = u.checkout
@@ -387,11 +412,18 @@ export const workspaceUnverified = defineRule({
             : `${path} is not in this repository, and no checkout of this repository covers it; it is not verified`;
       }
       if (u.checkout) {
-        const what = u.checkout.repository ?? 'this repository';
+        const what =
+          u.checkout.repository ??
+          (u.checkout.ref !== undefined
+            ? `ref ${quote(u.checkout.ref)} of this repository`
+            : 'this repository');
         related.push({ loc: u.checkout.loc, message: `checks out ${what} at ${quote(u.checkout.path)}` });
       }
       if (u.writer)
-        related.push({ loc: u.writer, message: `this step writes ${quote(u.uses.workspacePath ?? '')}` });
+        related.push({
+          loc: u.writer.loc,
+          message: `\`${u.writer.command}\` here writes to ${quote(u.writer.path)}`,
+        });
       ctx.report({
         message,
         loc: u.uses.loc,

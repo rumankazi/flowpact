@@ -62,7 +62,12 @@ export function buildCallGraph(index: ProjectIndex): CallGraph {
   const { project } = index;
   const nodes = new Map<string, CallGraphNode>();
   const edges: CallGraphEdge[] = [];
-  const missingTargets = new Set(project.missing.map((m) => m.uses.target).filter((t) => t !== undefined));
+  // Paths that do not exist (an action in the repository but outside the workspace is still drawn as itself).
+  const missingTargets = new Set<string>();
+  for (const m of project.missing) {
+    const target = m.target ?? m.uses.target;
+    if (target !== undefined && !m.inRepository) missingTargets.add(target);
+  }
   const invalidCalls = new Set((project.invalidTargets ?? []).map((m) => `${m.from}#${m.job ?? ''}`));
 
   const workflows = [...project.workflows.values()].sort((a, b) => a.path.localeCompare(b.path));

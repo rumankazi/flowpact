@@ -26,8 +26,18 @@ Files are also validated against GitHub's schema with
 Actions language service — and reported as `FP503`. Syntax GitHub already runs but the parser does not accept yet
 (background steps, `cache-mode`) is allowed, and keys GitHub accepts but ignores are warnings, not errors.
 
-Local references are followed until closure: `uses: ./.github/workflows/x.yml`, `uses: ./path/to/action`, and
-`owner/repo/...@ref` when it points at this same repository.
+Local references are followed until closure: `uses: ./.github/workflows/x.yml`, `uses: ./path/to/action`,
+`uses: $/path` (GitHub's reference to this repository at the running commit), and `owner/repo/...@ref` when it points
+at this same repository.
+
+A job's `uses: ./...` and every `$/...` are relative to the repository root. A step's `uses: ./path` is relative to the
+runner's workspace, so flowpact walks each job's steps in order and maps the path through its `actions/checkout` steps:
+after a checkout of this repository at `path: src`, `./src/.github/actions/build` is this repository's
+`.github/actions/build`. A composite action's steps run in the caller's workspace, so they are resolved for each caller,
+and a checkout or script inside the action changes what the caller's later steps see. A path flowpact cannot read (in
+another repository's checkout, in a checkout of this repository at another ref, outside the workspace, or written by an
+earlier step's script) is reported as [`FP610`](/docs/rules/fp610) and not verified; a path that lands in this
+repository and does not exist, or that no checkout puts where it points, is [`FP606`](/docs/rules/fp606).
 </Step>
 <Step>
 ### 2. Parse every expression
