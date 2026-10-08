@@ -65,11 +65,11 @@ jobs.build has no output "image-digest"
 
 **[\`FP302\`](https://rumankazi.github.io/flowpact/docs/rules/fp302) output-ref-without-needs** · \`.github/workflows/pipeline.yml:39:33\`
 
-jobs.notify reads needs.build but does not list "build" under needs
+jobs.notify reads needs.build, which is empty here: "build" is not under needs, and only the job's \`if:\` sees jobs it depends on indirectly
 
 <details><summary>Why / fix</summary>
 
-**Why:** The \`needs\` context only contains direct dependencies. Without the edge, the value is empty and the jobs may also run in parallel, so even a fixed name would race.
+**Why:** The \`needs\` context contains the jobs listed under \`needs:\`. Only the job's own \`if:\` also sees the jobs it depends on indirectly (through one of its needs); in steps, \`env\`, \`with:\`, \`name\` and the matrix their values are empty. A job that does not depend on \`<job>\` at all may also run before it.
 
 **Fix:** Add "build" to jobs.notify.needs.
 
