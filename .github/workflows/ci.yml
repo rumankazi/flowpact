@@ -79,7 +79,13 @@ jobs:
         run: |
           node ../../scripts/check-pack.mjs
           tarball=$(npm pack --silent --pack-destination "$RUNNER_TEMP")
-          npm install --global "$RUNNER_TEMP/$tarball"
+          # The package has no dependencies, so linking the unpacked tarball gives users' `wfc` command (the npm shim)
+          # without downloading anything. Relative paths keep Windows drive letters away from tar.
+          cd "$RUNNER_TEMP"
+          mkdir -p wfc-package
+          tar -xzf "$tarball" -C wfc-package
+          cd wfc-package/package
+          npm link --ignore-scripts --no-audit --no-fund
       - run: node scripts/smoke.mjs
 
   action-dist:

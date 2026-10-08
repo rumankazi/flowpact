@@ -3,6 +3,7 @@
 //   .github/rulesets/<name>.json   one ruleset each, in the format of GitHub's ruleset export
 //   .github/repository.json        repository settings (merge methods, branch cleanup, …)
 //   .github/environments.json      deployment environments and the branches allowed to deploy to them
+//   .github/security.json          private vulnerability reporting, vulnerability alerts, secret scanning, CodeQL
 //
 //   node scripts/sync-repo-settings.mjs --check   show what differs from the live settings (read access is enough)
 //   node scripts/sync-repo-settings.mjs --apply   create or update them (needs a token with Administration: write)
@@ -19,6 +20,19 @@ const token = process.env.GITHUB_TOKEN;
 if (!repo || !token) {
   console.error('GITHUB_REPOSITORY and GITHUB_TOKEN are required');
   process.exit(2);
+}
+
+/** Status code only: for endpoints that answer 204 (enabled) or 404 (disabled). */
+async function status(method, path) {
+  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, {
+    method,
+    headers: {
+      accept: 'application/vnd.github+json',
+      authorization: `Bearer ${token}`,
+      'x-github-api-version': '2022-11-28',
+    },
+  });
+  return res.status;
 }
 
 async function api(method, path, body) {
@@ -161,6 +175,82 @@ for (const [name, want] of Object.entries(environments)) {
     log(`  - failed: ${err.message}`);
   }
 }
+
+const security = JSON.parse(readFileSync(join(ROOT, '.github/security.json'), 'utf8'));
+/** One security feature: read the live value (undefined when the token may not read it), compare, apply. */
+async function feature(name, want, read, write) {
+  let live;
+  try {
+    live = await read();
+  } catch {
+    live = undefined;
+  }
+  const changes = live === undefined ? [] : diff(want, live);
+  if (live !== undefined && !changes.length) {
+    log(`- ${name}: up to date`);
+    return;
+  }
+  if (live === undefined) log(`- ${name}: cannot read with this token${apply ? ' — applying' : ''}`);
+  else {
+    log(`- ${name}: ${changes.length} difference(s)${apply ? ' — updating' : ''}`);
+    for (const c of changes) log(`  - \`${c}\``);
+  }
+  if (!apply) return;
+  try {
+    await write();
+  } catch (err) {
+    failed = true;
+    log(`  - failed: ${err.message}`);
+  }
+}
+
+await feature(
+  'private vulnerability reporting',
+  security.private_vulnerability_reporting,
+  async () => (await api('GET', '/private-vulnerability-reporting')).enabled,
+  () => api(security.private_vulnerability_reporting ? 'PUT' : 'DELETE', '/private-vulnerability-reporting'),
+);
+await feature(
+  'vulnerability alerts',
+  security.vulnerability_alerts,
+  async () => {
+    const code = await status('GET', '/vulnerability-alerts');
+    if (code === 204) return true;
+    if (code === 404) return false;
+    throw new Error(String(code));
+  },
+  () => api(security.vulnerability_alerts ? 'PUT' : 'DELETE', '/vulnerability-alerts'),
+);
+await feature(
+  'secret scanning',
+  security.security_and_analysis,
+  async () => {
+    const live = (await api('GET', '')).security_and_analysis;
+    if (!live) throw new Error('not readable');
+    return Object.fromEntries(Object.keys(security.security_and_analysis).map((k) => [k, live[k]?.status]));
+  },
+  () =>
+    api('PATCH', '', {
+      security_and_analysis: Object.fromEntries(
+        Object.entries(security.security_and_analysis).map(([k, v]) => [k, { status: v }]),
+      ),
+    }),
+);
+await feature(
+  'CodeQL default setup',
+  security.code_scanning_default_setup,
+  async () => {
+    const live = await api('GET', '/code-scanning/default-setup');
+    // GitHub lists `javascript` and `typescript` alongside the combined `javascript-typescript`.
+    const languages = [
+      ...new Set(
+        live.languages.map((l) => (l === 'javascript' || l === 'typescript' ? 'javascript-typescript' : l)),
+      ),
+    ];
+    return { ...live, languages };
+  },
+  () => api('PATCH', '/code-scanning/default-setup', security.code_scanning_default_setup),
+);
 
 if (process.env.GITHUB_STEP_SUMMARY)
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${report.join('\n')}\n`);

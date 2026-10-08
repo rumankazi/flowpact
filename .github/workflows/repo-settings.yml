@@ -1,6 +1,6 @@
 name: Repository settings
-# Rulesets (.github/rulesets/*.json), repository settings (.github/repository.json) and environments
-# (.github/environments.json) are kept in code: pull requests
+# Rulesets (.github/rulesets/*.json), repository settings (.github/repository.json), environments
+# (.github/environments.json) and security features (.github/security.json) are kept in code: pull requests
 # show what would change, and main applies it. The weekly run reverts changes made in the UI.
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - .github/rulesets/**
       - .github/repository.json
       - .github/environments.json
+      - .github/security.json
       - scripts/sync-repo-settings.mjs
       - .github/workflows/repo-settings.yml
   pull_request:
@@ -16,6 +17,7 @@ on:
       - .github/rulesets/**
       - .github/repository.json
       - .github/environments.json
+      - .github/security.json
       - scripts/sync-repo-settings.mjs
       - .github/workflows/repo-settings.yml
   schedule:

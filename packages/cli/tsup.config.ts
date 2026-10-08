@@ -6,8 +6,9 @@ export default defineConfig({
   target: 'node22',
   platform: 'node',
   clean: true,
-  // Bundle the workspace packages and their deps so the published CLI is a single file.
-  noExternal: [/^@wfc\//, /^@actions\//, 'yaml', 'zod', 'string-width'],
+  // Bundle everything (workspace packages and every dependency): the published CLI is a single file with no runtime
+  // dependencies, so installing it downloads nothing else.
+  noExternal: [/.*/],
   banner: {
     // Some bundled dependencies are CommonJS and call require(); give the ESM bundle one.
     js: "#!/usr/bin/env node\nimport { createRequire as __wfcCreateRequire } from 'node:module';\nconst require = __wfcCreateRequire(import.meta.url);",
