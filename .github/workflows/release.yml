@@ -145,11 +145,13 @@ jobs:
           pnpm --filter workflow-contracts build
       - name: npm 11.5.1 or later (trusted publishing)
         if: steps.published.outputs.skip != 'true'
+        # Node.js 24 ships a recent npm; fail clearly instead of installing an unpinned npm.
         run: |
-          if ! node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && (b > 5 || (b === 5 && c >= 1))) ? 0 : 1)' "$(npm --version)"; then
-            npm install --global npm@11
+          version=$(npm --version)
+          if ! node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && (b > 5 || (b === 5 && c >= 1))) ? 0 : 1)' "$version"; then
+            echo "::error::npm $version cannot use trusted publishing (needs 11.5.1 or later)"
+            exit 1
           fi
-          npm --version
       - name: npm publish (trusted publishing, with provenance)
         if: steps.published.outputs.skip != 'true'
         working-directory: packages/cli
@@ -217,21 +219,71 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      - name: Install from the registry
+      - name: Install the published package
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
+          cd "$RUNNER_TEMP"
           # The registry can take a moment to serve a new version everywhere.
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            npm install --global "workflow-contracts@$VERSION" && exit 0
-            echo "not installable yet (attempt $attempt); retrying in 30s"
+            npm pack "workflow-contracts@$VERSION" --silent && break
+            echo "not available yet (attempt $attempt); retrying in 30s"
             sleep 30
           done
-          exit 1
+          # The exact published tarball, linked as users' `wfc` command.
+          mkdir -p wfc-package
+          tar -xzf "workflow-contracts-$VERSION.tgz" -C wfc-package
+          cd wfc-package/package
+          npm link --ignore-scripts --no-audit --no-fund
       - run: node scripts/smoke.mjs --version "$VERSION"
         # Tags from before the smoke test existed (v0.1.0) have nothing to run.
         if: hashFiles('scripts/smoke.mjs') != ''
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
+
+  release-assets:
+    # Signed release assets: the published npm tarball with a Sigstore bundle and its in-toto provenance, so a release
+    # can be verified without the registry (`gh attestation verify <tgz> --repo rumankazi/wfc`).
+    name: Attach the signed package to the release
+    needs: [resolve, npm]
+    if: ${{ !cancelled() && needs.npm.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Fetch the published tarball
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            npm pack "workflow-contracts@$VERSION" --silent && break
+            echo "not available yet (attempt $attempt); retrying in 30s"
+            sleep 30
+          done
+          # It must be byte for byte what the registry serves.
+          expected=$(npm view "workflow-contracts@$VERSION" dist.integrity)
+          actual="sha512-$(openssl dgst -sha512 -binary "workflow-contracts-$VERSION.tgz" | base64 -w0)"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::tarball integrity $actual does not match the registry ($expected)"
+            exit 1
+          fi
+      - id: attest
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: workflow-contracts-${{ needs.resolve.outputs.version }}.tgz
+      - name: Upload the tarball, signature bundle and provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          tgz="workflow-contracts-$VERSION.tgz"
+          cp "$BUNDLE" "$tgz.sigstore.json"
+          # The signed in-toto statement (DSSE envelope), one per line.
+          node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$tgz.intoto.jsonl"
+          gh release upload "$TAG" "$tgz" "$tgz.sigstore.json" "$tgz.intoto.jsonl" --clobber --repo "$GITHUB_REPOSITORY"

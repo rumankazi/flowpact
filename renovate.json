@@ -57,5 +57,6 @@
   "gitIgnoredAuthors": ["290186233+rk-release-bot[bot]@users.noreply.github.com"],
   "platformAutomerge": false,
   "automergeType": "pr",
-  "automergeStrategy": "squash"
+  "automergeStrategy": "squash",
+  "osvVulnerabilityAlerts": true
 }
