@@ -150,7 +150,8 @@
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
     "typecheck": "tsc -p tsconfig.json",
     "package": "vsce package --no-dependencies",
-    "test:e2e": "node e2e/run.mjs"
+    "test:e2e": "node e2e/run.mjs",
+    "screenshots": "node e2e/screenshots.mjs"
   },
   "devDependencies": {
     "@flowpact/language-server": "workspace:*",
@@ -158,6 +159,7 @@
     "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
     "ovsx": "1.2.0",
+    "playwright-core": "1.63.0",
     "tsup": "^8.5.1",
     "vscode-languageclient": "10.1.2"
   }

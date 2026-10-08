@@ -61,6 +61,23 @@ export default function HomePage() {
           </div>
         ))}
       </section>
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">And in your editor, as you type</h2>
+          <p className="max-w-2xl text-fd-muted-foreground">
+            The VS Code extension reports the same findings before you push, and traces any input or output
+            across files.
+          </p>
+        </div>
+        <Screenshot
+          name="editor-diagnostics"
+          format="png"
+          alt="VS Code showing FP401 on matrix.config: the windows matrix entry has no config, with the call chain and flowpact's hover card"
+        />
+        <Link href="/docs/editors" className="self-center font-medium underline underline-offset-4">
+          Install the extension
+        </Link>
+      </section>
     </main>
   );
 }

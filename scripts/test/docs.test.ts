@@ -89,6 +89,9 @@ describe('version references', () => {
     ).toBe(
       ' flowpact  v0.4.0  config schema v1\n<sub>flowpact v0.4.0 · config schema v1</sub>\n"tool": "flowpact", "version": "0.4.0"',
     );
+    const banner = (v: string, w: string) =>
+      `<tspan x="20" textLength="67.2" fill="#3b4252">flowpact</tspan><tspan x="112.4" textLength="${w}" lengthAdjust="spacingAndGlyphs" fill="#d8dee9">${v}</tspan>`;
+    expect(syncRefs(banner('v0.3.2', '50.4'), '0.10.0')).toBe(banner('v0.10.0', '58.8'));
     expect(syncRefs(text, '1.2.0')).toBe(
       'uses: rumankazi/flowpact@v1\nuses: rumankazi/flowpact@v1.2.0\nnpx flowpact@1 lint\n`flowpact` on npm, flowpact@ v0',
     );
