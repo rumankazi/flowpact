@@ -51261,14 +51261,14 @@ var require_foldFlowLines = __commonJS({
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
     var FOLD_QUOTED = "quoted";
-    function foldFlowLines(text2, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
+    function foldFlowLines(text3, indent, mode = "flow", { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
       if (!lineWidth || lineWidth < 0)
-        return text2;
+        return text3;
       if (lineWidth < minContentWidth)
         minContentWidth = 0;
       const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
-      if (text2.length <= endStep)
-        return text2;
+      if (text3.length <= endStep)
+        return text3;
       const folds = [];
       const escapedFolds = {};
       let end = lineWidth - indent.length;
@@ -51285,14 +51285,14 @@ var require_foldFlowLines = __commonJS({
       let escStart = -1;
       let escEnd = -1;
       if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text2, i, indent.length);
+        i = consumeMoreIndentedLines(text3, i, indent.length);
         if (i !== -1)
           end = i + endStep;
       }
-      for (let ch; ch = text2[i += 1]; ) {
+      for (let ch; ch = text3[i += 1]; ) {
         if (mode === FOLD_QUOTED && ch === "\\") {
           escStart = i;
-          switch (text2[i + 1]) {
+          switch (text3[i + 1]) {
             case "x":
               i += 3;
               break;
@@ -51309,12 +51309,12 @@ var require_foldFlowLines = __commonJS({
         }
         if (ch === "\n") {
           if (mode === FOLD_BLOCK)
-            i = consumeMoreIndentedLines(text2, i, indent.length);
+            i = consumeMoreIndentedLines(text3, i, indent.length);
           end = i + indent.length + endStep;
           split = void 0;
         } else {
           if (ch === " " && prev && prev !== " " && prev !== "\n" && prev !== "	") {
-            const next = text2[i + 1];
+            const next = text3[i + 1];
             if (next && next !== " " && next !== "\n" && next !== "	")
               split = i;
           }
@@ -51326,12 +51326,12 @@ var require_foldFlowLines = __commonJS({
             } else if (mode === FOLD_QUOTED) {
               while (prev === " " || prev === "	") {
                 prev = ch;
-                ch = text2[i += 1];
+                ch = text3[i += 1];
                 overflow = true;
               }
               const j = i > escEnd + 1 ? i - 2 : escStart - 1;
               if (escapedFolds[j])
-                return text2;
+                return text3;
               folds.push(j);
               escapedFolds[j] = true;
               end = j + endStep;
@@ -51346,39 +51346,39 @@ var require_foldFlowLines = __commonJS({
       if (overflow && onOverflow)
         onOverflow();
       if (folds.length === 0)
-        return text2;
+        return text3;
       if (onFold)
         onFold();
-      let res = text2.slice(0, folds[0]);
+      let res = text3.slice(0, folds[0]);
       for (let i2 = 0; i2 < folds.length; ++i2) {
         const fold = folds[i2];
-        const end2 = folds[i2 + 1] || text2.length;
+        const end2 = folds[i2 + 1] || text3.length;
         if (fold === 0)
           res = `
-${indent}${text2.slice(0, end2)}`;
+${indent}${text3.slice(0, end2)}`;
         else {
           if (mode === FOLD_QUOTED && escapedFolds[fold])
-            res += `${text2[fold]}\\`;
+            res += `${text3[fold]}\\`;
           res += `
-${indent}${text2.slice(fold + 1, end2)}`;
+${indent}${text3.slice(fold + 1, end2)}`;
         }
       }
       return res;
     }
-    function consumeMoreIndentedLines(text2, i, indent) {
+    function consumeMoreIndentedLines(text3, i, indent) {
       let end = i;
       let start = i + 1;
-      let ch = text2[start];
+      let ch = text3[start];
       while (ch === " " || ch === "	") {
         if (i < start + indent) {
-          ch = text2[++i];
+          ch = text3[++i];
         } else {
           do {
-            ch = text2[++i];
+            ch = text3[++i];
           } while (ch && ch !== "\n");
           end = i;
           start = i + 1;
-          ch = text2[start];
+          ch = text3[start];
         }
       }
       return end;
@@ -58650,9 +58650,9 @@ var require_cronstrue = __commonJS({
                       return values.shift();
                     });
                   };
-                  StringUtilities2.containsAny = function(text2, searchStrings) {
+                  StringUtilities2.containsAny = function(text3, searchStrings) {
                     return searchStrings.some(function(c) {
-                      return text2.indexOf(c) > -1;
+                      return text3.indexOf(c) > -1;
                     });
                   };
                   return StringUtilities2;
@@ -58703,7 +58703,7 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, posix as posix3, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname3, join as join7, posix as posix4, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -59704,8 +59704,8 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addRaw(text2, addEOL = false) {
-    this._buffer += text2;
+  addRaw(text3, addEOL = false) {
+    this._buffer += text3;
     return addEOL ? this.addEOL() : this;
   }
   /**
@@ -59801,10 +59801,10 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addHeading(text2, level) {
+  addHeading(text3, level) {
     const tag = `h${level}`;
     const allowedTag = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tag) ? tag : "h1";
-    const element = this.wrap(allowedTag, text2);
+    const element = this.wrap(allowedTag, text3);
     return this.addRaw(element).addEOL();
   }
   /**
@@ -59833,9 +59833,9 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addQuote(text2, cite) {
+  addQuote(text3, cite) {
     const attrs = Object.assign({}, cite && { cite });
-    const element = this.wrap("blockquote", text2, attrs);
+    const element = this.wrap("blockquote", text3, attrs);
     return this.addRaw(element).addEOL();
   }
   /**
@@ -59846,8 +59846,8 @@ var Summary = class {
    *
    * @returns {Summary} summary instance
    */
-  addLink(text2, href) {
-    const element = this.wrap("a", text2, { href });
+  addLink(text3, href) {
+    const element = this.wrap("a", text3, { href });
     return this.addRaw(element).addEOL();
   }
 };
@@ -68446,18 +68446,18 @@ function handleErrorResponse(parsedResponse, operationSpec, responseSpec, option
 }
 async function parse(jsonContentTypes, xmlContentTypes, operationResponse, opts, parseXML2) {
   if (!operationResponse.request.streamResponseStatusCodes?.has(operationResponse.status) && operationResponse.bodyAsText) {
-    const text2 = operationResponse.bodyAsText;
+    const text3 = operationResponse.bodyAsText;
     const contentType2 = operationResponse.headers.get("Content-Type") || "";
     const contentComponents = !contentType2 ? [] : contentType2.split(";").map((component) => component.toLowerCase());
     try {
       if (contentComponents.length === 0 || contentComponents.some((component) => jsonContentTypes.indexOf(component) !== -1)) {
-        operationResponse.parsedBody = JSON.parse(text2);
+        operationResponse.parsedBody = JSON.parse(text3);
         return operationResponse;
       } else if (contentComponents.some((component) => xmlContentTypes.indexOf(component) !== -1)) {
         if (!parseXML2) {
           throw new Error("Parsing XML not supported.");
         }
-        const body2 = await parseXML2(text2, opts.xml);
+        const body2 = await parseXML2(text3, opts.xml);
         operationResponse.parsedBody = body2;
         return operationResponse;
       }
@@ -69000,8 +69000,8 @@ var Constants = {
     AUTHORIZATION: "authorization"
   }
 };
-function isUuid(text2) {
-  return /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/.test(text2);
+function isUuid(text3) {
+  return /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/.test(text3);
 }
 var authorizeRequestOnTenantChallenge = async (challengeOptions) => {
   const requestOptions = requestToOptions(challengeOptions.request);
@@ -73428,7 +73428,7 @@ function prettify(node2, options, matcher, readonlyMatcher) {
   return compress(node2, options, matcher, readonlyMatcher);
 }
 function compress(arr, options, matcher, readonlyMatcher) {
-  let text2;
+  let text3;
   const compressedObj = {};
   for (let i = 0; i < arr.length; i++) {
     const tagObj = arr[i];
@@ -73441,8 +73441,8 @@ function compress(arr, options, matcher, readonlyMatcher) {
       matcher.push(property, rawAttrs);
     }
     if (property === options.textNodeName) {
-      if (text2 === void 0) text2 = tagObj[property];
-      else text2 += "" + tagObj[property];
+      if (text3 === void 0) text3 = tagObj[property];
+      else text3 += "" + tagObj[property];
     } else if (property === void 0) {
       continue;
     } else if (tagObj[property]) {
@@ -73480,9 +73480,9 @@ function compress(arr, options, matcher, readonlyMatcher) {
       }
     }
   }
-  if (typeof text2 === "string") {
-    if (text2.length > 0) compressedObj[options.textNodeName] = text2;
-  } else if (text2 !== void 0) compressedObj[options.textNodeName] = text2;
+  if (typeof text3 === "string") {
+    if (text3.length > 0) compressedObj[options.textNodeName] = text3;
+  } else if (text3 !== void 0) compressedObj[options.textNodeName] = text3;
   return compressedObj;
 }
 function propName(obj) {
@@ -73647,9 +73647,9 @@ function arrToStr(arr, options, indentation, matcher, stopNodeExpressions, qName
   }
   if (!Array.isArray(arr)) {
     if (arr !== void 0 && arr !== null) {
-      let text2 = valToStr(arr);
-      text2 = replaceEntitiesValue2(text2, options);
-      return text2;
+      let text3 = valToStr(arr);
+      text3 = replaceEntitiesValue2(text3, options);
+      return text3;
     }
     return "";
   }
@@ -75028,9 +75028,9 @@ var NativeCRC64 = (() => {
     var wasmMemory;
     var ABORT = false;
     var EXITSTATUS;
-    function assert3(condition, text2) {
+    function assert3(condition, text3) {
       if (!condition) {
-        abort("Assertion failed" + (text2 ? ": " + text2 : ""));
+        abort("Assertion failed" + (text3 ? ": " + text3 : ""));
       }
     }
     var UTF8Decoder = typeof TextDecoder != "undefined" ? new TextDecoder("utf8") : void 0;
@@ -76137,12 +76137,12 @@ var NativeCRC64 = (() => {
           abort("invalid type for setValue: " + type);
       }
     }
-    function warnOnce(text2) {
+    function warnOnce(text3) {
       if (!warnOnce.shown) warnOnce.shown = {};
-      if (!warnOnce.shown[text2]) {
-        warnOnce.shown[text2] = 1;
-        if (ENVIRONMENT_IS_NODE) text2 = "warning: " + text2;
-        err(text2);
+      if (!warnOnce.shown[text3]) {
+        warnOnce.shown[text3] = 1;
+        if (ENVIRONMENT_IS_NODE) text3 = "warning: " + text3;
+        err(text3);
       }
     }
     function _abort() {
@@ -93317,8 +93317,8 @@ function extractConnectionStringParts(connectionString) {
     return { kind: "SASConnString", url: blobEndpoint, accountName, accountSas };
   }
 }
-function escape(text2) {
-  return encodeURIComponent(text2).replace(/%2F/g, "/").replace(/'/g, "%27").replace(/\+/g, "%20").replace(/%25/g, "%");
+function escape(text3) {
+  return encodeURIComponent(text3).replace(/%2F/g, "/").replace(/'/g, "%27").replace(/\+/g, "%20").replace(/%25/g, "%");
 }
 function appendToURLPath(url3, name) {
   const urlParsed = new URL(url3);
@@ -101327,12 +101327,12 @@ function parseParameters(header, type, index2, len, stopFlags) {
         }
         if (index2 < len && header.charCodeAt(index2) === DQUOTE) {
           const quotedStart = ++index2;
-          let escaped = false;
+          let escaped2 = false;
           while (index2 < len) {
             const code3 = header.charCodeAt(index2);
             if (code3 === DQUOTE) {
               if (parameters[key] === void 0) {
-                parameters[key] = escaped ? unescapeQuotedPairs(header, quotedStart, index2) : header.slice(quotedStart, index2);
+                parameters[key] = escaped2 ? unescapeQuotedPairs(header, quotedStart, index2) : header.slice(quotedStart, index2);
               }
               index2++;
               let stop2 = 0;
@@ -101350,7 +101350,7 @@ function parseParameters(header, type, index2, len, stopFlags) {
               continue parameter;
             }
             if (code3 === BSLASH && index2 + 1 < len) {
-              escaped = true;
+              escaped2 = true;
               index2 += 2;
               continue;
             }
@@ -101649,8 +101649,8 @@ var convertMarkedBigIntsReviver = (key, value, context5, userReviver) => {
   if (!hasUserReviver) return value;
   return userReviver(key, value, context5);
 };
-var JSONParseV2 = (text2, reviver2) => {
-  return JSON.parse(text2, (key, value, context5) => {
+var JSONParseV2 = (text3, reviver2) => {
+  return JSON.parse(text3, (key, value, context5) => {
     const isNumber = typeof value === "number";
     const isOutOfBounds = value > Number.MAX_SAFE_INTEGER || value < Number.MIN_SAFE_INTEGER;
     const isBigNumber = isNumber && isOutOfBounds;
@@ -101708,8 +101708,8 @@ var applyReviverIteratively = (parsed, userReviver) => {
   }
   return rootHolder[""];
 };
-var serializeBigInts = (text2) => {
-  return text2.replace(
+var serializeBigInts = (text3) => {
+  return text3.replace(
     stringsOrLargeNumbers,
     (match, digits, fractional, exponential) => {
       const isString2 = match[0] === '"';
@@ -101723,18 +101723,18 @@ var serializeBigInts = (text2) => {
     }
   );
 };
-var JSONParse = (text2, reviver2) => {
-  if (!text2) return originalParse(text2, reviver2);
+var JSONParse = (text3, reviver2) => {
+  if (!text3) return originalParse(text3, reviver2);
   try {
-    if (isContextSourceSupported()) return JSONParseV2(text2, reviver2);
-    const serializedData = serializeBigInts(text2);
+    if (isContextSourceSupported()) return JSONParseV2(text3, reviver2);
+    const serializedData = serializeBigInts(text3);
     return originalParse(
       serializedData,
       (key, value, context5) => convertMarkedBigIntsReviver(key, value, context5, reviver2)
     );
   } catch (error63) {
     if (error63 instanceof RangeError) {
-      const serializedData = serializeBigInts(text2);
+      const serializedData = serializeBigInts(text3);
       const parsed = originalParse(serializedData);
       return applyReviverIteratively(parsed, reviver2);
     }
@@ -101902,12 +101902,12 @@ async function getResponseData(response) {
   }
   const mimetype = parse3(contentType2);
   if (isJSONResponse(mimetype)) {
-    let text2 = "";
+    let text3 = "";
     try {
-      text2 = await response.text();
-      return JSONParse(text2);
+      text3 = await response.text();
+      return JSONParse(text3);
     } catch (err) {
-      return text2;
+      return text3;
     }
   } else if (mimetype.type.startsWith("text/") || // `application/octet-stream` is the canonical "arbitrary binary" type
   // (RFC 2046) and must never be decoded as text, even when the response
@@ -114965,8 +114965,8 @@ function ko_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text2) => {
-  return text2.charAt(0).toUpperCase() + text2.slice(1);
+var capitalizeFirstCharacter = (text3) => {
+  return text3.charAt(0).toUpperCase() + text3.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -125339,7 +125339,7 @@ var escapeRe = (s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
 
 // ../core/src/project.ts
 import { existsSync as existsSync5, readdirSync, readFileSync as readFileSync2, realpathSync, statSync as statSync2 } from "fs";
-import { basename as basename3, dirname, isAbsolute, join as join3, relative, resolve as resolve2 } from "path";
+import { basename as basename4, dirname, isAbsolute, join as join3, relative, resolve as resolve2 } from "path";
 
 // ../core/src/logger.ts
 var ORDER = { silent: 0, error: 1, warn: 2, info: 3, debug: 4, trace: 5 };
@@ -126734,35 +126734,35 @@ var KNOWN_CONTEXTS = [
   "needs",
   "inputs"
 ];
-function findTemplateSegments(text2) {
+function findTemplateSegments(text3) {
   const segments = [];
   let i = 0;
-  while (i < text2.length) {
-    const open3 = text2.indexOf("${{", i);
+  while (i < text3.length) {
+    const open3 = text3.indexOf("${{", i);
     if (open3 < 0) break;
     let j = open3 + 3;
     let inString = false;
     let close = -1;
-    while (j < text2.length) {
-      const ch = text2[j];
+    while (j < text3.length) {
+      const ch = text3[j];
       if (inString) {
         if (ch === "'") {
-          if (text2[j + 1] === "'") j++;
+          if (text3[j + 1] === "'") j++;
           else inString = false;
         }
       } else if (ch === "'") {
         inString = true;
-      } else if (ch === "}" && text2[j + 1] === "}") {
+      } else if (ch === "}" && text3[j + 1] === "}") {
         close = j;
         break;
       }
       j++;
     }
     if (close < 0) {
-      const inner = text2.slice(open3 + 3);
+      const inner = text3.slice(open3 + 3);
       segments.push({
         start: open3,
-        end: text2.length,
+        end: text3.length,
         innerStart: open3 + 3,
         expr: {
           source: inner.trim(),
@@ -126772,7 +126772,7 @@ function findTemplateSegments(text2) {
       });
       break;
     }
-    const rawInner = text2.slice(open3 + 3, close);
+    const rawInner = text3.slice(open3 + 3, close);
     const lead = rawInner.length - rawInner.trimStart().length;
     segments.push({
       start: open3,
@@ -127141,35 +127141,35 @@ function definitelyTruthy(e, resolve5) {
   const v = evaluate(e, resolve5);
   return v.known && truthy3(v.value);
 }
-function evaluateTemplate(text2, resolve5) {
-  const segments = findTemplateSegments(text2);
-  if (segments.length === 0) return known(text2);
+function evaluateTemplate(text3, resolve5) {
+  const segments = findTemplateSegments(text3);
+  if (segments.length === 0) return known(text3);
   const first = segments[0];
-  if (segments.length === 1 && first.start === 0 && first.end === text2.length) {
+  if (segments.length === 1 && first.start === 0 && first.end === text3.length) {
     return first.expr.ast ? evaluate(first.expr.ast, resolve5) : UNKNOWN;
   }
   let out = "";
   let cursor = 0;
   const parts = [];
   for (const seg of segments) {
-    out += text2.slice(cursor, seg.start);
+    out += text3.slice(cursor, seg.start);
     const v = seg.expr.ast ? evaluate(seg.expr.ast, resolve5) : UNKNOWN;
     parts.push(v);
     if (!v.known) return { known: false, taint: mergeTaint(...parts) };
     out += toStr(v.value);
     cursor = seg.end;
   }
-  out += text2.slice(cursor);
+  out += text3.slice(cursor);
   return known(out, mergeTaint(...parts));
 }
 
 // ../core/src/source.ts
 var import_yaml = __toESM(require_dist5(), 1);
 var SourceFile = class {
-  constructor(path4, text2) {
+  constructor(path4, text3) {
     this.path = path4;
-    this.text = text2;
-    this.lines = text2.split(/\r?\n/);
+    this.text = text3;
+    this.lines = text3.split(/\r?\n/);
   }
   path;
   text;
@@ -127182,6 +127182,9 @@ var SourceFile = class {
     return { file: this.path, line: a.line, column: a.col, endLine: b.line, endColumn: b.col };
   }
 };
+function formatLoc(loc) {
+  return `${loc.file}:${loc.line}:${loc.column}`;
+}
 function compareLoc(a, b) {
   return a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column;
 }
@@ -127308,16 +127311,16 @@ function collectSites(unit, kind, ownerPath, ctx, root) {
     const c = classify(kind, p);
     const isString2 = typeof node2.value === "string";
     if (!isString2 && !c.cond) return;
-    const text2 = isString2 ? node2.value : String(node2.value);
-    if (!c.cond && !text2.includes("${{")) return;
+    const text3 = isString2 ? node2.value : String(node2.value);
+    if (!c.cond && !text3.includes("${{")) return;
     if (c.cond && !isString2) return;
-    const site = buildSite(unit, node2, text2, c, p, ownerPath, ctx);
+    const site = buildSite(unit, node2, text3, c, p, ownerPath, ctx);
     unit.sites.push(site);
     unit.siteByPath.set(pathKey(p), site);
   };
   visit3(root, []);
 }
-function buildSite(unit, node2, text2, c, p, ownerPath, ctx) {
+function buildSite(unit, node2, text3, c, p, ownerPath, ctx) {
   const { source } = unit;
   const [start, end] = node2.range ?? [0, 0];
   const raw = source.text.slice(start, end);
@@ -127336,10 +127339,10 @@ function buildSite(unit, node2, text2, c, p, ownerPath, ctx) {
     });
     return { expr, loc: source.loc(absInner, absInner + expr.source.length), refs };
   };
-  const templated = findTemplateSegments(text2);
-  const wholeIsTemplate = templated.length === 1 && text2.trim() === text2.slice(templated[0].start, templated[0].end);
+  const templated = findTemplateSegments(text3);
+  const wholeIsTemplate = templated.length === 1 && text3.trim() === text3.slice(templated[0].start, templated[0].end);
   if (c.cond && !wholeIsTemplate && templated.length === 0) {
-    const inner = text2.trim();
+    const inner = text3.trim();
     const expr = parseExpression(inner);
     const idx = raw.indexOf(inner.slice(0, Math.min(inner.length, 40)));
     segments.push(locateSegment(start + Math.max(0, idx), expr));
@@ -127364,7 +127367,7 @@ function buildSite(unit, node2, text2, c, p, ownerPath, ctx) {
     ...c.step !== void 0 ? { step: c.step } : {},
     ...c.key !== void 0 ? { key: c.key } : {},
     yamlPath: p,
-    text: text2,
+    text: text3,
     loc: source.loc(start, end),
     isCondition: c.cond,
     segments
@@ -127439,13 +127442,22 @@ function outputDecls(unit, node2, base, valueKey) {
   return out;
 }
 var WORKFLOW_FILE = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+function normalizeRelative(path4) {
+  return trimChar(posix.normalize(trimChar(path4, "/") || "."), "/") || ".";
+}
 function classifyUses(raw, at, loc, ctx) {
   const value = raw.trim();
   if (value.startsWith("docker://")) return { raw, loc, kind: "docker" };
+  const kind = at === "job" ? "local-workflow" : "local-action";
+  if (value.startsWith("$/")) {
+    const refAt = value.indexOf("@");
+    const target = normalizeRelative(refAt < 0 ? value.slice(2) : value.slice(2, refAt));
+    return { raw, loc, kind, target, self: true, ...refAt < 0 ? {} : { selfRef: value.slice(refAt + 1) } };
+  }
   if (value.startsWith("./")) {
-    const target = trimChar(posix.normalize(trimChar(value.slice(2), "/") || "."), "/") || ".";
-    if (at === "job") return { raw, loc, kind: "local-workflow", target };
-    return { raw, loc, kind: "local-action", target };
+    const target = normalizeRelative(value.slice(2));
+    if (at === "job") return { raw, loc, kind, target };
+    return { raw, loc, kind, target, workspacePath: target };
   }
   const [path4 = "", ref] = value.split("@");
   const parts = path4.split("/");
@@ -127691,9 +127703,9 @@ function aliasExpansionTooLarge(doc) {
   };
   return size(doc.contents) > MAX_ALIAS_EXPANSION ? culprit ?? doc.contents : void 0;
 }
-function load(path4, text2) {
-  const source = new SourceFile(path4, text2);
-  const doc = (0, import_yaml2.parseDocument)(text2, { lineCounter: source.lineCounter, prettyErrors: false, strict: false });
+function load(path4, text3) {
+  const source = new SourceFile(path4, text3);
+  const doc = (0, import_yaml2.parseDocument)(text3, { lineCounter: source.lineCounter, prettyErrors: false, strict: false });
   const aliasBomb = doc.errors.length === 0 ? aliasExpansionTooLarge(doc) : void 0;
   if (doc.errors.length === 0 && !aliasBomb) {
     (0, import_yaml2.visit)(doc, {
@@ -127718,8 +127730,8 @@ function load(path4, text2) {
     root: doc.contents ?? void 0
   };
 }
-function parseWorkflowFile(path4, text2, ctx) {
-  const { unit, root } = load(path4, text2);
+function parseWorkflowFile(path4, text3, ctx) {
+  const { unit, root } = load(path4, text3);
   if (root) collectSites(unit, "workflow", path4, ctx, root);
   const on = get(root, "on");
   const triggers = [];
@@ -127761,8 +127773,8 @@ function parseWorkflowFile(path4, text2, ctx) {
     jobs: jobs(unit, get(root, "jobs"), ctx)
   };
 }
-function parseActionFile(dir2, file2, text2, ctx) {
-  const { unit, root } = load(file2, text2);
+function parseActionFile(dir2, file2, text3, ctx) {
+  const { unit, root } = load(file2, text3);
   if (root) collectSites(unit, "action", dir2, ctx, root);
   const runs = get(root, "runs");
   const using = str(get(runs, "using"));
@@ -128924,8 +128936,8 @@ var TemplateReader = class {
     let argIndex = 0;
     for (const segment of segments) {
       if (isString(segment)) {
-        const text2 = segment.value.replace(/'/g, "''").replace(/\{/g, "{{").replace(/\}/g, "}}");
-        format2.push(text2);
+        const text3 = segment.value.replace(/'/g, "''").replace(/\{/g, "{{").replace(/\}/g, "}}");
+        format2.push(text3);
       } else {
         format2.push(`{${argIndex}}`);
         argIndex++;
@@ -130742,6 +130754,529 @@ function mergeFix(key, where2, whole) {
   return whole && single ? `${repeat}, or alias ${whole} instead.` : `${repeat}.`;
 }
 
+// ../core/src/script-writes.ts
+import { posix as posix2 } from "path";
+var escapes = (path4) => path4 === ".." || path4.startsWith("../");
+var PREFIXES = /* @__PURE__ */ new Set([
+  "sudo",
+  "command",
+  "builtin",
+  "exec",
+  "nohup",
+  "time",
+  "env",
+  "if",
+  "while",
+  "until",
+  "then",
+  "do",
+  "else",
+  "!",
+  "{"
+]);
+var COPIES = /* @__PURE__ */ new Set([
+  "cp",
+  "mv",
+  "ln",
+  "rsync",
+  "install",
+  "scp",
+  "copy-item",
+  "move-item",
+  "copy",
+  "xcopy",
+  "move"
+]);
+var CREATES = /* @__PURE__ */ new Set(["mkdir", "md", "touch", "tee", "new-item"]);
+var OUTPUT_OPTIONS = /* @__PURE__ */ new Set([
+  "-o",
+  "--output",
+  "--output-dir",
+  "--output-directory",
+  "--out-dir",
+  "--outdir",
+  "--out",
+  "--dest",
+  "--destination",
+  "-destination"
+]);
+var COMMAND_OUTPUT_OPTIONS = {
+  tar: ["-C", "--directory"],
+  unzip: ["-d"],
+  wget: ["-O", "-P", "--output-document", "--directory-prefix"],
+  gh: ["-D", "--dir", "-O"],
+  cp: ["-t", "--target-directory"],
+  mv: ["-t", "--target-directory"],
+  ln: ["-t", "--target-directory"],
+  install: ["-t", "--target-directory"]
+};
+var CLONE_VALUE_OPTIONS = /* @__PURE__ */ new Set([
+  "-b",
+  "--branch",
+  "--depth",
+  "-o",
+  "--origin",
+  "--reference",
+  "--reference-if-able",
+  "--filter",
+  "-c",
+  "--config",
+  "-j",
+  "--jobs",
+  "--shallow-since",
+  "--shallow-exclude",
+  "--separate-git-dir",
+  "-u",
+  "--upload-pack",
+  "--template",
+  "--server-option",
+  "--bundle-uri",
+  "--name"
+]);
+var escaped = (line, i) => line[i] === "\\" && !/[\w.-]/.test(line[i + 1] ?? "");
+function tokenize(line) {
+  const tokens = [];
+  const heredocs = [];
+  let word;
+  const end = () => {
+    if (word !== void 0) tokens.push({ word });
+    word = void 0;
+  };
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === " " || c === "	" || c === "\r") {
+      end();
+    } else if (c === "#" && word === void 0) {
+      break;
+    } else if (c === "'") {
+      const close = line.indexOf("'", i + 1);
+      word = (word ?? "") + line.slice(i + 1, close < 0 ? line.length : close);
+      i = close < 0 ? line.length : close;
+    } else if (c === '"') {
+      let j = i + 1;
+      let text3 = "";
+      for (; j < line.length && line[j] !== '"'; j++) text3 += escaped(line, j) ? line[++j] ?? "" : line[j];
+      word = (word ?? "") + text3;
+      i = j;
+    } else if (escaped(line, i)) {
+      word = (word ?? "") + (line[++i] ?? "");
+    } else if (c === "<") {
+      const here = /^<<(?!<)-?\s*(['"]?)([\w.-]+)\1/.exec(line.slice(i));
+      if (here) heredocs.push(here[2]);
+      end();
+      tokens.push({ op: "<" });
+      i += here ? here[0].length - 1 : line[i + 1] === "<" ? line[i + 2] === "<" ? 2 : 1 : 0;
+    } else if (c === ">") {
+      if (word !== void 0 && /^\d+$/.test(word)) word = void 0;
+      end();
+      let j = i + 1;
+      if (line[j] === ">" || line[j] === "|") j++;
+      if (line[j] === "&") {
+        tokens.push({ op: ">&" });
+        j++;
+      } else tokens.push({ op: ">" });
+      i = j - 1;
+    } else if (c === "&" && line[i + 1] === ">") {
+      end();
+    } else if (";&|()".includes(c)) {
+      end();
+      tokens.push({ op: c });
+      if ((c === "&" || c === "|") && line[i + 1] === c) i++;
+    } else {
+      word = (word ?? "") + c;
+    }
+  }
+  end();
+  return { tokens, heredocs };
+}
+function resolveWord(word, cwd) {
+  let base = cwd;
+  let w = word.replaceAll("\\", "/");
+  const ws = /^\$(?:GITHUB_WORKSPACE|\{GITHUB_WORKSPACE\})(?=\/|$)/.exec(w);
+  if (ws) {
+    base = ".";
+    w = w.slice(ws[0].length).replace(/^\//, "") || ".";
+  }
+  if (base === void 0 || w === "" || /[$`*?[\]{}~]/.test(w) || w.startsWith("/")) return void 0;
+  if (/^[A-Za-z][\w+.-]*:/.test(w)) return void 0;
+  const path4 = normalizeRelative(posix2.join(base, w));
+  return escapes(path4) ? void 0 : path4;
+}
+var basename3 = (word) => posix2.basename(word.replaceAll("\\", "/").replace(/\/+$/, ""));
+function scriptWrites2(script) {
+  const writes = [];
+  const text3 = script.replace(/\$\{\{\s*github\.workspace\s*\}\}/g, "$GITHUB_WORKSPACE").replace(/\$\{\{[\s\S]*?\}\}/g, "$EXPR").replace(/\\\r?\n/g, " ");
+  let cwd = ".";
+  const dirs = [];
+  const write = (word, command2, at = cwd) => {
+    const path4 = word === void 0 ? void 0 : resolveWord(word, at);
+    if (path4 !== void 0) writes.push({ path: path4, command: command2 });
+  };
+  const command = (words) => {
+    let i = 0;
+    for (; i < words.length; i++) {
+      const w = words[i];
+      if (/^[A-Za-z_]\w*=/.test(w)) continue;
+      if (!PREFIXES.has(w)) break;
+      while (words[i + 1]?.startsWith("-")) i++;
+    }
+    let name = words[i]?.replaceAll("\\", "/").split("/").pop()?.toLowerCase();
+    if (name === void 0) return;
+    let args = words.slice(i + 1);
+    if (name === "xargs") {
+      let j = 0;
+      while (args[j]?.startsWith("-")) j += /^-[IinPLdEs]$/.test(args[j]) ? 2 : 1;
+      name = args[j]?.split("/").pop()?.toLowerCase();
+      if (name === void 0) return;
+      args = args.slice(j + 1);
+    }
+    if (name === "git") {
+      gitWrites(args);
+      return;
+    }
+    const options = /* @__PURE__ */ new Set([...OUTPUT_OPTIONS, ...COMMAND_OUTPUT_OPTIONS[name] ?? []]);
+    const operands = [];
+    let target;
+    for (let j = 0; j < args.length; j++) {
+      const a = args[j];
+      const eq = /^(--?[\w-]+)=(.*)$/.exec(a);
+      const opt = eq ? eq[1] : a;
+      const value = eq ? eq[2] : args[j + 1];
+      if (options.has(opt) || opt.length > 2 && options.has(opt.toLowerCase())) {
+        if (/^(?:-t|--target-directory)$/.test(opt)) target = value;
+        else write(value, name);
+        if (!eq) j++;
+      } else if (name === "7z" || name === "7za") {
+        if (a.startsWith("-o")) write(a.slice(2), name);
+      } else if (a.startsWith("-") && a !== "-") {
+        if (/^-(?:path|literalpath|itemtype|name|value)$/i.test(a)) {
+          if (/^-(?:path|literalpath)$/i.test(a) && args[j + 1] !== void 0) operands.push(args[j + 1]);
+          j++;
+        }
+      } else operands.push(a);
+    }
+    if (name === "cd" || name === "pushd") {
+      if (name === "pushd") dirs.push(cwd);
+      cwd = operands[0] === void 0 ? "." : operands[0] === "-" ? void 0 : resolveWord(operands[0], cwd);
+    } else if (name === "popd") {
+      cwd = dirs.pop();
+    } else if (COPIES.has(name) || name === "robocopy") {
+      const dest = target ?? (name === "robocopy" ? operands[1] : operands.length > 1 ? operands.at(-1) : void 0);
+      const sources = target !== void 0 ? operands : name === "robocopy" ? [] : operands.slice(0, -1);
+      if (dest === void 0) return;
+      write(dest, name);
+      for (const s of sources) if (!/[$`*?[\]{}]/.test(basename3(s))) write(`${dest}/${basename3(s)}`, name);
+    } else if (CREATES.has(name)) {
+      for (const o of operands) write(o, name);
+    }
+  };
+  const gitWrites = (args) => {
+    let at = cwd;
+    let j = 0;
+    for (; j < args.length && args[j].startsWith("-"); j++)
+      if (args[j] === "-C") at = resolveWord(args[++j] ?? "", at);
+      else if (args[j] === "-c") j++;
+    const sub = args[j];
+    const rest = args.slice(j + 1);
+    const positional = [];
+    for (let k = 0; k < rest.length; k++) {
+      if (CLONE_VALUE_OPTIONS.has(rest[k]) || /^-[bB]$|^--reason$/.test(rest[k])) k++;
+      else if (!rest[k].startsWith("-")) positional.push(rest[k]);
+    }
+    const repoDir = (url3) => basename3(url3).replace(/\.git$/, "");
+    if (sub === "clone" && positional[0] !== void 0)
+      write(positional[1] ?? repoDir(positional[0]), "git clone", at);
+    else if (sub === "worktree" && positional[0] === "add") write(positional[1], "git worktree add", at);
+    else if (sub === "submodule" && positional[0] === "add" && positional[1] !== void 0)
+      write(positional[2] ?? repoDir(positional[1]), "git submodule add", at);
+  };
+  const lines = text3.split(/\r?\n/);
+  const pending = [];
+  for (const line of lines) {
+    if (pending.length) {
+      if (line.trim() === pending[0]) pending.shift();
+      continue;
+    }
+    const { tokens, heredocs } = tokenize(line);
+    pending.push(...heredocs);
+    let words = [];
+    for (let k = 0; k < tokens.length; k++) {
+      const t = tokens[k];
+      if ("word" in t) {
+        words.push(t.word);
+      } else if (t.op === ">" || t.op === "<" || t.op === ">&") {
+        const next = tokens[k + 1];
+        if (next && "word" in next) {
+          if (t.op === ">") write(next.word, ">");
+          k++;
+        }
+      } else {
+        command(words);
+        words = [];
+      }
+    }
+    command(words);
+  }
+  return writes;
+}
+function writesTo(write, path4, isRepoDir) {
+  if (path4 === ".") return false;
+  if (write.path === path4 || write.path.startsWith(`${path4}/`)) return true;
+  return write.path !== "." && path4.startsWith(`${write.path}/`) && !isRepoDir(write.path);
+}
+
+// ../core/src/workspace.ts
+var initialWorkspace = () => ({ mounts: [{ path: "." }], managed: false, writes: [] });
+var CHECKOUT = /^actions\/checkout(?:@|$)/i;
+var OWN_REPOSITORY = /^github\.(?:repository|event\.repository\.full_name|event\.pull_request\.(?:head|base)\.repo\.full_name|event\.workflow_run\.head_repository\.full_name)$/;
+var RUNNING_REF = /^github\.(?:sha|ref|ref_name|head_ref|event\.(?:after|head_commit\.id|release\.tag_name|pull_request\.(?:head\.(?:sha|ref)|merge_commit_sha)|workflow_run\.head_(?:sha|branch)|merge_group\.head_(?:sha|ref)|check_(?:suite|run)\.head_sha))$/;
+var PULL_REQUEST_REF = /^refs\/pull\/\$\{\{\s*github\.event\.(?:pull_request\.)?number\s*\}\}\/(?:merge|head)$/;
+function alternatives(value) {
+  const m = /^\$\{\{(.*)\}\}$/s.exec(value);
+  if (!m) return void 0;
+  return m[1].split("||").map(
+    (alt) => alt.split("&&").at(-1).trim().replace(/^\((.*)\)$/s, "$1").trim()
+  );
+}
+var ownRepositoryExpression = (value) => !!alternatives(value)?.every((a) => OWN_REPOSITORY.test(a));
+var runningCommit = (value) => value === "" || PULL_REQUEST_REF.test(value) || !!alternatives(value)?.every((a) => RUNNING_REF.test(a));
+var isCheckout = (uses) => CHECKOUT.test(uses.raw.trim());
+var escapes2 = (path4) => path4 === ".." || path4.startsWith("../") || path4.startsWith("/");
+var text = (b) => b === void 0 || b.value === null || typeof b.value === "object" ? "" : String(b.value).trim();
+function checkoutRepository(b, repository) {
+  const value = text(b);
+  if (value === "" || ownRepositoryExpression(value)) return void 0;
+  if (repository && value.toLowerCase() === repository.toLowerCase()) return void 0;
+  return value;
+}
+function checkoutPath(b) {
+  const value = text(b).replace(/^\$\{\{\s*github\.workspace\s*\}\}(?:\/|$)/, "").replaceAll("\\", "/");
+  if (value.includes("${{")) return "dynamic";
+  if (value.startsWith("/") || /^[A-Za-z]:\//.test(value)) return "outside";
+  const path4 = normalizeRelative(value);
+  return escapes2(path4) ? "outside" : { path: path4 };
+}
+var within = (path4, dir2) => dir2 === "." || path4 === dir2 || path4.startsWith(`${dir2}/`);
+function applyCheckout(ws, step, repository) {
+  const loc = step.uses?.loc ?? step.loc;
+  const other = checkoutRepository(step.with.repository, repository);
+  const placement = checkoutPath(step.with.path);
+  if (placement === "outside") return ws;
+  const repo = other !== void 0 ? { repository: other } : {};
+  if (placement === "dynamic")
+    return { ...ws, managed: true, dynamic: { path: text(step.with.path), ...repo, loc } };
+  const { path: path4 } = placement;
+  const ref = text(step.with.ref);
+  const mounts = ws.mounts.filter((m) => !within(m.path, path4));
+  mounts.push({ path: path4, ...repo, ...other === void 0 && !runningCommit(ref) ? { ref } : {}, loc });
+  return {
+    mounts,
+    managed: true,
+    // A checkout at the root empties the whole workspace first, including a checkout to a path computed at runtime.
+    ...ws.dynamic && path4 !== "." ? { dynamic: ws.dynamic } : {},
+    writes: ws.writes.filter((w) => !within(w.path, path4))
+  };
+}
+function locate(ws, path4) {
+  let best = ws.mounts.find((m) => m.path === ".") ?? { path: "." };
+  for (const m of ws.mounts)
+    if (m.path !== "." && within(path4, m.path) && (best.path === "." || m.path.length > best.path.length))
+      best = m;
+  const rel = best.path === "." ? path4 : path4 === best.path ? "." : path4.slice(best.path.length + 1);
+  return { mount: best, rel };
+}
+function workspaceKey(ws) {
+  return JSON.stringify([
+    ws.mounts.map((m) => [m.path, m.repository ?? null, m.ref ?? null, m.loc ? formatLoc(m.loc) : null]),
+    ws.managed,
+    ws.dynamic ? formatLoc(ws.dynamic.loc) : null,
+    ws.writes.map((w) => [w.path, formatLoc(w.loc)])
+  ]);
+}
+function workspaceResolver(opts) {
+  const records = /* @__PURE__ */ new Map();
+  const walkedIn = /* @__PURE__ */ new Map();
+  const active = /* @__PURE__ */ new Set();
+  const stepWrites = /* @__PURE__ */ new Map();
+  const inRepositoryDir = (rel) => rel === "." || opts.isDir(rel.split("/")[0]);
+  const writerOf = (ws, path4) => {
+    let best;
+    let rank = 3;
+    for (const w of ws.writes) {
+      if (!writesTo(w, path4, opts.isDir)) continue;
+      const r = w.path === path4 ? 0 : w.path.startsWith(`${path4}/`) ? 1 : 2;
+      if (r <= rank) [best, rank] = [w, r];
+    }
+    return best;
+  };
+  const resolve5 = (uses, ws) => {
+    const target = uses.target;
+    if (uses.selfRef !== void 0) return { kind: "invalid" };
+    if (uses.workspacePath === void 0) {
+      const found = opts.loadAction(target) !== void 0;
+      if (!found && uses.sameRepoRef !== void 0 && !escapes2(target)) return { kind: "skip" };
+      return { kind: "local", target, found };
+    }
+    const path4 = uses.workspacePath;
+    if (escapes2(path4)) return { kind: "unverified", info: { reason: "outside-workspace" } };
+    const { mount, rel } = locate(ws, path4);
+    if (mount.repository !== void 0 && mount.loc) {
+      const checkout2 = { repository: mount.repository, path: mount.path, loc: mount.loc };
+      return { kind: "unverified", info: { reason: "other-repository", checkout: checkout2 } };
+    }
+    const checkout = mount.loc && mount.path !== "." ? { checkout: { path: mount.path, loc: mount.loc } } : {};
+    const rootless = mount.path === "." && !mount.loc && ws.managed && !ws.dynamic;
+    const elsewhere = () => ws.mounts.flatMap((m) => m.loc && m.repository === void 0 ? [{ path: m.path, loc: m.loc }] : []);
+    if (opts.loadAction(rel)) {
+      if (rootless && !writerOf(ws, path4))
+        return { kind: "local", target: rel, found: true, elsewhere: elsewhere() };
+      return { kind: "local", target: rel, found: true, ...checkout };
+    }
+    const write = writerOf(ws, path4);
+    if (write) {
+      const writer = { loc: write.loc, path: write.path, command: write.command };
+      return { kind: "unverified", info: { reason: "created-at-runtime", writer } };
+    }
+    if (mount.loc && mount.ref !== void 0) {
+      const at = { path: mount.path, ref: mount.ref, loc: mount.loc };
+      return { kind: "unverified", info: { reason: "other-ref", checkout: at } };
+    }
+    if (mount.path === "." && (ws.managed && !mount.loc || ws.dynamic) && !inRepositoryDir(rel)) {
+      const dynamic = ws.dynamic ? { checkout: ws.dynamic } : {};
+      return { kind: "unverified", info: { reason: "not-checked-out", ...dynamic } };
+    }
+    if (rootless) return { kind: "local", target: rel, found: false, elsewhere: elsewhere() };
+    return { kind: "local", target: rel, found: false, ...checkout };
+  };
+  const record2 = (unit, job, step, outcome, rooted, via) => {
+    let r = records.get(step);
+    if (!r) {
+      r = { unit, ...job !== void 0 ? { job } : {}, step, rooted: /* @__PURE__ */ new Map(), assumed: /* @__PURE__ */ new Map() };
+      records.set(step, r);
+    }
+    const outcomes = rooted ? r.rooted : r.assumed;
+    const key = JSON.stringify(outcome);
+    if (!outcomes.has(key)) outcomes.set(key, { outcome, via });
+  };
+  const walk = (unit, job, steps2, start, rooted, via) => {
+    let ws = start;
+    for (const step of steps2) {
+      if (step.run !== void 0) {
+        let writes = stepWrites.get(step);
+        if (!writes) {
+          const loc = step.runLoc ?? step.loc;
+          writes = scriptWrites2(step.run).map((w) => ({ ...w, loc }));
+          stepWrites.set(step, writes);
+        }
+        if (writes.length) ws = { ...ws, writes: [...ws.writes, ...writes] };
+      }
+      const uses = step.uses;
+      if (!uses) continue;
+      if (isCheckout(uses)) {
+        ws = applyCheckout(ws, step, opts.repository);
+        continue;
+      }
+      if (uses.kind !== "local-action" || uses.target === void 0) continue;
+      const outcome = resolve5(uses, ws);
+      record2(unit, job, step, outcome, rooted, via);
+      const action5 = outcome.kind === "local" && outcome.found ? opts.loadAction(outcome.target) : void 0;
+      if (action5) {
+        const caller = {
+          from: unit.path,
+          ...job !== void 0 ? { job } : {},
+          loc: uses.loc,
+          action: action5.path
+        };
+        ws = enter(action5, ws, rooted, [...via, caller]);
+      }
+    }
+    return ws;
+  };
+  const enter = (action5, ws, rooted, via) => {
+    if (active.has(action5)) return ws;
+    const key = `${rooted}|${workspaceKey(ws)}`;
+    const seen = walkedIn.get(action5) ?? /* @__PURE__ */ new Map();
+    walkedIn.set(action5, seen);
+    const known2 = seen.get(key);
+    if (known2) return known2;
+    active.add(action5);
+    const after = walk(action5, void 0, action5.steps, ws, rooted, via);
+    active.delete(action5);
+    seen.set(key, after);
+    return after;
+  };
+  return {
+    walkJob(wf, job) {
+      walk(wf, job.id, job.steps, initialWorkspace(), true, []);
+    },
+    /**
+     * Actions no workflow here reaches (published ones, or ones used from other repositories) run in an unknown
+     * workspace: assume this repository at the root. Those that others among them use go last, so they are walked in
+     * their callers' workspaces instead.
+     */
+    walkRemainingActions(actions) {
+      for (; ; ) {
+        const rest = [...actions.values()].filter((a) => !walkedIn.has(a));
+        if (!rest.length) return;
+        const used = new Set(rest.flatMap((a) => a.steps.map((s) => s.uses?.target)));
+        enter(rest.find((a) => !used.has(a.path)) ?? rest[0], initialWorkspace(), false, []);
+      }
+    },
+    /** Settles every step's `uses:` and lists what is missing, invalid or not verifiable. */
+    finish(out) {
+      for (const r of records.values()) {
+        const rooted = r.rooted.size > 0;
+        const entries2 = [...(rooted ? r.rooted : r.assumed).values()];
+        const local = entries2.flatMap(
+          (e) => e.outcome.kind === "local" ? [{ ...e, outcome: e.outcome }] : []
+        );
+        const { outcome } = local.find((e) => e.outcome.found && !e.outcome.elsewhere) ?? local.find((e) => e.outcome.found) ?? local[0] ?? entries2[0];
+        const uses = r.step.uses;
+        const where2 = {
+          uses,
+          from: r.unit.path,
+          ...r.job !== void 0 ? { job: r.job } : {},
+          step: r.step.index
+        };
+        if (outcome.kind === "local") {
+          uses.target = outcome.target;
+          const fails = (o) => o.kind === "local" && (!o.found || o.elsewhere !== void 0);
+          const reported = /* @__PURE__ */ new Set();
+          for (const { outcome: o, via } of local) {
+            if (!fails(o) || reported.has(o.target)) continue;
+            reported.add(o.target);
+            const varies = entries2.some(
+              (e) => !fails(e.outcome) || e.outcome.kind === "local" && e.outcome.target !== o.target
+            );
+            const missing = {
+              ...where2,
+              ...o.target !== uses.target ? { target: o.target } : {},
+              ...o.found ? { inRepository: true } : {},
+              ...o.checkout ? { checkout: o.checkout } : {},
+              ...o.elsewhere ? { elsewhere: o.elsewhere } : {},
+              ...varies && rooted && via.length ? { via } : {}
+            };
+            out.missing.push(missing);
+            const what = o.found ? "local reference outside the workspace" : "unresolved local reference";
+            opts.logger.warn(`${what} ${uses.raw}`, { from: r.unit.path });
+          }
+        } else if (outcome.kind === "unverified") {
+          uses.kind = "workspace-action";
+          delete uses.target;
+          out.unverified.push({ ...where2, ...outcome.info });
+          opts.logger.debug(`workspace path not verified (${outcome.info.reason}): ${uses.raw}`, {
+            from: r.unit.path
+          });
+        } else if (outcome.kind === "invalid") {
+          out.invalid.push({ ...where2, reason: "self-ref" });
+        } else {
+          opts.logger.debug(`same-repository reference not in the working tree: ${uses.raw}`);
+        }
+      }
+    }
+  };
+}
+
 // ../core/src/project.ts
 var WORKFLOWS_DIR = ".github/workflows";
 var ACTIONS_DIR = ".github/actions";
@@ -130762,7 +131297,7 @@ function insideRepository(root, abs) {
     } catch {
       const parent2 = dirname(target);
       if (parent2 === target) return false;
-      rest = join3(basename3(target), rest);
+      rest = join3(basename4(target), rest);
       target = parent2;
     }
   }
@@ -130816,8 +131351,8 @@ function detectRepository(root, env = process.env) {
   if (env.GITHUB_REPOSITORY) return env.GITHUB_REPOSITORY;
   const gitConfig = join3(root, ".git", "config");
   if (!existsSync5(gitConfig)) return void 0;
-  const text2 = readFileSync2(gitConfig, "utf8");
-  const origin = /\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(text2)?.[1];
+  const text3 = readFileSync2(gitConfig, "utf8");
+  const origin = /\[remote "origin"\][^[]*?url\s*=\s*(\S+)/.exec(text3)?.[1];
   const m = origin && /github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/.exec(origin);
   return m ? m[1] : void 0;
 }
@@ -130832,9 +131367,9 @@ function loadProject(opts) {
   const loadWorkflow = (path4) => {
     if (workflows.has(path4)) return workflows.get(path4);
     if (escapesRoot(path4)) return void 0;
-    const text2 = fs8.read(path4);
-    if (text2 === void 0) return void 0;
-    const wf = logger7.time(`parse ${path4}`, () => parseWorkflowFile(path4, text2, ctx));
+    const text3 = fs8.read(path4);
+    if (text3 === void 0) return void 0;
+    const wf = logger7.time(`parse ${path4}`, () => parseWorkflowFile(path4, text3, ctx));
     workflows.set(path4, wf);
     logger7.debug(`parsed workflow ${path4}`, {
       jobs: Object.keys(wf.jobs).length,
@@ -130907,45 +131442,49 @@ function loadProject(opts) {
   }
   for (const f of discovered) loadWorkflow(f);
   for (const f of actionFiles) loadAction(f.replace(/\/?action\.ya?ml$/i, "") || ".");
-  const resolveRefs = (unit) => {
-    const note = (uses, extra) => {
-      if (!uses.target) return;
-      if (uses.kind === "local-workflow" && !isCallableWorkflowPath(uses.target)) {
-        invalid.push({ uses, from: unit.path, ...extra });
-        logger7.warn(`reusable workflow outside .github/workflows: ${uses.raw}`, { from: unit.path });
-        return;
-      }
-      const found = uses.kind === "local-workflow" ? loadWorkflow(uses.target) : loadAction(uses.target);
-      if (!found && uses.sameRepoRef && !escapesRoot(uses.target)) {
-        logger7.debug(`same-repository reference not in the working tree: ${uses.raw}`);
-        return;
-      }
-      if (!found) {
-        missing.push({ uses, from: unit.path, ...extra });
-        logger7.warn(`unresolved local reference ${uses.raw}`, { from: unit.path });
-      } else {
-        queue2.push(found);
-      }
-    };
-    if (unit.kind === "workflow") {
-      for (const job of Object.values(unit.jobs)) {
-        if (job.uses?.kind === "local-workflow") note(job.uses, { job: job.id });
-        for (const step of job.steps)
-          if (step.uses?.kind === "local-action") note(step.uses, { job: job.id, step: step.index });
-      }
+  const unverified = [];
+  const resolver = workspaceResolver({
+    ...opts.repository ? { repository: opts.repository } : {},
+    loadAction,
+    isDir: (dir2) => fs8.isDir(dir2),
+    logger: logger7
+  });
+  const noteCall = (wf, job, pending2) => {
+    const uses = job.uses;
+    if (!uses?.target) return;
+    const where2 = { uses, from: wf.path, job: job.id };
+    if (uses.selfRef !== void 0) {
+      invalid.push({ ...where2, reason: "self-ref" });
+      return;
+    }
+    if (!isCallableWorkflowPath(uses.target)) {
+      invalid.push({ ...where2, reason: "not-callable" });
+      logger7.warn(`reusable workflow outside .github/workflows: ${uses.raw}`, { from: wf.path });
+      return;
+    }
+    const found = loadWorkflow(uses.target);
+    if (!found && uses.sameRepoRef && !escapesRoot(uses.target)) {
+      logger7.debug(`same-repository reference not in the working tree: ${uses.raw}`);
+    } else if (!found) {
+      missing.push(where2);
+      logger7.warn(`unresolved local reference ${uses.raw}`, { from: wf.path });
     } else {
-      for (const step of unit.steps)
-        if (step.uses?.kind === "local-action") note(step.uses, { step: step.index });
+      pending2.push(found);
     }
   };
-  const queue2 = [...workflows.values(), ...actions.values()];
-  const done = /* @__PURE__ */ new Set();
-  while (queue2.length) {
-    const u = queue2.shift();
-    if (done.has(u)) continue;
-    done.add(u);
-    resolveRefs(u);
+  const pending = [...workflows.values()];
+  const walked = /* @__PURE__ */ new Set();
+  while (pending.length) {
+    const wf = pending.shift();
+    if (walked.has(wf)) continue;
+    walked.add(wf);
+    for (const job of Object.values(wf.jobs)) {
+      if (job.uses?.kind === "local-workflow") noteCall(wf, job, pending);
+      resolver.walkJob(wf, job);
+    }
   }
+  resolver.walkRemainingActions(actions);
+  resolver.finish({ missing, invalid, unverified });
   if (opts.validateSchema !== false) {
     logger7.time("schema validation", () => {
       for (const u of [...workflows.values(), ...actions.values()]) {
@@ -130963,7 +131502,8 @@ function loadProject(opts) {
     missingTargets,
     ignoredTargets,
     missing,
-    invalidTargets: invalid
+    invalidTargets: invalid,
+    unverified
   };
 }
 
@@ -131084,15 +131624,15 @@ function loadConfig(root, explicit) {
     if (!explicit && !insideRepository(root, full)) {
       throw new ConfigError(`${rel} links outside the repository; flowpact does not read it`, rel);
     }
-    const text2 = readFileSync3(full, "utf8");
-    return { ...parseConfigText(text2, rel), file: rel, text: text2 };
+    const text3 = readFileSync3(full, "utf8");
+    return { ...parseConfigText(text3, rel), file: rel, text: text3 };
   }
   return { config: defaultConfig() };
 }
-function parseConfigText(text2, file2 = "flowpact.config.yml") {
+function parseConfigText(text3, file2 = "flowpact.config.yml") {
   const lineCounter = new import_yaml5.LineCounter();
-  const lines = text2.split(/\r?\n/);
-  const doc = (0, import_yaml5.parseDocument)(text2, { lineCounter, prettyErrors: false });
+  const lines = text3.split(/\r?\n/);
+  const doc = (0, import_yaml5.parseDocument)(text3, { lineCounter, prettyErrors: false });
   if (doc.errors.length) {
     throw new ConfigError(`Config file is not valid YAML: ${doc.errors[0].message.split("\n")[0]}`, file2);
   }
@@ -131337,7 +131877,7 @@ var Diff = class {
 var LineDiff = class extends Diff {
   constructor() {
     super(...arguments);
-    this.tokenize = tokenize;
+    this.tokenize = tokenize2;
   }
   equals(left, right, options) {
     if (options.ignoreWhitespace) {
@@ -131362,7 +131902,7 @@ var lineDiff = new LineDiff();
 function diffLines(oldStr, newStr, options) {
   return lineDiff.diff(oldStr, newStr, options);
 }
-function tokenize(value, options) {
+function tokenize2(value, options) {
   if (options.stripTrailingCr) {
     value = value.replace(/\r\n/g, "\n");
   }
@@ -131608,9 +132148,9 @@ function formatPatch(patch, headerOptions) {
   }
   return ret.join("\n") + "\n";
 }
-function splitLines(text2) {
-  const hasTrailingNl = text2.endsWith("\n");
-  const result = text2.split("\n").map((line) => line + "\n");
+function splitLines(text3) {
+  const hasTrailingNl = text3.endsWith("\n");
+  const result = text3.split("\n").map((line) => line + "\n");
   if (hasTrailingNl) {
     result.pop();
   } else {
@@ -131679,12 +132219,14 @@ var ProjectIndex = class {
   }
   /** The local workflow file a job's `uses:` points at, reusable or not. */
   targetOf(job) {
-    if (job.uses?.kind !== "local-workflow" || !job.uses.target) return void 0;
+    if (job.uses?.kind !== "local-workflow" || !job.uses.target || job.uses.selfRef !== void 0)
+      return void 0;
     if (!/^\.github\/workflows\/[^/]+\.ya?ml$/i.test(job.uses.target)) return void 0;
     return this.project.workflows.get(job.uses.target);
   }
   actionOf(step) {
-    if (step.uses?.kind !== "local-action" || !step.uses.target) return void 0;
+    if (step.uses?.kind !== "local-action" || !step.uses.target || step.uses.selfRef !== void 0)
+      return void 0;
     return this.project.actions.get(step.uses.target);
   }
   usagesOf(symbol2) {
@@ -132180,8 +132722,8 @@ function declaredMatrix(keys) {
 
 // ../core/src/contracts.ts
 var CONTRACTS_DIR = `${CONFIG_DIR}/contracts`;
-function normalizeContractText(text2) {
-  return text2.replace(/\r\n/g, "\n");
+function normalizeContractText(text3) {
+  return text3.replace(/\r\n/g, "\n");
 }
 var CONTRACT_HEADER = "# Generated by flowpact \u2014 do not edit by hand. Run `flowpact generate` to update.\n# Docs: https://rumankazi.github.io/flowpact/docs/contracts\n";
 var contractInputSchema = external_exports.object({
@@ -132526,19 +133068,19 @@ function diffContracts(before, after) {
 function readContracts(fs8) {
   const out = /* @__PURE__ */ new Map();
   for (const file2 of fs8.walk(CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort()) {
-    const text2 = fs8.read(file2) ?? "";
+    const text3 = fs8.read(file2) ?? "";
     try {
-      const parsed = contractSchema.safeParse((0, import_yaml6.parse)(text2));
+      const parsed = contractSchema.safeParse((0, import_yaml6.parse)(text3));
       out.set(
         file2,
-        parsed.success ? { file: file2, text: text2, contract: parsed.data } : {
+        parsed.success ? { file: file2, text: text3, contract: parsed.data } : {
           file: file2,
-          text: text2,
+          text: text3,
           error: parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")
         }
       );
     } catch (err) {
-      out.set(file2, { file: file2, text: text2, error: `not valid YAML: ${err.message.split("\n")[0]}` });
+      out.set(file2, { file: file2, text: text3, error: `not valid YAML: ${err.message.split("\n")[0]}` });
     }
   }
   return out;
@@ -132685,10 +133227,10 @@ function writeContracts(root, plan, outDir) {
 }
 function entryConsumers(e) {
   const out = /* @__PURE__ */ new Set();
-  for (const text2 of [e.before, e.after]) {
-    if (!text2) continue;
+  for (const text3 of [e.before, e.after]) {
+    if (!text3) continue;
     try {
-      const data = (0, import_yaml6.parse)(text2);
+      const data = (0, import_yaml6.parse)(text3);
       for (const c of data?.consumers ?? []) if (typeof c?.from === "string") out.add(c.from);
     } catch {
     }
@@ -132804,10 +133346,10 @@ function jobSegments(job, inputs = {}) {
       const s = suffix(combo, exp, job);
       return { name: `${base}${s.text}`, stem, certain: s.certain, combo };
     }
-    const text2 = toText(evaluateTemplate(kind.template, nameResolver(combo, inputs)))?.trim();
-    const certain = text2 !== void 0 && !matrixUnknown && (!exp || exp.exact);
+    const text3 = toText(evaluateTemplate(kind.template, nameResolver(combo, inputs)))?.trim();
+    const certain = text3 !== void 0 && !matrixUnknown && (!exp || exp.exact);
     return {
-      name: text2 === void 0 ? kind.template.trim() : text2 || job.id,
+      name: text3 === void 0 ? kind.template.trim() : text3 || job.id,
       stem,
       certain,
       ...combo ? { combo } : {}
@@ -135335,23 +135877,119 @@ var missingLocalTarget = defineRule({
   category: "structure",
   defaultSeverity: "error",
   docs: {
-    summary: "A local `uses: ./...` points to a workflow or action that does not exist.",
-    why: "The job or step fails as soon as it is reached, usually after a rename or move.",
-    fix: "Fix the path (it is relative to the repository root), or restore the missing file."
+    summary: "A local `uses: ./...` or `uses: $/...` points to a workflow or action that does not exist where GitHub looks for it, or is written in a form GitHub rejects.",
+    why: "The job or step fails as soon as it is reached, usually after a rename or move. A step\u2019s `./path` is relative to the runner\u2019s workspace: flowpact maps it through the `actions/checkout` steps before it (for a composite action, each caller\u2019s) and reports it when it lands in this repository but is missing, or when no checkout puts this repository where it points. Paths it cannot read are FP610.",
+    fix: "Fix the path or restore the missing file. A step\u2019s `./path` includes the `path:` this repository is checked out to, and needs a checkout that puts it there; `$/path` and a job\u2019s `./path` are relative to the repository root whatever the checkout, and `$/` takes no `@ref` (it always runs the running commit).",
+    examples: {
+      bad: `- uses: actions/checkout@v5
+  with:
+    path: src/app
+- uses: ./src/app/.github/actions/biuld`,
+      good: `- uses: actions/checkout@v5
+  with:
+    path: src/app
+- uses: ./src/app/.github/actions/build
+# or, whatever the checkout:
+- uses: $/.github/actions/build`
+    }
   },
   check(ctx) {
     for (const m of ctx.index.project.invalidTargets ?? []) {
+      const target = m.uses.target ?? m.uses.raw;
       ctx.report({
-        message: `${quote(m.uses.target ?? m.uses.raw)} is not a reusable workflow: they must be .yml/.yaml files directly in .github/workflows`,
+        message: m.reason === "self-ref" ? `${quote(m.uses.raw.trim())} has an @ref, which GitHub rejects: \`$/\` always runs this repository at the running commit` : `${quote(target)} is not a reusable workflow: they must be .yml/.yaml files directly in .github/workflows`,
         loc: m.uses.loc,
-        symbol: m.uses.target ?? m.uses.raw
+        symbol: target,
+        ...m.reason === "self-ref" ? {
+          fix: `Write \`$/${target}\` without @${m.uses.selfRef}, or reference another commit as owner/repo/path@ref.`
+        } : {}
       });
     }
     for (const m of ctx.index.project.missing) {
+      const target = m.target ?? m.uses.target ?? m.uses.raw;
+      const related2 = [];
+      const checkedOut = (c) => related2.push({ loc: c.loc, message: `checks this repository out at ${quote(c.path)}` });
+      let where2 = "";
+      let fix;
+      if (m.checkout) {
+        where2 = ` (${m.uses.raw.trim()} is in the checkout of this repository at ${quote(m.checkout.path)})`;
+        checkedOut(m.checkout);
+      } else if (m.elsewhere) {
+        const first = m.elsewhere[0];
+        where2 = first ? ` (this repository is checked out at ${listNames(m.elsewhere.map((c) => quote(c.path)))}, not at the workspace root)` : " (no step checks this repository out at the workspace root)";
+        m.elsewhere.forEach(checkedOut);
+        fix = first ? `A step\u2019s ./path is relative to the workspace, where this repository is at ${quote(first.path)}: a path in it starts with ./${first.path}/. Or use $/${target}, which always means this repository.` : `A step\u2019s ./path is relative to the workspace, and no step puts this repository at its root: check it out there first (actions/checkout without path:), or use $/${target}, which always means this repository.`;
+      }
+      let when = "";
+      const caller = m.via?.[0];
+      if (caller) {
+        when = ` when ${m.from} runs in ${caller.job !== void 0 ? `job ${quote(caller.job)} of ` : ""}${caller.from}`;
+        for (const v of m.via ?? []) related2.push({ loc: v.loc, message: `uses ${v.action} here` });
+      }
+      const what = `${m.uses.kind === "local-workflow" ? "Workflow" : "Action"} ${quote(target)}`;
       ctx.report({
-        message: `${m.uses.kind === "local-workflow" ? "Workflow" : "Action"} ${quote(m.uses.target ?? m.uses.raw)} does not exist`,
+        message: `${what} ${m.inRepository ? "is not in the workspace" : "does not exist"}${when}${where2}`,
         loc: m.uses.loc,
-        symbol: m.uses.target ?? m.uses.raw
+        symbol: target,
+        ...related2.length ? { related: related2 } : {},
+        ...fix !== void 0 ? { fix } : {}
+      });
+    }
+  }
+});
+var workspaceUnverified = defineRule({
+  code: "FP610",
+  name: "workspace-unverified",
+  category: "structure",
+  defaultSeverity: "info",
+  docs: {
+    summary: "A step\u2019s `uses: ./...` points to a place in the runner\u2019s workspace that flowpact cannot read, so the action is not verified.",
+    why: "GitHub resolves a step\u2019s `./path` against the workspace, not the repository. When the path lies in another repository\u2019s checkout, in a checkout of this repository at another ref, outside the workspace, where an earlier step\u2019s script writes, or where no checkout of this repository puts it, flowpact cannot read the action: its inputs, outputs and the path itself are taken on trust.",
+    fix: "Nothing to fix if this is intended. To have it checked, reference another repository\u2019s action as `owner/repo/path@ref`, and this repository\u2019s as `$/path` (or check this repository out where the path points).",
+    examples: {
+      bad: `- uses: actions/checkout@v5
+  with:
+    repository: acme/shared-actions
+    path: shared
+- uses: ./shared/setup`,
+      good: `- uses: acme/shared-actions/setup@v2`
+    }
+  },
+  check(ctx) {
+    for (const u of ctx.index.project.unverified ?? []) {
+      const path4 = quote(u.uses.raw.trim());
+      const related2 = [];
+      let message;
+      switch (u.reason) {
+        case "other-repository":
+          message = `${path4} is in the checkout of ${u.checkout?.repository} at ${quote(u.checkout?.path ?? ".")}; its interface is not verified`;
+          break;
+        case "outside-workspace":
+          message = `${path4} points outside the workspace, so it only exists at runtime; it is not verified`;
+          break;
+        case "created-at-runtime":
+          message = `${path4} is not in this repository; an earlier step writes there (\`${u.writer?.command}\`), so it is not verified`;
+          break;
+        case "other-ref":
+          message = `${path4} is not in this repository\u2019s working tree, but may be at ${quote(u.checkout?.ref ?? "")}, the ref checked out at ${quote(u.checkout?.path ?? ".")}; it is not verified`;
+          break;
+        default:
+          message = u.checkout ? `${path4} is not in this repository and may be in the checkout at ${quote(u.checkout.path)}, a path computed at runtime; it is not verified` : `${path4} is not in this repository, and no checkout of this repository covers it; it is not verified`;
+      }
+      if (u.checkout) {
+        const what = u.checkout.repository ?? (u.checkout.ref !== void 0 ? `ref ${quote(u.checkout.ref)} of this repository` : "this repository");
+        related2.push({ loc: u.checkout.loc, message: `checks out ${what} at ${quote(u.checkout.path)}` });
+      }
+      if (u.writer)
+        related2.push({
+          loc: u.writer.loc,
+          message: `\`${u.writer.command}\` here writes to ${quote(u.writer.path)}`
+        });
+      ctx.report({
+        message,
+        loc: u.uses.loc,
+        symbol: u.uses.raw.trim(),
+        ...related2.length ? { related: related2 } : {}
       });
     }
   }
@@ -135454,7 +136092,8 @@ var structureRules = [
   largeInterface,
   missingLocalTarget,
   unreferencedReusableWorkflow,
-  undefinedNeedsJob
+  undefinedNeedsJob,
+  workspaceUnverified
 ];
 
 // ../core/src/rules/index.ts
@@ -135835,7 +136474,7 @@ function exitCodeFor(summary2, failOn) {
 
 // ../core/src/git.ts
 import { execFileSync } from "child_process";
-import { posix as posix2 } from "path";
+import { posix as posix3 } from "path";
 var GitError = class extends Error {
 };
 var MAX_BUFFER = 256 * 1024 * 1024;
@@ -135880,8 +136519,8 @@ function gitFileSystem(root, commit) {
   }
   const alias = /* @__PURE__ */ new Map();
   for (const link of links) {
-    const target = posix2.normalize(
-      posix2.join(posix2.dirname(link), git(root, ["cat-file", "blob", `${commit}:${link}`]).toString())
+    const target = posix3.normalize(
+      posix3.join(posix3.dirname(link), git(root, ["cat-file", "blob", `${commit}:${link}`]).toString())
     );
     if (target.startsWith("../") || target === ".." || target === ".git" || target.startsWith(".git/"))
       continue;
@@ -135954,10 +136593,10 @@ function isReleasePullRequest(title, labels) {
   return title !== void 0 && RELEASE_TITLE.test(title) || labels.includes(RELEASE_LABEL);
 }
 function readJson(fs8, path4) {
-  const text2 = fs8.read(path4);
-  if (text2 === void 0) return void 0;
+  const text3 = fs8.read(path4);
+  if (text3 === void 0) return void 0;
   try {
-    return JSON.parse(text2);
+    return JSON.parse(text3);
   } catch {
     return void 0;
   }
@@ -135984,10 +136623,10 @@ function releaseSettings(fs8) {
 function baselineConfig(fs8, configPath, notes) {
   const candidates = configPath ? [configPath] : CONFIG_FILES.map((f) => `${CONFIG_DIR}/${f}`);
   for (const path4 of candidates) {
-    const text2 = fs8.read(path4);
-    if (text2 === void 0) continue;
+    const text3 = fs8.read(path4);
+    if (text3 === void 0) continue;
     try {
-      return parseConfigText(text2, path4).config;
+      return parseConfigText(text3, path4).config;
     } catch (err) {
       if (!(err instanceof ConfigError)) throw err;
       notes.push(`the baseline's ${path4} is invalid (${err.message}); using the default impact settings`);
@@ -136343,7 +136982,11 @@ function buildCallGraph(index2) {
   const { project } = index2;
   const nodes = /* @__PURE__ */ new Map();
   const edges = [];
-  const missingTargets = new Set(project.missing.map((m) => m.uses.target).filter((t) => t !== void 0));
+  const missingTargets = /* @__PURE__ */ new Set();
+  for (const m of project.missing) {
+    const target = m.target ?? m.uses.target;
+    if (target !== void 0 && !m.inRepository) missingTargets.add(target);
+  }
   const invalidCalls = new Set((project.invalidTargets ?? []).map((m) => `${m.from}#${m.job ?? ""}`));
   const workflows = [...project.workflows.values()].sort((a, b) => a.path.localeCompare(b.path));
   const actions = [...project.actions.values()].sort((a, b) => a.path.localeCompare(b.path));
@@ -136446,8 +137089,8 @@ function renderMermaid(graph, opts = {}) {
   const lines = [`flowchart ${opts.direction ?? "LR"}`];
   for (const n of graph.nodes) {
     const id = ids.get(n.id);
-    const text2 = quote2(nodeText(n));
-    const shape = n.kind === "workflow" ? `(${text2})` : n.kind === "action" ? `{{${text2}}}` : `[${text2}]`;
+    const text3 = quote2(nodeText(n));
+    const shape = n.kind === "workflow" ? `(${text3})` : n.kind === "action" ? `{{${text3}}}` : `[${text3}]`;
     lines.push(`  ${id}${shape}:::${n.kind}`);
   }
   for (const e of graph.edges) {
@@ -136516,7 +137159,7 @@ function blankLineAfter(s, at) {
   while (s[k] === " " || s[k] === "	") k++;
   return s[k] === "\n" || s[k] === "\r";
 }
-function text(s) {
+function text2(s) {
   let out = "";
   let i = 0;
   while (i < s.length) {
@@ -136557,7 +137200,7 @@ function tableCell(md) {
   return md.split("|").join("\\|").replace(/\r?\n/g, "<br/>");
 }
 function cell(s) {
-  return tableCell(text(s));
+  return tableCell(text2(s));
 }
 function code(s) {
   const longest = longestRun(s, "`");
@@ -136586,7 +137229,7 @@ function statusLine(result) {
 }
 function labeled(label, value) {
   const [first = "", ...rest] = value.split("\n");
-  const out = [`**${label}:** ${text(first)}`];
+  const out = [`**${label}:** ${text2(first)}`];
   if (!rest.length) return out;
   const longest = longestRun(rest.join("\n"), "`");
   const fence = "`".repeat(Math.max(3, longest + 1));
@@ -136597,7 +137240,7 @@ function renderFinding(f, opts) {
   const out = [];
   out.push(`**[${code(f.code)}](${f.docsUrl}) ${f.name}** \xB7 ${locLink(f.loc, opts)}`);
   out.push("");
-  out.push(text(f.message));
+  out.push(text2(f.message));
   if (f.combos?.length) {
     const shown = f.combos.slice(0, 10).map(code).join(" \xB7 ");
     out.push("");
@@ -136613,7 +137256,7 @@ function renderFinding(f, opts) {
     out.push("");
     out.push("**Related locations:**");
     out.push("");
-    for (const r of f.related) out.push(`- ${locLink(r.loc, opts)} \u2014 ${text(r.message)}`);
+    for (const r of f.related) out.push(`- ${locLink(r.loc, opts)} \u2014 ${text2(r.message)}`);
   }
   out.push("");
   out.push("</details>");
@@ -136646,9 +137289,9 @@ function renderContracts(plan, opts) {
     for (const e of withChanges) {
       out.push(`- ${code(e.file)}`);
       for (const c of [...e.changes].sort((a, b) => Number(b.breaking) - Number(a.breaking))) {
-        out.push(c.breaking ? `  - **${text(c.message)}** (breaking)` : `  - ${text(c.message)}`);
+        out.push(c.breaking ? `  - **${text2(c.message)}** (breaking)` : `  - ${text2(c.message)}`);
       }
-      if (e.invalid) out.push(`  - could not be read as a contract: ${text(e.invalid)}`);
+      if (e.invalid) out.push(`  - could not be read as a contract: ${text2(e.invalid)}`);
     }
   }
   if (allChanged.length > changed.length) {
@@ -136688,7 +137331,7 @@ function renderImpactMarkdown(impact, opts) {
   const out = [
     "### Impact",
     "",
-    `${icon} Declared **${text(describeDeclared(impact))}** \xB7 required **${v.required}**`
+    `${icon} Declared **${text2(describeDeclared(impact))}** \xB7 required **${v.required}**`
   ];
   const changes = listedChanges(impact);
   if (changes.length) {
@@ -137092,7 +137735,7 @@ function actionsSink(runnerDebug, groups) {
 var toPosix2 = (p) => p.split(sep3).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function inWorkspace(prefix2, file2) {
-  return prefix2 ? posix3.join(prefix2, file2) : file2;
+  return prefix2 ? posix4.join(prefix2, file2) : file2;
 }
 function annotate(f, prefix2) {
   const loc = f.loc;
@@ -137121,7 +137764,7 @@ function sarifInWorkspace(sarif, prefix2) {
     }
     if (!v || typeof v !== "object") return;
     const o = v;
-    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix3.join(prefix2, o.uri);
+    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix4.join(prefix2, o.uri);
     for (const value of Object.values(o)) visit3(value);
   };
   visit3(doc);
