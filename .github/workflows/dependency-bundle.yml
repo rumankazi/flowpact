@@ -1,0 +1,49 @@
+name: Dependency updates
+# Runtime dependencies are compiled into the committed action bundle, which Renovate cannot rebuild. The release bot
+# rebuilds it on Renovate's branches; its commits start CI like any other push.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-bundle-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    name: Rebuild the action bundle
+    if: github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ steps.app.outputs.token }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Rebuild and push when the bundle changed
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BOT: ${{ steps.app.outputs.app-slug }}[bot]
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @wfc/action build
+          if [ -n "$(git status --porcelain packages/action/dist)" ]; then
+            git config user.name "$BOT"
+            git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
+            git add packages/action/dist
+            git commit -m "build(action): rebuild the bundle for the dependency update"
+            git push
+          fi

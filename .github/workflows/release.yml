@@ -24,17 +24,26 @@ jobs:
     name: Release pull request
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Writes go through the rk-release-bot app: unlike GITHUB_TOKEN, its pull requests, pushes and tags start the
+    # usual workflows, so the release pull request gets the required checks like any other.
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+      contents: read
     outputs:
       created: ${{ steps.rp.outputs.release_created }}
       tag: ${{ steps.rp.outputs.tag_name }}
     steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
       - id: rp
         uses: googleapis/release-please-action@v5
         with:
+          token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -43,6 +52,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ fromJSON(steps.rp.outputs.pr).headBranchName }}
+          token: ${{ steps.app.outputs.token }}
       - if: steps.rp.outputs.prs_created == 'true'
         uses: pnpm/action-setup@v6
       - if: steps.rp.outputs.prs_created == 'true'
@@ -52,28 +62,19 @@ jobs:
           cache: pnpm
       - name: Rebuild the action bundle on the release branch
         if: steps.rp.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BOT: ${{ steps.app.outputs.app-slug }}[bot]
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter @wfc/action build
           if [ -n "$(git status --porcelain packages/action/dist)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config user.name "$BOT"
+            git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
             git add packages/action/dist
             git commit -m "build(action): rebuild the bundle for the release"
             git push
           fi
-
-      # Pushes made with GITHUB_TOKEN do not start workflows, so run the required checks explicitly; their results
-      # count for the pull request's head commit.
-      - name: Run the required checks on the release pull request
-        if: steps.rp.outputs.prs_created == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ fromJSON(steps.rp.outputs.pr).headBranchName }}
-          REPO: ${{ github.repository }}
-        run: |
-          gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"
-          gh workflow run pr-title.yml --repo "$REPO" --ref "$BRANCH"
 
   resolve:
     name: Resolve the release
@@ -169,17 +170,34 @@ jobs:
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.prerelease == 'false' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
+      # Release tags are protected by a ruleset that only the release bot bypasses (.github/rulesets/release-tags.json).
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
       - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
       - name: Point the major tag (e.g. v0) at the release
         env:
           TAG: ${{ needs.resolve.outputs.tag }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BOT: ${{ steps.app.outputs.app-slug }}[bot]
         run: |
-          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          git fetch --force --tags origin
           major="${TAG%%.*}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # A re-publish of an older release must not move the major tag backwards.
+          latest=$(git tag --list "$major.*" --sort=-v:refname | grep -v -- - | head -n 1)
+          if [ "$latest" != "$TAG" ]; then
+            echo "$TAG is not the latest $major release ($latest); leaving $major alone."
+            exit 0
+          fi
+          git config user.name "$BOT"
+          git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
           git tag -fa "$major" -m "$major → $TAG" "$TAG^{commit}"
           git push origin "refs/tags/$major" --force
 
@@ -212,6 +230,8 @@ jobs:
           done
           exit 1
       - run: node scripts/smoke.mjs --version "$VERSION"
+        # Tags from before the smoke test existed (v0.1.0) have nothing to run.
+        if: hashFiles('scripts/smoke.mjs') != ''
         shell: bash
         env:
           VERSION: ${{ needs.resolve.outputs.version }}

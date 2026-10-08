@@ -1,0 +1,4 @@
+{
+  "npm": { "branches": ["main"] },
+  "github-pages": { "branches": ["main"] }
+}

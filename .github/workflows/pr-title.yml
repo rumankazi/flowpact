@@ -2,8 +2,6 @@ name: PR title
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
-  # Dispatched for release pull requests (see release.yml); the check then passes without a title to read.
-  workflow_dispatch:
 
 permissions: {}
 
@@ -14,12 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check the title
-        if: github.event_name == 'pull_request'
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
           pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert|style)(\([a-z0-9][a-z0-9-]*\))?!?: [^ ].*$'
           if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
-            echo "::error::The pull request title must follow Conventional Commits, e.g. 'fix(core): handle empty matrix includes'. Types: feat, fix, perf, refactor, docs, test, build, ci, chore, revert, style; '!' marks a breaking change."
+            echo "::error::The pull request title must follow Conventional Commits, e.g. 'fix(core): handle empty matrix includes'. Types: feat, fix, perf, refactor, docs, test, build, ci, chore, revert, style; '!' marks a breaking change. Retitle GitHub's Revert PRs as 'revert: ...'."
             exit 1
           fi
