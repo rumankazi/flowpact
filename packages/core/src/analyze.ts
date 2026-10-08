@@ -245,6 +245,13 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
   }
   const only = opts.only?.map((o) => registry.get(o)!.code);
   const ruleLog = logger.child('rules');
+  // Generated files (gh-aw lock files, `DO NOT EDIT` headers) are checked as callers and callees, but rules about their
+  // internals (`generatedFiles: 'skip'`) stay quiet: nobody can act on them in the file itself.
+  const generatedFiles = new Map<string, string>();
+  for (const u of [...project.workflows.values(), ...project.actions.values()])
+    if (u.generated) generatedFiles.set(u.file, u.generated);
+  for (const [file, marker] of generatedFiles) logger.debug(`generated file: ${file}`, { marker });
+  let skippedInGenerated = 0;
 
   const contractInScope = contractsInScope(index);
   let contracts: ContractPlan | undefined;
@@ -291,7 +298,10 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
         ...(contracts ? { contracts } : {}),
         ...(impact ? { impact } : {}),
         ...extra,
-        report: (input) => out.push(toFinding(rule, severity, input, registry)),
+        report: (input) => {
+          if (rule.generatedFiles === 'skip' && generatedFiles.has(input.loc.file)) skippedInGenerated++;
+          else out.push(toFinding(rule, severity, input, registry));
+        },
       };
       const t0 = performance.now();
       try {
@@ -311,6 +321,11 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
   };
 
   const findings = dedupe(runRules('main', {}));
+  if (skippedInGenerated > 0) {
+    logger.info(
+      `skipped ${skippedInGenerated} finding(s) about the internals of ${generatedFiles.size} generated file(s)`,
+    );
+  }
   // Overrides are matched against the whole repository, so linting a subset of files does not make
   // overrides for other files look unused; the scope filter is applied afterwards.
   const applied = applyOverrides(

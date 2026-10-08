@@ -1,13 +1,8 @@
-import { type ProjectIndex, sym } from '../graph';
-import { type JobDecl, lookup, type StepDecl, type UnitDecl } from '../ir';
+import { sym } from '../graph';
+import { isPublished } from '../impact';
+import { lookup, type StepDecl, type UnitDecl } from '../ir';
 import { defineRule, type RuleDefinition } from './types';
 import { didYouMean, listNames, quote, readsContextDynamically, refsOf } from './util';
-
-function jobOutputNames(index: ProjectIndex, job: JobDecl): string[] {
-  const callee = index.calleeOf(job);
-  if (callee) return Object.keys(callee.call?.outputs ?? {});
-  return Object.keys(job.outputs);
-}
 
 function stepsInScope(unit: UnitDecl, jobId: string | undefined): StepDecl[] {
   if (unit.kind === 'action') return unit.steps;
@@ -55,7 +50,7 @@ export const undefinedOutputRef = defineRule({
           }
           if (job.uses && job.uses.kind !== 'local-workflow') continue;
           if (job.uses && !ctx.index.calleeOf(job)) continue;
-          const names = jobOutputNames(ctx.index, job);
+          const names = ctx.index.jobOutputNames(job);
           if (names.some((n) => n.toLowerCase() === c.toLowerCase())) continue;
           const guess = didYouMean(c, names);
           const callee = ctx.index.calleeOf(job);
@@ -163,27 +158,51 @@ export const unusedOutput = defineRule({
   name: 'unused-output',
   category: 'outputs',
   defaultSeverity: 'warning',
+  generatedFiles: 'skip',
   docs: {
-    summary: 'A job, workflow or action output is declared but no consumer reads it.',
+    summary:
+      'A job output, or an output of an internal reusable workflow or action, is declared but nothing reads it.',
     why: 'Unused outputs suggest a broken hand-off: either the consumer reads a different name, or the output is dead code.',
     fix: 'Remove the output, or make the intended consumer read it.',
+    scope:
+      'Job outputs are always judged: only the jobs and workflow outputs of the same workflow can read them. Outputs of a ' +
+      'reusable workflow or a composite action are judged only for an internal unit that this repository uses. Published ' +
+      'units are not reported, because their consumers live in other repositories: reusable workflows (except files ' +
+      'starting with `_`), the root `action.yml`, or exactly the units listed in `impact.publish` when it is set. ' +
+      'Reading the whole object (`toJSON(needs.build.outputs)`, `needs.build.outputs[matrix.key]`) counts as reading ' +
+      'every output.',
+    examples: {
+      bad: `build:
+  outputs:
+    version: \${{ steps.meta.outputs.version }}
+    digest: \${{ steps.push.outputs.digest }}   # nothing reads needs.build.outputs.digest
+deploy:
+  needs: build
+  steps:
+    - run: deploy \${{ needs.build.outputs.version }}`,
+      good: `build:
+  outputs:
+    version: \${{ steps.meta.outputs.version }}`,
+    },
   },
   check(ctx) {
     for (const wf of ctx.index.project.workflows.values()) {
-      if (readsContextDynamically(wf, 'needs')) continue;
-      for (const job of Object.values(wf.jobs)) {
-        for (const o of Object.values(job.outputs)) {
-          if (ctx.index.usagesOf(sym.jobOutput(wf.path, job.id, o.name)).length > 0) continue;
-          ctx.report({
-            message: `Output ${quote(o.name)} of jobs.${job.id} is never read`,
-            loc: o.loc,
-            symbol: sym.jobOutput(wf.path, job.id, o.name),
-          });
+      // Job outputs are internal to the workflow: only its own jobs and workflow outputs can read them.
+      if (!readsContextDynamically(wf, 'needs') && !readsContextDynamically(wf, 'jobs')) {
+        for (const job of Object.values(wf.jobs)) {
+          for (const o of Object.values(job.outputs)) {
+            if (ctx.index.usagesOf(sym.jobOutput(wf.path, job.id, o.name)).length > 0) continue;
+            ctx.report({
+              message: `Output ${quote(o.name)} of jobs.${job.id} is never read`,
+              loc: o.loc,
+              symbol: sym.jobOutput(wf.path, job.id, o.name),
+            });
+          }
         }
       }
-      // Workflow outputs: only judge when there are local callers (external callers are invisible).
+      // Workflow outputs: only judge an internal workflow (#40), and only when it has local callers.
       const callers = ctx.index.callersOf(wf.path);
-      if (!wf.call || callers.length === 0) continue;
+      if (!wf.call || callers.length === 0 || isPublished(wf, ctx.config.impact)) continue;
       for (const o of Object.values(wf.call.outputs)) {
         const read = callers.some(
           (c) => ctx.index.usagesOf(sym.jobOutput(c.caller.path, c.job.id, o.name)).length > 0,
@@ -198,7 +217,7 @@ export const unusedOutput = defineRule({
     }
     for (const action of ctx.index.project.actions.values()) {
       const users = ctx.index.usersOf(action.path);
-      if (users.length === 0) continue;
+      if (users.length === 0 || isPublished(action, ctx.config.impact)) continue;
       for (const o of Object.values(action.outputs)) {
         const read = users.some(
           (u) =>
@@ -221,10 +240,17 @@ export const stepOutputNeverWritten = defineRule({
   name: 'step-output-never-written',
   category: 'outputs',
   defaultSeverity: 'warning',
+  generatedFiles: 'skip',
   docs: {
-    summary: 'An output is read from a `run:` step whose script writes other outputs, but never this one.',
+    summary:
+      'An output is read from a step whose inline script (`run:` or `actions/github-script`) writes other outputs, but never this one.',
     why: 'The read evaluates to an empty string. This is typically a typo in the `echo "name=value" >> $GITHUB_OUTPUT` line.',
     fix: 'Write the output in the step (`echo "<name>=<value>" >> "$GITHUB_OUTPUT"`) or read the name it actually writes.',
+    scope:
+      'Only scripts whose writes flowpact can name are judged. A step is skipped when its writes cannot be seen: ' +
+      '`cat file >> "$GITHUB_OUTPUT"`, a computed name (`core.setOutput(name, …)`), or an `actions/github-script` ' +
+      'script that loads a module (`require()`, `import()`) or hands `core` to other code (`run({ core })`). ' +
+      'Steps of other actions are not judged, since an action may set outputs of its own.',
     examples: {
       bad: `- id: meta
   run: echo "ver=1.2.3" >> "$GITHUB_OUTPUT"

@@ -37,8 +37,8 @@ Severity is configurable per rule; codes never change meaning. Plugin rules use 
 | --- | --- | --- | --- |
 | [`FP301`](/docs/rules/fp301) | `undefined-output-ref` | 🔴 error | An expression reads an output (`needs.*`, `jobs.*`, `steps.*`) that is never defined. |
 | [`FP302`](/docs/rules/fp302) | `output-ref-without-needs` | 🔴 error | `needs.\<job\>` is read in a job that does not list `\<job\>` under `needs:`. |
-| [`FP303`](/docs/rules/fp303) | `unused-output` | 🟡 warning | A job, workflow or action output is declared but no consumer reads it. |
-| [`FP304`](/docs/rules/fp304) | `step-output-never-written` | 🟡 warning | An output is read from a `run:` step whose script writes other outputs, but never this one. |
+| [`FP303`](/docs/rules/fp303) | `unused-output` | 🟡 warning | A job output, or an output of an internal reusable workflow or action, is declared but nothing reads it. |
+| [`FP304`](/docs/rules/fp304) | `step-output-never-written` | 🟡 warning | An output is read from a step whose inline script (`run:` or `actions/github-script`) writes other outputs, but never this one. |
 
 ## Matrix (`FP4xx`)
 

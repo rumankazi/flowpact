@@ -132,6 +132,13 @@ describe('rules and explain', () => {
     expect(out).toContain('✗ problem');
     expect(out).toContain('✓ fixed');
     expect(out).toContain('https://rumankazi.github.io/flowpact/docs/rules/fp401');
+    expect(out).not.toContain('scope');
+  });
+  it('explains what a rule leaves out', () => {
+    const rule = registry.get('FP303')!;
+    const out = renderExplain(rule, registry.docsUrl(rule), 'warning', plain).replace(/\s+/g, ' ');
+    expect(out).toContain('scope Job outputs are always judged');
+    expect(out).toContain('Not reported in generated files, which are not edited by hand.');
   });
 });
 
