@@ -34,10 +34,10 @@ export function serverSettings(s: ExtensionSettings, env: Environment): Settings
 }
 
 /**
- * Whether to drop FP502–FP505 from documents open in the editor. GitHub's extension reports the same problems, but
- * only for open documents and only in trusted workspaces (it does not run in Restricted Mode).
+ * Whether to drop FP502–FP505 from files opened in the editor. GitHub's extension reports the same problems, but only
+ * for files opened in the editor and only in trusted workspaces (it does not run in Restricted Mode).
  */
-export function hidesOverlapInOpenFiles(
+export function hidesOverlapInOpenedFiles(
   s: Pick<ExtensionSettings, 'overlappingRules'>,
   env: { trusted: boolean; githubActions: boolean },
 ): boolean {

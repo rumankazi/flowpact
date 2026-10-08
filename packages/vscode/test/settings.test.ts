@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   codeOf,
   type ExtensionSettings,
-  hidesOverlapInOpenFiles,
+  hidesOverlapInOpenedFiles,
   serverSettings,
   withoutOverlap,
 } from '../src/settings';
@@ -53,16 +53,16 @@ describe('serverSettings', () => {
 });
 
 describe('overlap with the GitHub Actions extension', () => {
-  it('hides FP502–FP505 in open files only while that extension runs (trusted workspaces)', () => {
-    expect(hidesOverlapInOpenFiles(defaults, { trusted: true, githubActions: true })).toBe(true);
-    expect(hidesOverlapInOpenFiles(defaults, { trusted: false, githubActions: true })).toBe(false);
-    expect(hidesOverlapInOpenFiles(defaults, { trusted: true, githubActions: false })).toBe(false);
+  it('hides FP502–FP505 in opened files only while that extension runs (trusted workspaces)', () => {
+    expect(hidesOverlapInOpenedFiles(defaults, { trusted: true, githubActions: true })).toBe(true);
+    expect(hidesOverlapInOpenedFiles(defaults, { trusted: false, githubActions: true })).toBe(false);
+    expect(hidesOverlapInOpenedFiles(defaults, { trusted: true, githubActions: false })).toBe(false);
     expect(
-      hidesOverlapInOpenFiles({ overlappingRules: 'show' }, { trusted: true, githubActions: true }),
+      hidesOverlapInOpenedFiles({ overlappingRules: 'show' }, { trusted: true, githubActions: true }),
     ).toBe(false);
     // `hide` is handled by the server for every file, not by this filter.
     expect(
-      hidesOverlapInOpenFiles({ overlappingRules: 'hide' }, { trusted: true, githubActions: true }),
+      hidesOverlapInOpenedFiles({ overlappingRules: 'hide' }, { trusted: true, githubActions: true }),
     ).toBe(false);
   });
 

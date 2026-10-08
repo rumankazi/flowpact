@@ -2,7 +2,7 @@
   "name": "vscode-flowpact",
   "displayName": "flowpact",
   "description": "Diagnostics, hover traces and go to definition across GitHub Actions workflow calls: inputs, secrets, outputs and matrices checked as you type.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "publisher": "rumankazi",
   "license": "MIT",
@@ -103,7 +103,7 @@
             "hide"
           ],
           "enumDescriptions": [
-            "Hide them in files open in the editor while the GitHub Actions extension is running, which reports the same problems there.",
+            "Hide them in files you open in the editor while the GitHub Actions extension runs: it reports the same problems there.",
             "Always show them.",
             "Never show them."
           ],
@@ -123,12 +123,11 @@
           "scope": "window",
           "type": "string",
           "enum": [
-            "off",
             "messages",
             "verbose"
           ],
-          "default": "off",
-          "markdownDescription": "Trace the messages between VS Code and the language server. Shown in the flowpact output when its log level is Trace (**Developer: Set Log Level…**)."
+          "default": "messages",
+          "markdownDescription": "How much of each message between VS Code and the language server to show when the flowpact output's log level is Trace (**Developer: Set Log Level…**): `messages` names them, `verbose` adds their content."
         }
       }
     }

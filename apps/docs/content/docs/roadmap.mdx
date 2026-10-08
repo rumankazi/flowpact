@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: What is shipped and what comes next — an editor extension with a language server, then cross-repository resolution.
+description: What is shipped and what comes next — the VS Code extension on the Marketplace, quick fixes, then cross-repository resolution.
 ---
 
 ## Shipped
@@ -22,13 +22,13 @@ description: What is shipped and what comes next — an editor extension with a 
 - **[Impact mode](/docs/impact-mode):** for publishers of reusable workflows and actions — the release impact a pull
   request declares (Conventional Commits title, labels or release version) is checked against what its changes
   require, including the check names consumers' branch protection depends on (`FP810`–`FP814`).
+- **[Language server](/docs/editors)** (`flowpact lsp`): diagnostics as you type across files, hover traces, go to
+  definition across workflow calls, and references.
 - Config file, contracts and reports with published JSON Schemas.
 
 ## In progress: editors
 
-The [language server](/docs/editors) (`flowpact lsp`) brings the analysis into the editor: diagnostics as you type
-across files, hover traces through every level of nesting, go to definition across workflow calls, and references.
-Still to come:
+The [language server](/docs/editors) brings the analysis into the editor. Still to come:
 
 - **The VS Code extension on the Marketplace and Open VSX.** It works today when built from the repository.
 - **Quick fixes** — add a missing input, remove an unused one, add the missing matrix key, regenerate contracts, or

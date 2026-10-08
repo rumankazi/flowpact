@@ -1,5 +1,5 @@
 import { statSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 import {
   type AnalysisResult,
   analyze,
@@ -246,14 +246,23 @@ export class Workspace {
       }
     }
 
-    // Plugins run JavaScript from the repository: only when the editor trusts the workspace.
+    // Plugins run JavaScript from the repository: only when the editor trusts the workspace, and only for repositories
+    // in its folders (a file opened from elsewhere, or a repository above an opened folder, was not trusted).
     let registry = createRegistry();
-    let pluginsSkipped = loaded.config.plugins.length > 0 && !this.settings.plugins;
+    const inFolders = this.folders.some((f) => {
+      const r = relative(f, root.dir);
+      return r === '' || (r !== '..' && !r.startsWith(`..${sep}`) && !isAbsolute(r));
+    });
+    const loadable = this.settings.plugins && inFolders;
+    let pluginsSkipped = loaded.config.plugins.length > 0 && !loadable;
     if (pluginsSkipped && !root.pluginsNoted) {
-      logger.info(`${root.dir}: the config lists plugins; they are not loaded (flowpact.plugins is off)`);
+      const why = this.settings.plugins
+        ? 'the repository is outside the workspace folders'
+        : 'plugins are off';
+      logger.info(`${root.dir}: the config lists plugins; they are not loaded (${why})`);
       root.pluginsNoted = true;
     }
-    if (loaded.config.plugins.length > 0 && this.settings.plugins) {
+    if (loaded.config.plugins.length > 0 && loadable) {
       try {
         await loadPlugins(root.dir, loaded.config, registry, this.host.analysisLogger);
       } catch (err) {

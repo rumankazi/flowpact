@@ -53,6 +53,11 @@
       "automerge": false
     },
     {
+      "description": "@types/vscode must not be newer than the oldest VS Code the extension supports (engines.vscode in packages/vscode), or vsce refuses to package it: raise both together, by hand.",
+      "matchPackageNames": ["@types/vscode"],
+      "enabled": false
+    },
+    {
       "description": "Pinning to a commit SHA keeps the same version: merge it right away instead of waiting out the release age, and apart from version updates.",
       "matchUpdateTypes": ["pin", "pinDigest"],
       "minimumReleaseAge": null,

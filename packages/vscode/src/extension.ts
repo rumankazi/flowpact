@@ -9,7 +9,12 @@ import {
   State,
   TransportKind,
 } from 'vscode-languageclient/node';
-import { type ExtensionSettings, hidesOverlapInOpenFiles, serverSettings, withoutOverlap } from './settings';
+import {
+  type ExtensionSettings,
+  hidesOverlapInOpenedFiles,
+  serverSettings,
+  withoutOverlap,
+} from './settings';
 
 const GITHUB_ACTIONS = 'GitHub.vscode-github-actions';
 
@@ -44,19 +49,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const current = () =>
     serverSettings(read(), { trusted: vscode.workspace.isTrusted, logLevel: output.logLevel });
   const overlapHidden = () =>
-    hidesOverlapInOpenFiles(read(), {
+    hidesOverlapInOpenedFiles(read(), {
       trusted: vscode.workspace.isTrusted,
       githubActions: vscode.extensions.getExtension(GITHUB_ACTIONS) !== undefined,
     });
 
-  // FP502–FP505 are dropped only from open documents, the ones GitHub's extension validates. The server's diagnostics
-  // are kept as sent, so opening or closing a file (or installing that extension) can filter them again.
+  // FP502–FP505 are dropped from the files GitHub's extension validates: those opened in the editor. Its findings stay
+  // after a file closes, so a file stays filtered once opened. The server's diagnostics are kept as sent, so opening a
+  // file (or installing that extension) can filter them again.
   const sentDiagnostics = new Map<string, vscode.Diagnostic[]>();
+  const opened = new Set<string>();
+  const noteOpened = (d: vscode.TextDocument) => {
+    if (vscode.languages.match(SELECTOR, d) > 0) opened.add(d.uri.toString());
+  };
+  vscode.workspace.textDocuments.forEach(noteOpened);
   let hiding = overlapHidden();
-  const isOpen = (uri: vscode.Uri) =>
-    vscode.workspace.textDocuments.some((d) => d.uri.toString() === uri.toString());
   const visible = (uri: vscode.Uri, diagnostics: vscode.Diagnostic[]) =>
-    hiding && isOpen(uri) ? withoutOverlap(diagnostics) : diagnostics;
+    hiding && opened.has(uri.toString()) ? withoutOverlap(diagnostics) : diagnostics;
   const refilter = (only?: vscode.Uri) => {
     const collection = client?.diagnostics;
     if (!collection) return;
@@ -83,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     sent = json;
     // An imported plugin module stays loaded in the server; only a restart unloads it.
     if (unloadPlugins) {
-      void restart();
+      restart().catch((err: unknown) => output.error(`could not restart the server: ${String(err)}`));
       return;
     }
     client
@@ -136,22 +145,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const create = () => {
     const c = new LanguageClient('flowpact', 'flowpact', serverOptions, clientOptions);
     c.onDidChangeState(({ newState }) => {
+      // Every start (a restart, or recovering from a crash) begins with an empty diagnostic collection.
+      if (newState === State.Starting) sentDiagnostics.clear();
       showState(newState);
       if (newState === State.Running) push();
     });
     return c;
   };
-  const restart = async () => {
-    if (client?.state === State.Running) {
-      await client.restart();
-      return;
-    }
-    // After a failed start the client cannot start again; replace it.
-    await client?.dispose().catch(() => undefined);
-    sentDiagnostics.clear();
-    client = create();
-    await client.start();
-  };
+  let restarting: Promise<void> | undefined;
+  /** One restart at a time; a start in progress is waited out, so no second server is left running. */
+  const restart = (): Promise<void> =>
+    (restarting ??= (async () => {
+      try {
+        if (client?.state === State.Starting) await client.start().catch(() => undefined);
+        if (client?.state === State.Running) {
+          await client.restart();
+          return;
+        }
+        // After a failed start the client cannot start again; replace it.
+        await client?.dispose().catch(() => undefined);
+        client = create();
+        await client.start();
+      } finally {
+        restarting = undefined;
+      }
+    })());
 
   context.subscriptions.push(
     vscode.commands.registerCommand('flowpact.restartServer', restart),
@@ -166,9 +184,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.extensions.onDidChange(push),
     output.onDidChangeLogLevel(push),
     vscode.workspace.onDidOpenTextDocument((d) => {
-      if (hiding) refilter(d.uri);
-    }),
-    vscode.workspace.onDidCloseTextDocument((d) => {
+      noteOpened(d);
       if (hiding) refilter(d.uri);
     }),
   );

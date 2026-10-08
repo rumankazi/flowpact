@@ -90,7 +90,7 @@ interface Client {
   dispose(): void;
 }
 
-async function start(dir: string, settings: Record<string, unknown> = {}): Promise<Client> {
+async function start(dir: string, settings: Record<string, unknown> = {}, folder = dir): Promise<Client> {
   const toServer = new PassThrough();
   const toClient = new PassThrough();
   // Readers and writers rather than raw streams: on a raw stream's end, the library exits the process.
@@ -115,7 +115,7 @@ async function start(dir: string, settings: Record<string, unknown> = {}): Promi
   await conn.sendRequest(InitializeRequest.type, {
     processId: null,
     rootUri: null,
-    workspaceFolders: [{ uri: URI.file(dir).toString(), name: 'repo' }],
+    workspaceFolders: [{ uri: URI.file(folder).toString(), name: 'repo' }],
     capabilities: {
       textDocument: { definition: { linkSupport: true } },
       workspace: { workspaceFolders: true, didChangeWatchedFiles: { dynamicRegistration: true } },
@@ -245,6 +245,13 @@ describe('diagnostics', () => {
     const trusted = repo(files);
     const on = await start(trusted, { plugins: true });
     expect(codesOf(await on.diagnosticsOf(trusted, CALLER))).toContain('ACME601');
+    // A trusted folder inside the repository does not make the repository's own plugins trusted.
+    const above = repo({ ...files, 'sub/action.yml': 'name: x\nruns: { using: composite, steps: [] }\n' });
+    const sub = await start(above, { plugins: true }, join(above, 'sub'));
+    await sub.open(above, 'sub/action.yml', 'name: x\nruns: { using: composite, steps: [] }\n');
+    expect(codesOf(await sub.diagnosticsOf(above, CALLER))).toContain('FP102');
+    expect(codesOf(await sub.diagnosticsOf(above, CALLER))).not.toContain('ACME601');
+    expect(sub.logs.join('\n')).toMatch(/outside the workspace folders/);
   });
 
   it('analyzes a nested repository when one of its files is opened, and ignores other YAML', async () => {

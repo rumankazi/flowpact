@@ -29,15 +29,16 @@ VS Code 1.101 or later. The analysis is bundled; nothing else needs to be instal
 | --- | --- | --- |
 | `flowpact.plugins` | `true` | Load the plugins the config lists. They run JavaScript from the repository, so they never load in an untrusted workspace. |
 | `flowpact.contracts` | `auto` | Report contract drift: `auto` when `.github/flowpact/contracts/` exists, `on` or `off`. |
-| `flowpact.overlappingRules` | `auto` | `FP502`–`FP505` repeat checks the GitHub Actions extension makes. `auto` hides them in open files while that extension runs; `show` or `hide` them everywhere. |
+| `flowpact.overlappingRules` | `auto` | `FP502`–`FP505` repeat checks the GitHub Actions extension makes. `auto` hides them in files you open in the editor while that extension runs; `show` or `hide` them everywhere. |
 | `flowpact.hiddenRules` | `[]` | Rule codes not to show in the editor. |
-| `flowpact.trace.server` | `off` | Trace the messages between VS Code and the language server. |
+| `flowpact.trace.server` | `messages` | How much of each protocol message to show when the output's log level is Trace (`messages` or `verbose`). |
 
 Logs go to the **flowpact** output channel; its log level (**Developer: Set Log Level…**) also sets the server's.
 
 ## Workspace trust
 
-In Restricted Mode everything works except plugins. Trusting the workspace loads them without a restart.
+In Restricted Mode everything works except plugins. Trusting the workspace loads them without a restart. Plugins load
+only for repositories inside the workspace folders.
 
 ## More
 
