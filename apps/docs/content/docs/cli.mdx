@@ -214,23 +214,6 @@ It runs only the impact rules (`FP810`–`FP814`), so its exit code reflects onl
 and `flowpact check --impact` add the verdict to everything else they report. Options: `--base`, `--expect`,
 `--title`, `--labels` and the output options of `lint`.
 
-## `flowpact migrate`
-
-Moves a repository set up with **wfc** (flowpact before 0.2.0) to flowpact's layout:
-
-```sh
-flowpact migrate --dry-run   # show what would move
-flowpact migrate
-```
-
-- `.github/workflow-contracts/wfc.config.yml` → `.github/flowpact/flowpact.config.yml`, with `WFC` rule codes renamed
-  to `FP` and the schema URL updated;
-- `.github/workflow-contracts/{workflows,actions}/*.contract.yml` → `.github/flowpact/contracts/…`, with the new header
-  and schema URL.
-
-It refuses to overwrite existing files and leaves files it does not know in place. Run `flowpact check` afterwards and
-commit the result. See [Migrating from wfc](/docs/migrating-from-wfc).
-
 ## `flowpact explain`
 
 ```sh

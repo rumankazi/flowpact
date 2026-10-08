@@ -16,6 +16,7 @@ import {
   createRegistry,
   exitCodeFor,
   type Finding,
+  type FlowpactConfig,
   githubEvent,
   type ImpactLevel,
   ImpactSetupError,
@@ -32,7 +33,6 @@ import {
   prepareImpact,
   resolveCommit,
   resolveLogLevel,
-  type WfcConfig,
   writeContracts,
 } from '@flowpact/core';
 import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@flowpact/reporters';
@@ -204,7 +204,7 @@ function fetchRefs(root: string, refs: string[], token: string, logger: Logger):
 /** Impact mode's options for analyze(), or why it does not run. */
 function impactSetup(
   root: string,
-  config: WfcConfig,
+  config: FlowpactConfig,
   configPath: string | undefined,
   inputs: Inputs,
   logger: Logger,

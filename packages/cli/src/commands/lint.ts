@@ -168,7 +168,7 @@ function setupImpact(ctx: ReturnType<typeof createContext>, args: ReportArgs) {
             }
           : {}),
         ...(process.env.GITHUB_ACTIONS === 'true' ? { event: githubEvent() } : {}),
-        ...(ctx.loaded.file && !ctx.loaded.legacy ? { configPath: ctx.loaded.file } : {}),
+        ...(ctx.loaded.file ? { configPath: ctx.loaded.file } : {}),
       },
       ctx.logger,
     );

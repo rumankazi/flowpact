@@ -7,7 +7,6 @@ import { generateCommand } from './commands/generate';
 import { graphCommand } from './commands/graph';
 import { impactCommand } from './commands/impact';
 import { lintCommand } from './commands/lint';
-import { migrateCommand } from './commands/migrate';
 import { rulesCommand } from './commands/rules';
 import { traceCommand } from './commands/trace';
 import { colorEnabled } from './shared';
@@ -41,7 +40,6 @@ const main = defineCommand({
     trace: traceCommand,
     graph: graphCommand,
     explain: explainCommand,
-    migrate: migrateCommand,
     rules: rulesCommand,
   },
 });

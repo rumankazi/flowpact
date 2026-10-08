@@ -1,4 +1,4 @@
-import { didYouMean, RENAMED_CODE_HINT, renamedCode, resolveSeverities } from '@flowpact/core';
+import { didYouMean, resolveSeverities } from '@flowpact/core';
 import { renderExplain } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
@@ -28,7 +28,7 @@ export const explainCommand = defineCommand({
           registry.all().flatMap((r) => [r.code, r.name]),
         );
         throw new UsageError(
-          `Unknown rule "${args.code}".${guess ? ` Did you mean ${guess}?` : ''}${renamedCode(args.code) ? ` (${RENAMED_CODE_HINT}.)` : ''} Run \`flowpact rules\` for the list.`,
+          `Unknown rule "${args.code}".${guess ? ` Did you mean ${guess}?` : ''} Run \`flowpact rules\` for the list.`,
         );
       }
       const severity = resolveSeverities(registry, ctx.loaded.config).get(rule.code) ?? rule.defaultSeverity;

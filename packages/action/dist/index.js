@@ -1,5 +1,5 @@
-import { createRequire as __wfcCreateRequire } from 'node:module';
-const require = __wfcCreateRequire(import.meta.url);
+import { createRequire as __flowpactCreateRequire } from 'node:module';
+const require = __flowpactCreateRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -21598,8 +21598,8 @@ var require_readdir_glob = __commonJS({
           useStat = true;
         }
         const filename = dir2 + "/" + name;
-        const relative6 = filename.slice(1);
-        const absolute = path4 + "/" + relative6;
+        const relative5 = filename.slice(1);
+        const absolute = path4 + "/" + relative5;
         let stats = null;
         if (useStat || followSymlinks) {
           stats = await stat2(absolute, followSymlinks);
@@ -21611,12 +21611,12 @@ var require_readdir_glob = __commonJS({
           stats = { isDirectory: () => false };
         }
         if (stats.isDirectory()) {
-          if (!shouldSkip(relative6)) {
-            yield { relative: relative6, absolute, stats };
+          if (!shouldSkip(relative5)) {
+            yield { relative: relative5, absolute, stats };
             yield* exploreWalkAsync(filename, path4, followSymlinks, useStat, shouldSkip, false);
           }
         } else {
-          yield { relative: relative6, absolute, stats };
+          yield { relative: relative5, absolute, stats };
         }
       }
     }
@@ -21686,11 +21686,11 @@ var require_readdir_glob = __commonJS({
         }
         setTimeout(() => this._next(), 0);
       }
-      _shouldSkipDirectory(relative6) {
-        return this.skipMatchers.some((m) => m.match(relative6));
+      _shouldSkipDirectory(relative5) {
+        return this.skipMatchers.some((m) => m.match(relative5));
       }
-      _fileMatches(relative6, isDirectory2) {
-        const file2 = relative6 + (isDirectory2 ? "/" : "");
+      _fileMatches(relative5, isDirectory2) {
+        const file2 = relative5 + (isDirectory2 ? "/" : "");
         return (this.matchers.length === 0 || this.matchers.some((m) => m.match(file2))) && !this.ignoreMatchers.some((m) => m.match(file2)) && (!this.options.nodir || !isDirectory2);
       }
       _next() {
@@ -21699,16 +21699,16 @@ var require_readdir_glob = __commonJS({
             if (!obj.done) {
               const isDirectory2 = obj.value.stats.isDirectory();
               if (this._fileMatches(obj.value.relative, isDirectory2)) {
-                let relative6 = obj.value.relative;
+                let relative5 = obj.value.relative;
                 let absolute = obj.value.absolute;
                 if (this.options.mark && isDirectory2) {
-                  relative6 += "/";
+                  relative5 += "/";
                   absolute += "/";
                 }
                 if (this.options.stat) {
-                  this.emit("match", { relative: relative6, absolute, stat: obj.value.stats });
+                  this.emit("match", { relative: relative5, absolute, stat: obj.value.stats });
                 } else {
-                  this.emit("match", { relative: relative6, absolute });
+                  this.emit("match", { relative: relative5, absolute });
                 }
               }
               this._next(this.iterator);
@@ -24684,7 +24684,7 @@ var require_BufferList = __commonJS({
         this.head = this.tail = null;
         this.length = 0;
       };
-      BufferList.prototype.join = function join9(s) {
+      BufferList.prototype.join = function join8(s) {
         if (this.length === 0) return "";
         var p = this.head;
         var ret = "" + p.data;
@@ -40421,10 +40421,10 @@ var require_ignore = __commonJS({
       ignored(p) {
         const fullpath = p.fullpath();
         const fullpaths = `${fullpath}/`;
-        const relative6 = p.relative() || ".";
-        const relatives = `${relative6}/`;
+        const relative5 = p.relative() || ".";
+        const relatives = `${relative5}/`;
         for (const m of this.relative) {
-          if (m.match(relative6) || m.match(relatives))
+          if (m.match(relative5) || m.match(relatives))
             return true;
         }
         for (const m of this.absolute) {
@@ -40435,9 +40435,9 @@ var require_ignore = __commonJS({
       }
       childrenIgnored(p) {
         const fullpath = p.fullpath() + "/";
-        const relative6 = (p.relative() || ".") + "/";
+        const relative5 = (p.relative() || ".") + "/";
         for (const m of this.relativeChildren) {
-          if (m.match(relative6))
+          if (m.match(relative5))
             return true;
         }
         for (const m of this.absoluteChildren) {
@@ -58701,9 +58701,9 @@ var require_cronstrue = __commonJS({
 
 // src/main.ts
 import { execFileSync as execFileSync2 } from "child_process";
-import { mkdirSync as mkdirSync3, mkdtempSync, rmSync as rmSync3, writeFileSync as writeFileSync3 } from "fs";
+import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname4, join as join8, posix as posix3, relative as relative5, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname3, join as join7, posix as posix3, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -130638,8 +130638,6 @@ function bannerText(meta3 = toolMeta()) {
 // ../core/src/config.ts
 var CONFIG_DIR = ".github/flowpact";
 var CONFIG_FILES = ["flowpact.config.yml", "flowpact.config.yaml"];
-var LEGACY_CONFIG_DIR = ".github/workflow-contracts";
-var LEGACY_CONFIG_FILES = ["wfc.config.yml", "wfc.config.yaml"];
 var severitySettingSchema = external_exports.enum(["error", "warning", "info", "off"]);
 var overrideSchema = external_exports.object({
   rule: external_exports.string().min(1).describe("Rule code (FP104) or name (unused-input) to suppress."),
@@ -130718,10 +130716,7 @@ var ConfigError = class extends Error {
   issues;
 };
 function loadConfig(root, explicit) {
-  const candidates = explicit ? [explicit] : [
-    ...CONFIG_FILES.map((f) => join4(root, CONFIG_DIR, f)),
-    ...LEGACY_CONFIG_FILES.map((f) => join4(root, LEGACY_CONFIG_DIR, f))
-  ];
+  const candidates = explicit ? [explicit] : CONFIG_FILES.map((f) => join4(root, CONFIG_DIR, f));
   for (const abs of candidates) {
     const full = explicit && !abs.startsWith("/") ? join4(process.cwd(), abs) : abs;
     if (!existsSync6(full)) {
@@ -130733,8 +130728,7 @@ function loadConfig(root, explicit) {
       throw new ConfigError(`${rel} links outside the repository; flowpact does not read it`, rel);
     }
     const text2 = readFileSync3(full, "utf8");
-    const legacy = !explicit && rel.startsWith(`${LEGACY_CONFIG_DIR}/`);
-    return { ...parseConfigText(text2, rel), file: rel, text: text2, ...legacy ? { legacy } : {} };
+    return { ...parseConfigText(text2, rel), file: rel, text: text2 };
   }
   return { config: defaultConfig() };
 }
@@ -131829,18 +131823,8 @@ function declaredMatrix(keys) {
 
 // ../core/src/contracts.ts
 var CONTRACTS_DIR = `${CONFIG_DIR}/contracts`;
-var LEGACY_CONTRACTS_DIR = LEGACY_CONFIG_DIR;
-var hasContracts = (fs8, dir2) => fs8.walk(dir2).some((f) => f.endsWith(".contract.yml"));
-var LEGACY_HEADER = /^# Generated by wfc — do not edit by hand\. Run `wfc generate` to update\.\r?\n# Docs: https:\/\/rumankazi\.github\.io\/wfc\/docs\/contracts\r?\n/;
-var LEGACY_SCHEMA_LINE = /^\$schema: https:\/\/rumankazi\.github\.io\/wfc\/schemas\/contract\/(v\d+)\.json$/m;
 function normalizeContractText(text2) {
-  return text2.replace(/\r\n/g, "\n").replace(LEGACY_HEADER, CONTRACT_HEADER).replace(
-    LEGACY_SCHEMA_LINE,
-    (_2, v) => `$schema: https://rumankazi.github.io/flowpact/schemas/contract/${v}.json`
-  );
-}
-function contractsDirFor(fs8) {
-  return !hasContracts(fs8, CONTRACTS_DIR) && hasContracts(fs8, LEGACY_CONTRACTS_DIR) ? LEGACY_CONTRACTS_DIR : CONTRACTS_DIR;
+  return text2.replace(/\r\n/g, "\n");
 }
 var CONTRACT_HEADER = "# Generated by flowpact \u2014 do not edit by hand. Run `flowpact generate` to update.\n# Docs: https://rumankazi.github.io/flowpact/docs/contracts\n";
 var contractInputSchema = external_exports.object({
@@ -132184,7 +132168,7 @@ function diffContracts(before, after) {
 }
 function readContracts(fs8) {
   const out = /* @__PURE__ */ new Map();
-  for (const file2 of [...fs8.walk(CONTRACTS_DIR), ...fs8.walk(LEGACY_CONTRACTS_DIR)].filter((f) => f.endsWith(".contract.yml")).sort()) {
+  for (const file2 of fs8.walk(CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort()) {
     const text2 = fs8.read(file2) ?? "";
     try {
       const parsed = contractSchema.safeParse((0, import_yaml5.parse)(text2));
@@ -132203,7 +132187,7 @@ function readContracts(fs8) {
   return out;
 }
 function planContracts(index2, fs8) {
-  const dir2 = contractsDirFor(fs8);
+  const dir2 = CONTRACTS_DIR;
   const existing = readContracts(fs8);
   const entries2 = [];
   const units = index2.units().sort((a, b) => byCodePoint(a.path, b.path));
@@ -132286,8 +132270,7 @@ function planContracts(index2, fs8) {
     skipped,
     drift: entries2.some((e) => e.status !== "unchanged"),
     counts,
-    breaking: entries2.reduce((n, e) => n + e.changes.filter((c) => c.breaking).length, 0),
-    ...dir2 === LEGACY_CONTRACTS_DIR ? { legacyDir: true } : {}
+    breaking: entries2.reduce((n, e) => n + e.changes.filter((c) => c.breaking).length, 0)
   };
 }
 function contractPatch(plan) {
@@ -132941,14 +132924,7 @@ function editDistance(a, b) {
   }
   return dp[x.length][y.length];
 }
-function renamedCode(name) {
-  const m = /^WFC(\d{3})$/i.exec(name.trim());
-  return m ? `FP${m[1]}` : void 0;
-}
-var RENAMED_CODE_HINT = "rule codes were renamed from WFC to FP in 0.2.0; `flowpact migrate` updates the config";
 function didYouMean(name, candidates) {
-  const renamed = renamedCode(name);
-  if (renamed && candidates.includes(renamed)) return renamed;
   const norm = (s) => s.toLowerCase().replace(/[-_]/g, "");
   let best;
   for (const c of candidates) {
@@ -134548,38 +134524,12 @@ var overrideExpiringSoon = defineRule({
     }
   }
 });
-var legacyLocation = defineRule({
-  code: "FP904",
-  name: "legacy-location",
-  category: "config",
-  defaultSeverity: "info",
-  docs: {
-    summary: "The config or the contracts are still in the location wfc used before it was renamed to flowpact.",
-    why: "flowpact still reads `.github/workflow-contracts/wfc.config.yml` and the contracts in `.github/workflow-contracts/` while `.github/flowpact/` has none, so nothing breaks. New repositories and the docs use `.github/flowpact/`, and rule codes in the old config still use the `WFC` prefix, which flowpact rejects.",
-    fix: "Run `flowpact migrate`: it moves the config to `.github/flowpact/flowpact.config.yml` and the contracts to `.github/flowpact/contracts/`, renames `WFC` rule codes to `FP`, and updates schema URLs. Commit the result."
-  },
-  check(ctx) {
-    const file2 = ctx.legacyFiles?.[0];
-    if (!file2) return;
-    ctx.report({
-      message: `flowpact files are still in the pre-0.2.0 location .github/workflow-contracts/ (${ctx.legacyFiles.join(", ")})`,
-      loc: { file: file2, line: 1, column: 1, endLine: 1, endColumn: 1 },
-      symbol: ".github/workflow-contracts"
-    });
-  }
-});
-var overrideRules = [
-  overrideExpired,
-  overrideUnused,
-  overrideExpiringSoon,
-  legacyLocation
-];
+var overrideRules = [overrideExpired, overrideUnused, overrideExpiringSoon];
 
 // ../core/src/rules/registry.ts
 var CODE_PATTERN = /^([A-Z][A-Z0-9]{1,9}?)(\d)(\d{2})$/;
 var NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 var BUILTIN_PREFIX = "FP";
-var LEGACY_PREFIX = "WFC";
 var RuleRegistryError = class extends Error {
 };
 var RuleRegistry = class {
@@ -134598,7 +134548,7 @@ var RuleRegistry = class {
     if (opts.builtin && prefix2 !== BUILTIN_PREFIX) {
       throw new RuleRegistryError(`Built-in rule ${rule.code} must use the ${BUILTIN_PREFIX} prefix`);
     }
-    if (!opts.builtin && (prefix2 === BUILTIN_PREFIX || prefix2 === LEGACY_PREFIX)) {
+    if (!opts.builtin && prefix2 === BUILTIN_PREFIX) {
       throw new RuleRegistryError(`Rule ${rule.code}: the ${prefix2} prefix is reserved for built-in rules`);
     }
     if (!opts.builtin && !rule.docsUrl)
@@ -135217,9 +135167,8 @@ function triageUnknown(registry2, key, path4, allowUnknown, out) {
     key,
     registry2.all().flatMap((r) => [r.code, r.name])
   );
-  const hint = renamedCode(key) ? ` \u2014 ${RENAMED_CODE_HINT}` : "";
-  const issue3 = `${path4}: unknown rule${guess ? ` (did you mean ${guess}?${hint})` : ` "${key}"`}`;
-  if (allowUnknown && !guess && !/^(FP|WFC)\d/i.test(key)) out.tolerated.push(issue3);
+  const issue3 = `${path4}: unknown rule${guess ? ` (did you mean ${guess}?)` : ` "${key}"`}`;
+  if (allowUnknown && !guess && !/^FP\d/i.test(key)) out.tolerated.push(issue3);
   else out.hard.push(issue3);
 }
 var SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
@@ -135318,8 +135267,7 @@ function analyze(opts) {
       void 0,
       unknownOnly.map((o) => {
         const guess = didYouMean(o, names);
-        const hint = renamedCode(o) ? ` \u2014 ${RENAMED_CODE_HINT}` : "";
-        return `${o}: unknown rule${guess ? ` (did you mean ${guess}?${hint})` : ""}`;
+        return `${o}: unknown rule${guess ? ` (did you mean ${guess}?)` : ""}`;
       })
     );
   }
@@ -135339,12 +135287,6 @@ function analyze(opts) {
       { breaking: contracts.breaking }
     );
   }
-  const layoutFs = opts.fs ?? nodeFileSystem(opts.root);
-  const legacyContracts = layoutFs.walk(LEGACY_CONTRACTS_DIR).filter((f) => f.endsWith(".contract.yml")).sort();
-  const legacyFiles = [
-    ...opts.configFile?.startsWith(`${LEGACY_CONFIG_DIR}/`) ? [opts.configFile] : [],
-    ...legacyContracts.slice(0, 1)
-  ];
   const impact = opts.impact ? logger7.time(
     "impact",
     () => computeImpact(
@@ -135372,7 +135314,6 @@ function analyze(opts) {
         matrix: matrix2,
         ...opts.configFile ? { configFile: opts.configFile } : {},
         ...contracts ? { contracts } : {},
-        ...legacyFiles.length ? { legacyFiles } : {},
         ...impact ? { impact } : {},
         ...extra,
         report: (input3) => out.push(toFinding(rule, severity, input3, registry2))
@@ -135727,10 +135668,7 @@ function releaseSettings(fs8) {
   };
 }
 function baselineConfig(fs8, configPath, notes) {
-  const candidates = configPath ? [configPath] : [
-    ...CONFIG_FILES.map((f) => `${CONFIG_DIR}/${f}`),
-    ...LEGACY_CONFIG_FILES.map((f) => `${LEGACY_CONFIG_DIR}/${f}`)
-  ];
+  const candidates = configPath ? [configPath] : CONFIG_FILES.map((f) => `${CONFIG_DIR}/${f}`);
   for (const path4 of candidates) {
     const text2 = fs8.read(path4);
     if (text2 === void 0) continue;
@@ -135888,21 +135826,8 @@ function prepareImpact(root, headConfig, req, logger7) {
   };
 }
 
-// ../core/src/migrate.ts
-import {
-  existsSync as existsSync8,
-  lstatSync as lstatSync3,
-  mkdirSync as mkdirSync2,
-  readdirSync as readdirSync2,
-  readFileSync as readFileSync5,
-  rmdirSync,
-  rmSync as rmSync2,
-  writeFileSync as writeFileSync2
-} from "fs";
-import { dirname as dirname3, join as join7, relative as relative4 } from "path";
-
 // ../core/src/plugins.ts
-import { existsSync as existsSync9 } from "fs";
+import { existsSync as existsSync8 } from "fs";
 import { isAbsolute as isAbsolute2, resolve as resolve3 } from "path";
 import { pathToFileURL } from "url";
 var isRule = (v) => typeof v === "object" && v !== null && typeof v.code === "string" && typeof v.check === "function";
@@ -135910,7 +135835,7 @@ async function loadPlugins(root, config2, registry2, logger7 = silentLogger) {
   const loaded = [];
   for (const spec of config2.plugins) {
     const abs = isAbsolute2(spec) ? spec : resolve3(root, spec);
-    if (!existsSync9(abs))
+    if (!existsSync8(abs))
       throw new ConfigError(`Plugin not found: ${spec}`, void 0, [`plugins: ${abs} does not exist`]);
     let mod;
     try {
@@ -136891,9 +136816,9 @@ function sarifInWorkspace(sarif, prefix2) {
 }
 function writeReport(workspace, file2, content) {
   const abs = resolve4(workspace, file2);
-  mkdirSync3(dirname4(abs), { recursive: true });
-  writeFileSync3(abs, content);
-  const shown = toPosix2(relative5(workspace, abs));
+  mkdirSync2(dirname3(abs), { recursive: true });
+  writeFileSync2(abs, content);
+  const shown = toPosix2(relative4(workspace, abs));
   info(`wrote ${shown.startsWith("..") ? abs : shown}`);
   return abs;
 }
@@ -136925,24 +136850,24 @@ async function driftArtifact(plan, prefix2, inputs, runId) {
   const runnerTemp = process.env.RUNNER_TEMP;
   let dir2;
   if (runnerTemp) {
-    dir2 = join8(runnerTemp, name);
-    rmSync3(dir2, { recursive: true, force: true });
-    mkdirSync3(dir2, { recursive: true });
+    dir2 = join7(runnerTemp, name);
+    rmSync2(dir2, { recursive: true, force: true });
+    mkdirSync2(dir2, { recursive: true });
   } else {
-    dir2 = mkdtempSync(join8(tmpdir(), `${name}-`));
+    dir2 = mkdtempSync(join7(tmpdir(), `${name}-`));
   }
   const repoPlan = {
     ...plan,
     entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix2, e.file) }))
   };
-  const patch = join8(dir2, PATCH_FILE);
-  writeFileSync3(patch, contractPatch(repoPlan));
-  const contracts = writeContracts(dir2, repoPlan, join8(dir2, ARTIFACT_DIR));
-  writeFileSync3(join8(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
+  const patch = join7(dir2, PATCH_FILE);
+  writeFileSync2(patch, contractPatch(repoPlan));
+  const contracts = writeContracts(dir2, repoPlan, join7(dir2, ARTIFACT_DIR));
+  writeFileSync2(join7(dir2, ARTIFACT_DIR, "README.md"), artifactReadme(plan, inputs.artifactName, runId));
   const files = [
     patch,
-    join8(dir2, ARTIFACT_DIR, "README.md"),
-    ...contracts.map((f) => join8(dir2, ARTIFACT_DIR, f))
+    join7(dir2, ARTIFACT_DIR, "README.md"),
+    ...contracts.map((f) => join7(dir2, ARTIFACT_DIR, f))
   ];
   info(`wrote ${PATCH_FILE} and ${plural3(contracts.length, "contract file")} to ${dir2}`);
   const out = { dir: dir2, patch };
@@ -137013,7 +136938,7 @@ async function run() {
     info(bannerText());
     const workspace = resolve4(process.env.GITHUB_WORKSPACE || process.cwd());
     const root = resolve4(workspace, inputs.workingDirectory);
-    const rel = toPosix2(relative5(workspace, root));
+    const rel = toPosix2(relative4(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
     const loaded = loadConfig(root, inputs.config ? resolve4(root, inputs.config) : void 0);
     info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
