@@ -1,0 +1,63 @@
+name: Repository settings
+# Rulesets (.github/rulesets/*.json), repository settings (.github/repository.json) and environments
+# (.github/environments.json) are kept in code: pull requests
+# show what would change, and main applies it. The weekly run reverts changes made in the UI.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/rulesets/**
+      - .github/repository.json
+      - .github/environments.json
+      - scripts/sync-repo-settings.mjs
+      - .github/workflows/repo-settings.yml
+  pull_request:
+    paths:
+      - .github/rulesets/**
+      - .github/repository.json
+      - .github/environments.json
+      - scripts/sync-repo-settings.mjs
+      - .github/workflows/repo-settings.yml
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-settings
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Settings diff
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: node scripts/sync-repo-settings.mjs --check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  apply:
+    name: Apply settings
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-administration: write
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: node scripts/sync-repo-settings.mjs --apply
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}

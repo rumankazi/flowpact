@@ -21,7 +21,7 @@ npx workflow-contracts explain WFC401             # why does this matter, how do
 In CI, use the action:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: rumankazi/wfc@v0
   with:
     mode: check

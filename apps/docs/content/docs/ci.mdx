@@ -25,7 +25,7 @@ jobs:
   wfc:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: rumankazi/wfc@v0
         with:
           mode: check   # or lint, if you do not commit contracts
@@ -53,8 +53,8 @@ jobs:
   wfc:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Check workflows and contracts
@@ -64,7 +64,7 @@ jobs:
         run: cat wfc-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Keep the regenerated contracts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wfc-contracts
           path: wfc-contracts.patch
@@ -94,7 +94,7 @@ To see findings in the **Security → Code scanning** tab and as pull request an
       # …checkout and setup-node as above
       - run: npx --yes workflow-contracts check --output wfc.sarif
       - if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: wfc.sarif
           category: wfc
@@ -103,7 +103,7 @@ To see findings in the **Security → Code scanning** tab and as pull request an
 ### Pin the version
 
 ```sh
-npx --yes workflow-contracts@0.1.0 check
+npx --yes workflow-contracts@0 check
 ```
 
 The banner at the top of the log shows the exact tool and schema versions that produced the result.
