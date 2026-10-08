@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/rumankazi/wfc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/wfc/actions/workflows/ci.yml)
 [![Release](https://github.com/rumankazi/wfc/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/wfc/actions/workflows/release.yml)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-wfc-blue?logo=github)](https://github.com/marketplace/actions/wfc-workflow-contracts)
 [![npm](https://img.shields.io/npm/v/workflow-contracts?logo=npm)](https://www.npmjs.com/package/workflow-contracts)
 [![Node.js](https://img.shields.io/node/v/workflow-contracts?logo=nodedotjs)](https://www.npmjs.com/package/workflow-contracts)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rumankazi/wfc/badge)](https://scorecard.dev/viewer/?uri=github.com/rumankazi/wfc)
