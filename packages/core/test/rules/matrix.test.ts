@@ -32,7 +32,8 @@ describe('FP401 empty-binding-for-matrix-combo — the shipped-without-a-variant
             name: \${{ matrix.name }}
             config: ${binding}
     `,
-    [`${WF}/callee.yml`]: callee,
+    // As in the incident: the callee skips its work when the optional config is empty.
+    [`${WF}/callee.yml`]: callee.replace('runs-on: x', "runs-on: x\n    if: inputs.config != ''"),
   });
 
   it('names the combination, the include entry, the chain and the receiving input', () => {
@@ -48,6 +49,7 @@ describe('FP401 empty-binding-for-matrix-combo — the shipped-without-a-variant
       'jobs.t calls .github/workflows/tests.yml',
       'this include entry has no `config`',
       'receives the empty value: input "config"',
+      'this condition reads "config", so the legs with an empty value take the other branch',
     ]);
     expect(f?.symbol).toBe(`${WF}/callee.yml#inputs.config`);
   });
@@ -106,6 +108,63 @@ describe('FP401 empty-binding-for-matrix-combo — the shipped-without-a-variant
     expect(codes(r)).toContain('FP401');
   });
 
+  describe('weighs the empty value by the input that receives it', () => {
+    const files = (decl: string, step = 'run: echo ${{ inputs.arm }}') => ({
+      [`${WF}/w.yml`]: yaml`
+        on: push
+        jobs:
+          j:
+            runs-on: x
+            strategy:
+              matrix:
+                include: [{ arch: arm, arm: '7' }, { arch: amd64 }]
+            steps:
+              - uses: ./.github/actions/build-go
+                with:
+                  arm: \${{ matrix.arm }}
+      `,
+      '.github/actions/build-go/action.yml': `inputs:\n  arm: ${decl}\nruns:\n  using: composite\n  steps:\n    - ${step}\n      shell: bash\n`,
+    });
+    const run = (decl: string, step?: string) => byCode(lint(files(decl, step)), 'FP401');
+    const gated = "if: inputs.arm != ''\n      run: echo arm";
+
+    it('is quiet for an optional input whose default is empty (grafana build-go: "leave empty for non-ARM")', () => {
+      expect(run("{ required: false, default: '' }")).toEqual([]);
+      expect(run('{ required: false, default: }')).toEqual([]);
+      // Even when a condition reads it: the callee declares the empty value as its default.
+      expect(run("{ required: false, default: '' }", gated)).toEqual([]);
+    });
+
+    it('is quiet for an optional input without a default that no condition reads', () => {
+      expect(run('{ required: false }')).toEqual([]);
+    });
+
+    it('is an error when a condition in the callee reads an optional input without a default', () => {
+      const [f] = run('{ required: false }', gated);
+      expect(f?.severity).toBe('error');
+      expect(f?.related.at(-1)?.message).toBe(
+        'this condition reads "arm", so the legs with an empty value take the other branch',
+      );
+    });
+
+    it('is a warning when the empty value replaces a non-empty default', () => {
+      const [f] = run("{ required: false, default: '6' }");
+      expect(f?.severity).toBe('warning');
+      expect(f?.message).toBe(
+        `Input "arm" for .github/actions/build-go is empty in 1 of 2 matrix combinations — matrix.arm is not defined there, which replaces the input's default "6"`,
+      );
+    });
+
+    it('stays an error for a required input', () => {
+      expect(run('{ required: true }').map((f) => f.severity)).toEqual(['error']);
+    });
+
+    it('never raises a severity the config lowered', () => {
+      const r = lint(files("{ default: '6' }"), { config: { rules: { FP401: 'info' } } });
+      expect(byCode(r, 'FP401').map((f) => f.severity)).toEqual(['info']);
+    });
+  });
+
   it('does not guess about unknown matrix values', () => {
     const r = lint({
       [`${WF}/w.yml`]: yaml`
@@ -159,6 +218,46 @@ describe('FP402 matrix-key-missing-in-combo', () => {
     const r = w('if: matrix.experimental\n          run: echo x');
     expect(byCode(r, 'FP402')).toEqual([]);
   });
+
+  describe('treats quoted shell tests in run scripts as explicit handling', () => {
+    // Every script also echoes `matrix.experimental` unguarded: that finding proves the script was analyzed.
+    const script = (body: string) =>
+      byCode(
+        w(`run: |\n${`${body}\necho \${{ matrix.experimental }}`.replace(/^/gm, ' '.repeat(18))}`),
+        'FP402',
+      ).map((f) => f.message);
+    const control = 'matrix.experimental is undefined in 2 of 3 combinations of jobs.j';
+
+    it.each([
+      // cilium build-go-caches.yaml: an empty require-dir means "always build"
+      [
+        '-z / -d (cilium)',
+        'if [[ -z "${{ matrix.shard }}" ]] ||\n   [[ -d "${{ matrix.shard }}" ]]; then\n  echo build\nfi',
+      ],
+      ['-n', 'if [ -n "${{ matrix.shard }}" ]; then ./test --shard "$S"; fi'],
+      // llvm libc-fullbuild-tests.yml
+      [
+        '== / != in [[ ]] (llvm)',
+        'if [[ "${{ matrix.shard }}" != "SKIP" || "${{ matrix.shard }}" == "ON" ]]; then echo; fi',
+      ],
+      // cpython jit.yml
+      ['= in [ ] (cpython)', 'if [ "${{ matrix.shard }}" = "true" ]; then echo; fi'],
+      ['a comparison on the right', "test 'x' != '${{ matrix.shard }}' && echo"],
+    ])('%s', (_name, body) => {
+      expect(script(body)).toEqual([control]);
+    });
+
+    it.each([
+      ['an unquoted operand (the test breaks when it is empty)', '[[ ${{ matrix.shard }} == 1 ]] && echo'],
+      ['a flag that looks like a test operator outside a test', 'cmake -D "${{ matrix.shard }}"'],
+      [
+        'a use after the test',
+        'if [[ -z "${{ matrix.shard }}" ]]; then exit 0; fi\n./test --shard=${{ matrix.shard }}',
+      ],
+    ])('still flags %s', (_name, body) => {
+      expect(script(body)).toEqual(['matrix.shard is undefined in 2 of 3 combinations of jobs.j', control]);
+    });
+  });
 });
 
 describe('FP403 dynamic-matrix-unverified', () => {
@@ -210,5 +309,83 @@ describe('FP404 undefined-matrix-key', () => {
     ]);
     // The typo is not double-reported as "missing in some combinations".
     expect(byCode(r, 'FP402')).toEqual([]);
+  });
+
+  describe('reads that handle the empty value (envoy _check_build_openssl.yml)', () => {
+    const w = (value: string, extra = '') =>
+      lint({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            build:
+              runs-on: x
+              strategy:
+                matrix:
+                  include:
+                    - target: openssl
+                      name: OpenSSL
+              steps:
+                - ${extra}run: echo "${value}"
+        `,
+      });
+    const fp404 = (value: string, extra?: string) =>
+      byCode(w(value, extra), 'FP404').map((f) => `${f.severity} ${f.loc.column} ${f.message}`);
+
+    it.each([
+      ['a fallback', '${{ matrix.docker-ci || false }}'],
+      ['a fallback to another key', '${{ matrix.docker-ci || matrix.target }}'],
+      ['a fallback to a runtime value', '${{ matrix.docker-ci || github.sha }}'],
+      ['a comparison', '${{ matrix.docker-ci != false && true || false }}'],
+      ['a guarded read', "${{ matrix.docker-ci == 'arm64' && format('-{0}', matrix.docker-ci) || '' }}"],
+      ['a quoted shell test', '[[ -z "${{ matrix.docker-ci }}" ]]'],
+    ])('reports %s once, as info', (_name, value) => {
+      const found = byCode(w(value), 'FP404');
+      expect(found.map((f) => f.severity)).toEqual(['info']);
+      expect(found[0]?.message).toBe(
+        'matrix.docker-ci is not defined in any combination of jobs.build (keys: target, name); the fallback always applies',
+      );
+    });
+
+    it.each([
+      ['a plain read', '${{ matrix.docker-ci }}'],
+      ['the fallback itself', '${{ github.event.inputs.ci || matrix.docker-ci }}'],
+      ['a value built before the fallback', "${{ format('--ci={0}', matrix.docker-ci) || 'x' }}"],
+      ['a read after a guard on something else', '${{ github.event.inputs.ci && matrix.docker-ci }}'],
+    ])('keeps %s an error', (_name, value) => {
+      expect(byCode(w(value), 'FP404').map((f) => f.severity)).toEqual(['error']);
+    });
+
+    it('keeps an error on every plain read when one read in the script is unhandled', () => {
+      expect(
+        fp404("${{ matrix.docker-ci || 'x' }} ${{ matrix.docker-ci }}").map((f) => f.split(' ')[0]),
+      ).toEqual(['error', 'error']);
+    });
+
+    it('keeps a condition that can never be true an error (the step never runs), and reports others as info', () => {
+      expect(
+        fp404('x', "if: matrix.os == 'windows'\n                  ").map((f) => f.split(' ')[0]),
+      ).toEqual(['error']);
+      expect(fp404('x', 'if: matrix.skip != true\n                  ').map((f) => f.split(' ')[0])).toEqual([
+        'info',
+      ]);
+    });
+
+    it('also applies to jobs without a matrix (airflow special-tests.yml keeps its error)', () => {
+      const r = lint({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            a:
+              name: "System test: \${{ matrix.test-group }}"
+              runs-on: x
+              steps:
+                - run: echo \${{ matrix.os || 'linux' }}
+        `,
+      });
+      expect(byCode(r, 'FP404').map((f) => `${f.severity} ${f.message}`)).toEqual([
+        'error jobs.a has no matrix, so matrix.test-group is always empty',
+        'info jobs.a has no matrix, so matrix.os is always empty; the fallback always applies',
+      ]);
+    });
   });
 });

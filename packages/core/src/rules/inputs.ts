@@ -1,8 +1,17 @@
-import { evaluateTemplate, type Json, UNKNOWN } from '../expressions';
-import { type ProjectIndex, sym } from '../graph';
-import { type Binding, type InputDecl, lookup, type UnitDecl } from '../ir';
+import { type ConditionUse, conditionUses, evaluateTemplate, type Json, UNKNOWN } from '../expressions';
+import { type ProjectIndex, sym, type Usage } from '../graph';
+import { type Binding, type ExprSite, type InputDecl, type LocatedRef, lookup, type UnitDecl } from '../ir';
 import { defineRule, type RuleDefinition } from './types';
-import { chainRelated, chainTo, didYouMean, listNames, quote, readsContextDynamically, refsOf } from './util';
+import {
+  chainRelated,
+  chainTo,
+  didYouMean,
+  isWholeExpression,
+  listNames,
+  quote,
+  readsContextDynamically,
+  refsOf,
+} from './util';
 
 /**
  * For every workflow with `workflow_dispatch`: input names read as `github.event.inputs.<name>` in the workflows and
@@ -245,6 +254,33 @@ if: inputs.legacy-flag`,
   },
 });
 
+/** A local caller of a reusable workflow or action: the bindings it passes and where it calls. */
+interface Caller {
+  with: Record<string, Binding>;
+  loc: Binding['loc'];
+  label: string;
+}
+
+function callersOf(index: ProjectIndex, unit: UnitDecl): Caller[] {
+  if (unit.kind === 'workflow')
+    return index.callersOf(unit.path).map((c) => ({
+      with: c.job.with,
+      loc: c.job.uses?.loc ?? c.job.loc,
+      label: `${c.caller.path} › jobs.${c.job.id}`,
+    }));
+  return index.usersOf(unit.path).map((u) => ({
+    with: u.step.with,
+    loc: u.step.uses?.loc ?? u.step.loc,
+    label: `${u.unit.path} › ${u.job ? `jobs.${u.job.id} › ` : ''}step ${u.step.id ?? `#${u.step.index + 1}`}`,
+  }));
+}
+
+/** How a condition site uses a reference: only the value of a whole-expression `if:` decides by truthiness. */
+function useInCondition(site: ExprSite, ref: LocatedRef): ConditionUse | undefined {
+  const seg = site.segments.find((s) => s.refs.includes(ref));
+  return seg ? conditionUses(seg.expr, isWholeExpression(site)).get(ref.start) : undefined;
+}
+
 export const optionalInputInCondition = defineRule({
   code: 'FP105',
   name: 'optional-input-no-default-in-condition',
@@ -252,54 +288,75 @@ export const optionalInputInCondition = defineRule({
   defaultSeverity: 'warning',
   generatedFiles: 'skip',
   docs: {
-    summary: 'An optional input without a default decides an `if:` condition.',
+    summary: 'An optional input without a default decides an `if:` condition by its truthiness.',
     why:
-      'When a caller omits an optional input that has no default, GitHub substitutes an empty string. Conditions then take ' +
-      'the "false" branch silently, so jobs or steps are skipped and the run is still green.',
-    fix: "Give the input an explicit `default`, make it `required: true`, or compare explicitly (`inputs.x != ''`).",
+      'When a caller omits an optional input that has no default, GitHub substitutes an empty string. A condition such ' +
+      'as `if: inputs.x` then takes the "false" branch silently, so jobs or steps are skipped and the run is still green.',
+    fix:
+      "Give the input an explicit `default`, make it `required: true`, or compare explicitly (`inputs.x != ''`, `inputs.x == 'yes'`). " +
+      "Not reported: comparisons with a constant, `contains()`-style tests, fallbacks (`inputs.x || 'default'`), and inputs every local caller passes.",
     examples: {
       bad: `inputs:
   variant: { type: string, required: false }
 ...
-if: inputs.variant == 'gpu'`,
+if: inputs.variant`,
       good: `inputs:
-  variant: { type: string, required: false, default: cpu }`,
+  variant: { type: string, required: false }
+...
+if: inputs.variant != ''`,
     },
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
+      const callers = callersOf(ctx.index, unit);
+      const flagged: { input: InputDecl; usage: Usage; omitting: Caller[] }[] = [];
       for (const input of Object.values(declaredInputs(unit))) {
         // GitHub substitutes false for booleans and 0 for numbers; only strings become ''.
         if (input.required || input.hasDefault || input.type === 'boolean' || input.type === 'number')
           continue;
-        const name = input.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // `inputs.x != ''` (the documented fix) handles the omitted case explicitly.
-        const explicit = new RegExp(
-          `inputs\\.${name}\\s*[!=]=\\s*(''|null)|(''|null)\\s*[!=]=\\s*inputs\\.${name}(?![\\w-])`,
-          'i',
-        );
-        const usages = ctx.index
+        // Comparisons with a constant (`inputs.x != ''`, `inputs.x == 'yes'`), tests such as `contains()` and
+        // fallbacks handle the omitted case explicitly. A condition that does so for the input is trusted with its
+        // other reads too (`inputs.x != '' && inputs.x != steps.s.outputs.current`); otherwise only a value that
+        // decides the condition as it is gets reported.
+        const inConditions = ctx.index
           .usagesOf(sym.input(unit.path, input.name))
-          .filter((u) => u.site.isCondition && !explicit.test(u.site.text));
+          .filter((u) => u.site.isCondition)
+          .map((u) => ({ u, use: useInCondition(u.site, u.ref) }));
+        const handledSites = new Set(
+          inConditions.filter((x) => x.use === 'compared' || x.use === 'fallback').map((x) => x.u.site.id),
+        );
+        const usages = inConditions
+          .filter((x) => (x.use === 'truthiness' || x.use === 'value') && !handledSites.has(x.u.site.id))
+          .map((x) => x.u);
         if (usages.length === 0) continue;
-        const callers = unit.kind === 'workflow' ? ctx.index.callersOf(unit.path) : [];
-        const omitting = callers.filter((c) => !lookup(c.job.with, input.name));
-        if (callers.length > 0 && omitting.length === 0 && unit.kind === 'workflow' && !unit.dispatch)
+        const omitting = callers.filter((c) => !lookup(c.with, input.name));
+        // Every local caller passes it; a dispatched workflow can still be run without it.
+        if (callers.length > 0 && omitting.length === 0 && !(unit.kind === 'workflow' && unit.dispatch))
           continue;
-        for (const u of usages) {
-          ctx.report({
-            message: `Condition reads optional input ${quote(input.name)}, which has no default and is '' when omitted`,
-            loc: u.ref.loc,
-            symbol: sym.input(unit.path, input.name),
-            related: [
-              { loc: input.loc, message: 'declared optional without a default' },
-              ...omitting.slice(0, 3).map((c) => ({
-                loc: c.job.uses?.loc ?? c.job.loc,
-                message: `${c.caller.path} › jobs.${c.job.id} omits it`,
-              })),
-            ],
-          });
-        }
+        for (const usage of usages) flagged.push({ input, usage, omitting });
+      }
+      // One finding per input (each can be overridden on its own), naming the others the same condition depends on.
+      const namesBySite = new Map<number, string[]>();
+      for (const { input, usage } of flagged) {
+        const names = namesBySite.get(usage.site.id) ?? [];
+        if (!names.includes(input.name)) names.push(input.name);
+        namesBySite.set(usage.site.id, names);
+      }
+      for (const { input, usage, omitting } of flagged) {
+        const others = (namesBySite.get(usage.site.id) ?? []).filter((n) => n !== input.name);
+        ctx.report({
+          message:
+            `Condition reads optional input ${quote(input.name)}, which has no default and is '' when omitted` +
+            (others.length
+              ? ` (so ${others.length > 1 ? 'are' : 'is'} ${others.map(quote).join(', ')}, read by the same condition)`
+              : ''),
+          loc: usage.ref.loc,
+          symbol: sym.input(unit.path, input.name),
+          related: [
+            { loc: input.loc, message: 'declared optional without a default' },
+            ...omitting.slice(0, 3).map((c) => ({ loc: c.loc, message: `${c.label} omits it` })),
+          ],
+        });
       }
     }
   },

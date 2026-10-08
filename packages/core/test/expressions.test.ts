@@ -1,10 +1,12 @@
 import {
   type ContextResolver,
+  conditionUses,
   evaluate,
   evaluateTemplate,
   findTemplateSegments,
   known,
   parseExpression,
+  possibleTaint,
   toNumber,
   toStr,
   truthy,
@@ -194,5 +196,67 @@ describe('evaluateTemplate', () => {
   });
   it('returns plain text unchanged', () => {
     expect(evaluateTemplate('plain', resolve)).toEqual(known('plain'));
+  });
+});
+
+describe('possibleTaint', () => {
+  // `matrix.k` is missing; everything else is only known at runtime.
+  const missing: ContextResolver = ({ context, path }) =>
+    context === 'matrix' && path[0] === 'k'
+      ? known(null, [{ kind: 'missing-matrix-key', key: 'k' }])
+      : undefined;
+  const taint = (src: string) => possibleTaint(parseExpression(src).ast!, missing).map((t) => t.key);
+
+  it.each([
+    'matrix.k',
+    'inputs.x || matrix.k',
+    'inputs.x && matrix.k',
+    "format('-{0}', matrix.k) || 'x'",
+    'fromJSON(inputs.x)[matrix.k]',
+    "(inputs.x || matrix.k) && 'ok' || matrix.k",
+  ])('reaches the value: %s', (src) => {
+    expect(taint(src)).toEqual(['k']);
+  });
+
+  it.each([
+    "matrix.k || 'x'",
+    'matrix.k || inputs.x',
+    "matrix.k && format('-{0}', matrix.k) || ''",
+    "matrix.k == 'arm64' && inputs.x || ''",
+    'matrix.k != inputs.x',
+    '!matrix.k',
+    'contains(matrix.k, inputs.x)',
+  ])('does not reach the value: %s', (src) => {
+    expect(taint(src)).toEqual([]);
+  });
+});
+
+describe('conditionUses', () => {
+  const uses = (src: string, whole = true) => {
+    const p = parseExpression(src);
+    const byStart = conditionUses(p, whole);
+    return p.refs.map((r) => `${r.context}.${r.path.join('.')}:${byStart.get(r.start)}`);
+  };
+
+  it('tells truthiness from comparisons, tests and fallbacks', () => {
+    expect(uses('inputs.a || !inputs.b')).toEqual(['inputs.a:truthiness', 'inputs.b:truthiness']);
+    expect(uses("inputs.a == 'yes' && 'x' != inputs.b")).toEqual(['inputs.a:compared', 'inputs.b:compared']);
+    expect(uses("contains(fromJSON('[1]'), inputs.a) && startsWith(inputs.b, 'v')")).toEqual([
+      'inputs.a:compared',
+      'inputs.b:compared',
+    ]);
+    expect(uses("startsWith(inputs.a || inputs.b, 'libs/')")).toEqual([
+      'inputs.a:fallback',
+      'inputs.b:compared',
+    ]);
+    expect(uses("format('{0}-x', inputs.a) == '-x'")).toEqual(['inputs.a:compared']);
+  });
+
+  it('treats other reads as values', () => {
+    expect(uses('inputs.a == github.ref')).toEqual(['inputs.a:value', 'github.ref:value']);
+    expect(uses('fromJSON(inputs.a).on')).toEqual(['inputs.a:value']);
+    expect(uses('contains(inputs.a, inputs.b)')).toEqual(['inputs.a:value', 'inputs.b:value']);
+    // A condition with text around `${{ }}` is a string: its values are only interpolated.
+    expect(uses('inputs.a', false)).toEqual(['inputs.a:value']);
   });
 });

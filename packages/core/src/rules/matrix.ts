@@ -1,6 +1,24 @@
-import { definitelyFalsy, evaluateTemplate } from '../expressions';
-import { sym } from '../graph';
-import type { Binding, ExprSite, JobDecl, StepDecl, WorkflowDecl } from '../ir';
+import {
+  type ContextResolver,
+  definitelyFalsy,
+  evaluateTemplate,
+  findTemplateSegments,
+  type Json,
+  possibleTaint,
+  type TemplateSegment,
+  UNKNOWN,
+} from '../expressions';
+import { type ProjectIndex, sym } from '../graph';
+import type {
+  Binding,
+  ExprSite,
+  InputDecl,
+  JobDecl,
+  LocatedRef,
+  StepDecl,
+  UnitDecl,
+  WorkflowDecl,
+} from '../ir';
 import { lookup } from '../ir';
 import {
   type Combination,
@@ -12,10 +30,66 @@ import {
 } from '../matrix';
 import type { Loc } from '../source';
 import { defineRule, type RelatedLocation, type RuleContext, type RuleDefinition } from './types';
-import { chainRelated, chainTo, quote } from './util';
+import { chainRelated, chainTo, isWholeExpression, quote } from './util';
 
 const hasMatrixRef = (site: ExprSite) =>
   site.segments.some((s) => s.refs.some((r) => r.context === 'matrix'));
+
+const readsKey = (seg: TemplateSegment, key: string) =>
+  seg.expr.refs.some((r) => r.context === 'matrix' && r.path[0]?.toLowerCase() === key.toLowerCase());
+
+/** `[[`/`[`/`test` is open at the end of `before` and closed in `after` (both on the operand's line). */
+function inShellTest(before: string, after: string): boolean {
+  if (before.lastIndexOf('[[') > before.lastIndexOf(']]') && after.includes(']]')) return true;
+  const open = [...before.matchAll(/(?:^|[\s;&|(!])(\[|test)\s/g)].at(-1);
+  if (!open) return false;
+  const rest = before.slice(open.index + open[0].length);
+  if (open[1] === 'test') return !/[;&|]/.test(rest);
+  return !/\s\](?:\s|$)/.test(rest) && /\s\](?:[\s;&|)]|$)/.test(after);
+}
+
+/**
+ * The `${{ }}` segments of a `run:` script that are quoted operands of a shell test — `[[ -z "${{ matrix.k }}" ]]`,
+ * `[ "${{ matrix.k }}" = on ]`, `[[ -d "${{ matrix.k }}" ]]`: an empty value gives a definite answer there, not a
+ * degraded command. Indexes are those of `findTemplateSegments(script)`.
+ */
+function shellTestSegments(script: string, segments = findTemplateSegments(script)): Set<number> {
+  const out = new Set<number>();
+  for (const [i, seg] of segments.entries()) {
+    const quote = script[seg.start - 1];
+    if ((quote !== '"' && quote !== "'") || script[seg.end] !== quote) continue;
+    const lineStart = script.lastIndexOf('\n', seg.start - 1) + 1;
+    const nl = script.indexOf('\n', seg.end);
+    const before = script.slice(lineStart, seg.start - 1);
+    const after = script.slice(seg.end + 1, nl < 0 ? script.length : nl);
+    const operand =
+      /(?:^|[\s(!])-[a-zA-Z]\s+$/.test(before) ||
+      /^\s+(?:==?|!=)\s/.test(after) ||
+      /\s(?:==?|!=)\s+$/.test(before);
+    if (operand && inShellTest(before, after)) out.add(i);
+  }
+  return out;
+}
+
+/**
+ * For a `run:` script, the text that still degrades when `key` is empty: the script without the segments that only
+ * test it in the shell. `undefined` when every read of `key` is such a test (the script handles the empty value).
+ */
+function unhandledText(site: ExprSite, key: string): string | undefined {
+  if (site.field !== 'step.run') return site.text;
+  const segments = findTemplateSegments(site.text);
+  const tests = shellTestSegments(site.text, segments);
+  const handled = segments.filter((s, i) => tests.has(i) && readsKey(s, key));
+  if (handled.length === 0) return site.text;
+  if (handled.length === segments.filter((s) => readsKey(s, key)).length) return undefined;
+  let text = '';
+  let at = 0;
+  for (const s of handled) {
+    text += site.text.slice(at, s.start);
+    at = s.end;
+  }
+  return text + site.text.slice(at);
+}
 
 /** True when an `if:` site is false for this combination whatever runtime state says (the step is skipped there). */
 function skippedIn(guard: ExprSite, combo: Combination): boolean {
@@ -37,6 +111,7 @@ function affectedCombos(
   predicate: (v: ReturnType<typeof evaluateTemplate>) => boolean,
   guards: ExprSite[] = [],
   onlyKey?: string,
+  text = site.text,
 ): { combos: Combination[]; keys: string[]; perKey: Map<string, number> } {
   const known = new Set(exp.keys.map((k) => k.toLowerCase()));
   if (onlyKey !== undefined) for (const k of [...known]) if (k !== onlyKey.toLowerCase()) known.delete(k);
@@ -45,7 +120,7 @@ function affectedCombos(
   for (const combo of exp.combos) {
     // Combinations where the job or step is skipped by its own `if:` never read the value.
     if (guards.some((g) => skippedIn(g, combo))) continue;
-    const v = evaluateTemplate(site.text, matrixResolver(combo));
+    const v = evaluateTemplate(text, matrixResolver(combo));
     const missing = v.taint.filter((t) => known.has(t.key.toLowerCase()));
     if (missing.length === 0 || !predicate(v)) continue;
     combos.push(combo);
@@ -105,6 +180,40 @@ function* matrixJobs(ctx: RuleContext): Generator<{ wf: WorkflowDecl; job: JobDe
   }
 }
 
+/**
+ * How serious an empty value is for the input that receives it:
+ * - `error` when the input is required, unknown (e.g. a remote callee), or has no `default` and decides an `if:` in the
+ *   callee: the legs with an empty value skip or change that work, like the incident flowpact was built for;
+ * - `warning` when the empty value replaces a non-empty `default`;
+ * - `undefined` (not reported) for other optional inputs: with `default: ''` (or `default:`) the callee declares the
+ *   empty value as its default, and without a default and a condition it handles it like an omitted input.
+ */
+function emptyInputImpact(
+  index: ProjectIndex,
+  callee: UnitDecl | undefined,
+  input: InputDecl | undefined,
+): { severity: 'error' | 'warning'; related: RelatedLocation[]; note: string } | undefined {
+  if (!callee || !input || input.required) return { severity: 'error', related: [], note: '' };
+  const value: Json | undefined = input.default;
+  if (value !== undefined && value !== null && value !== '') {
+    const shown = typeof value === 'string' ? quote(value) : JSON.stringify(value);
+    return { severity: 'warning', related: [], note: `, which replaces the input's default ${shown}` };
+  }
+  if ('default' in input) return undefined;
+  const condition = index.usagesOf(sym.input(callee.path, input.name)).find((u) => u.site.isCondition);
+  if (!condition) return undefined;
+  return {
+    severity: 'error',
+    related: [
+      {
+        loc: condition.ref.loc,
+        message: `this condition reads ${quote(input.name)}, so the legs with an empty value take the other branch`,
+      },
+    ],
+    note: '',
+  };
+}
+
 export const emptyBindingForMatrixCombo = defineRule({
   code: 'FP401',
   name: 'empty-binding-for-matrix-combo',
@@ -116,7 +225,10 @@ export const emptyBindingForMatrixCombo = defineRule({
     why:
       'GitHub evaluates a missing matrix key to an empty string — no error, no warning. The affected matrix leg runs with ' +
       'an empty input, so the callee may skip its real work (e.g. a test configuration) while the run stays green.',
-    fix: "Define the key in every combination (add it to the `include` entry or a matrix dimension), or add an explicit fallback: `${{ matrix.key || 'default' }}`.",
+    fix:
+      "Define the key in every combination (add it to the `include` entry or a matrix dimension), or add an explicit fallback: `${{ matrix.key || 'default' }}`. " +
+      'Reported as an error when the input is required (or the callee is not in the repository) or when the input has no default and an `if:` in the callee reads it, and as a warning when the empty value replaces a non-empty `default`. ' +
+      "Not reported for other optional inputs (`default: ''`, or no default and no condition): the callee handles the empty value like an omitted input.",
     examples: {
       bad: `strategy:
   matrix:
@@ -124,7 +236,7 @@ export const emptyBindingForMatrixCombo = defineRule({
       - name: linux
         config: ci-linux.json
       - name: windows        # no "config" → empty input
-uses: ./.github/workflows/run-tests.yml
+uses: ./.github/workflows/run-tests.yml   # declares config: { required: true }
 with:
   config: \${{ matrix.config }}`,
       good: `    include:
@@ -141,7 +253,8 @@ with:
       const targets: {
         binding: Binding;
         target: string;
-        inputLoc?: Loc;
+        callee?: UnitDecl;
+        input?: InputDecl;
         symbol?: string;
         step?: StepDecl;
       }[] = [];
@@ -152,7 +265,8 @@ with:
           targets.push({
             binding: b,
             target: callee?.path ?? job.uses.raw,
-            ...(input ? { inputLoc: input.loc, symbol: sym.input(callee!.path, input.name) } : {}),
+            ...(callee ? { callee } : {}),
+            ...(input ? { input, symbol: sym.input(callee!.path, input.name) } : {}),
           });
         }
       }
@@ -164,13 +278,16 @@ with:
             binding: b,
             target: action?.path ?? step.uses?.raw ?? `step #${step.index + 1}`,
             step,
-            ...(input ? { inputLoc: input.loc, symbol: sym.input(action!.path, input.name) } : {}),
+            ...(action ? { callee: action } : {}),
+            ...(input ? { input, symbol: sym.input(action!.path, input.name) } : {}),
           });
         }
       }
       for (const t of targets) {
         const site = t.binding.site;
         if (!site || !hasMatrixRef(site)) continue;
+        const impact = emptyInputImpact(ctx.index, t.callee, t.input);
+        if (!impact) continue;
         const { combos, keys, perKey } = affectedCombos(site, exp, isEmptyValue, guardsOf(job, site));
         if (combos.length === 0) continue;
         const keyList = keys.map((k) => `matrix.${k}`).join(', ');
@@ -179,18 +296,20 @@ with:
             ? `matrix.${keys[0]} is not defined there`
             : `not defined there: ${keys.map((k) => `matrix.${k} (${perKey.get(k)})`).join(', ')}`;
         ctx.report({
-          message: `Input ${quote(t.binding.name)} for ${t.target} is empty in ${combos.length} of ${exp.combos.length} matrix combinations — ${cause}`,
+          message: `Input ${quote(t.binding.name)} for ${t.target} is empty in ${combos.length} of ${exp.combos.length} matrix combinations — ${cause}${impact.note}`,
           loc: firstMatrixRefLoc(site, keys),
           combos: combos.map((c) => comboLabel(c, exp.keys)),
           symbol: t.symbol ?? `${wf.path}#jobs.${job.id}.with.${t.binding.name}`,
           related: [
             ...chainRelated(chainTo(ctx.index, wf.path)),
             ...comboRelated(job, combos, keys),
-            ...(t.inputLoc
-              ? [{ loc: t.inputLoc, message: `receives the empty value: input ${quote(t.binding.name)}` }]
+            ...(t.input
+              ? [{ loc: t.input.loc, message: `receives the empty value: input ${quote(t.binding.name)}` }]
               : []),
+            ...impact.related,
           ],
           fix: `Set ${keys.map((k) => `\`${k}\``).join(', ')} in every combination, or use a fallback: \`\${{ ${keyList.split(', ')[0]} || '<default>' }}\`.`,
+          severity: impact.severity,
         });
       }
     }
@@ -210,7 +329,7 @@ export const matrixKeyMissingInCombo = defineRule({
     why:
       'In combinations without the key the value is an empty string. Scripts, env vars and runner labels built from it ' +
       'silently degrade (e.g. `--config=` with no value).',
-    fix: "Define the key for every combination, or add a fallback (`${{ matrix.key || 'default' }}`). Not reported: conditions (`if:`) and `continue-on-error`, comparisons and negations (`matrix.key != ''`, `!matrix.key`), `matrix.key && ...` guards, and combinations where the job or step is skipped by its own `if:`.",
+    fix: 'Define the key for every combination, or add a fallback (`${{ matrix.key || \'default\' }}`). Not reported: conditions (`if:`) and `continue-on-error`, comparisons and negations (`matrix.key != \'\'`, `!matrix.key`), `matrix.key && ...` guards, quoted shell tests in `run:` scripts (`[[ -z "${{ matrix.key }}" ]]`, `[ "${{ matrix.key }}" = on ]`), and combinations where the job or step is skipped by its own `if:`.',
   },
   check(ctx) {
     for (const { wf, job, exp } of matrixJobs(ctx)) {
@@ -230,8 +349,11 @@ export const matrixKeyMissingInCombo = defineRule({
             if (r.context === 'matrix' && r.path[0] && !read.has(r.path[0].toLowerCase()))
               read.set(r.path[0].toLowerCase(), r.path[0]);
         for (const key of read.values()) {
+          // A script that only tests the value in the shell (`[[ -z "${{ matrix.k }}" ]]`) handles the empty case.
+          const text = unhandledText(site, key);
+          if (text === undefined) continue;
           const guards = guardsOf(job, site);
-          const { combos } = affectedCombos(site, exp, predicate, guards, key);
+          const { combos } = affectedCombos(site, exp, predicate, guards, key, text);
           if (combos.length === 0) continue;
           // The count says how often the key is missing; combinations where the whole input is empty are FP401's.
           const all = WITH_FIELDS.has(site.field)
@@ -289,8 +411,11 @@ export const undefinedMatrixKey = defineRule({
   defaultSeverity: 'error',
   docs: {
     summary: 'An expression reads a matrix key that no combination defines (or the job has no matrix).',
-    why: 'The value is always empty — almost certainly a typo or a key that was renamed in the matrix.',
-    fix: 'Fix the key name, or add it to the matrix.',
+    why:
+      'The value is always empty — almost certainly a typo or a key that was renamed in the matrix. Reads that handle ' +
+      "the empty value (`matrix.key || 'default'`, a comparison, a quoted shell test) are only info: the fallback " +
+      'always applies.',
+    fix: 'Fix the key name, add it to the matrix, or drop the read if the fallback is what you want.',
   },
   check(ctx) {
     for (const wf of ctx.index.project.workflows.values()) {
@@ -301,24 +426,85 @@ export const undefinedMatrixKey = defineRule({
         const exp = job.matrix ? ctx.matrix(wf, job) : undefined;
         if (exp && !exp.declared && (exp.dynamic || job.matrix?.includeDynamic)) continue;
         const keys = new Set((exp?.keys ?? []).map((k) => k.toLowerCase()));
+        // The reads of each undefined key, in order (the first spelling names the key).
+        const reads = new Map<string, LocatedRef[]>();
         for (const seg of site.segments) {
           for (const r of seg.refs) {
             const k = r.path[0];
             if (r.context !== 'matrix' || !k || k === '*' || k === '?' || keys.has(k.toLowerCase())) continue;
-            ctx.report({
-              message: job.matrix
-                ? `matrix.${k} is not defined in any combination of jobs.${job.id} (keys: ${exp!.keys.join(', ') || 'none'})`
-                : `jobs.${job.id} has no matrix, so matrix.${k} is always empty`,
-              loc: r.loc,
-              symbol: sym.matrix(wf.path, job.id, k),
-              ...(job.matrix ? { related: [{ loc: job.matrix.loc, message: 'matrix defined here' }] } : {}),
-            });
+            reads.set(k.toLowerCase(), [...(reads.get(k.toLowerCase()) ?? []), r]);
           }
+        }
+        for (const refs of reads.values()) {
+          const k = refs[0]!.path[0]!;
+          const where = job.matrix
+            ? `matrix.${k} is not defined in any combination of jobs.${job.id} (keys: ${exp!.keys.join(', ') || 'none'})`
+            : `jobs.${job.id} has no matrix, so matrix.${k} is always empty`;
+          const related = job.matrix ? [{ loc: job.matrix.loc, message: 'matrix defined here' }] : [];
+          if (!readsEmptyValue(site, k, job, exp)) {
+            ctx.report({
+              message: `${where}; the fallback always applies`,
+              loc: refs[0]!.loc,
+              symbol: sym.matrix(wf.path, job.id, k),
+              related,
+              severity: 'info',
+            });
+            continue;
+          }
+          for (const r of refs)
+            ctx.report({ message: where, loc: r.loc, symbol: sym.matrix(wf.path, job.id, k), related });
         }
       }
     }
   },
 });
+
+/** The combinations to evaluate a job's expressions in; a job without a matrix has one, without any key. */
+function combosOf(exp: MatrixExpansion | undefined): Combination[] {
+  if (exp && exp.combos.length > 0 && exp.combos.length <= GITHUB_MATRIX_LIMIT) return exp.combos;
+  // Too many (or too many to list): each known key with a value that is not known.
+  const values = Object.fromEntries((exp?.keys ?? []).map((k) => [k, { known: false as const }]));
+  return [{ values, origin: 'product', includes: [] }];
+}
+
+const unknownKey =
+  (resolve: ContextResolver, key: string): ContextResolver =>
+  (ref) =>
+    ref.context === 'matrix' && ref.path[0]?.toLowerCase() === key ? UNKNOWN : resolve(ref);
+
+/**
+ * Whether the always-empty value of `key` (defined in no combination) is used as it is. Not when every read handles
+ * it — a fallback (`matrix.k || 'x'`), a comparison or `&&` guard, a quoted shell test — or the step never runs. A
+ * condition uses it when it is false in every combination because of the key: the step it guards never runs.
+ */
+function readsEmptyValue(
+  site: ExprSite,
+  key: string,
+  job: JobDecl,
+  exp: MatrixExpansion | undefined,
+): boolean {
+  const lower = key.toLowerCase();
+  const combos = combosOf(exp);
+  if (site.isCondition) {
+    const ast = isWholeExpression(site) ? site.segments[0]!.expr.ast : undefined;
+    if (!ast) return true;
+    return combos.every((c) => {
+      const resolve = matrixResolver(c);
+      return definitelyFalsy(ast, resolve) && !definitelyFalsy(ast, unknownKey(resolve, lower));
+    });
+  }
+  const text = unhandledText(site, key);
+  if (text === undefined) return false;
+  const segments = findTemplateSegments(text).filter((s) => readsKey(s, key));
+  const guards = guardsOf(job, site);
+  return combos.some((c) => {
+    if (guards.some((g) => skippedIn(g, c))) return false;
+    const resolve = matrixResolver(c);
+    return segments.some(
+      (s) => !s.expr.ast || possibleTaint(s.expr.ast, resolve).some((t) => t.key.toLowerCase() === lower),
+    );
+  });
+}
 
 export const unusedMatrixShape = defineRule({
   code: 'FP405',

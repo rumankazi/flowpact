@@ -80,6 +80,10 @@ reserves the `FP` prefix for built-in rules, and requires third-party rules to b
 - `ctx.config` — the resolved configuration;
 - `ctx.contracts` — the contract comparison (only in `flowpact check`).
 
+`ctx.report()` takes the `message`, `loc` and optional `symbol`, `related` locations, `combos` and an instance-specific
+`fix`. A milder variant of the problem can pass `severity: 'warning'` or `'info'`: it lowers that finding below the
+rule's severity, never raises it, and a lower severity set in the config still wins.
+
 ## Loading plugins
 
 List the module under `plugins:` in the [config](/docs/configuration#plugins):
