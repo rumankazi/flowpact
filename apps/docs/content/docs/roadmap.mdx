@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: What is shipped and what comes next — an editor extension with a language server, then cross-repository resolution.
+description: What is shipped and what comes next — impact mode, an editor extension with a language server, then cross-repository resolution.
 ---
 
 ## Shipped
@@ -21,7 +21,13 @@ description: What is shipped and what comes next — an editor extension with a 
 - **[Plugins](/docs/custom-rules):** organization-specific rules loaded from the config.
 - Config file, contracts and reports with published JSON Schemas.
 
-## Next: VS Code extension and language server
+## Next: impact mode
+
+Check that the release impact a pull request declares (for example its Conventional Commits title) covers what its
+workflow changes require — a renamed job breaks consumers' required status checks and must be a major release — and
+lint the repository's own required checks. See the [proposal](/docs/impact-mode).
+
+## Then: VS Code extension and language server
 
 wfc already knows, for every expression in every workflow, which symbol it refers to and where that symbol is
 defined. A language server makes that available while editing, in VS Code and any other editor that speaks LSP:
@@ -34,7 +40,7 @@ defined. A language server makes that available while editing, in VS Code and an
 - **Quick fixes** — add a missing input, remove an unused one, add the missing matrix key, regenerate contracts, or
   **add an override** with a reason prompt.
 
-## Then: cross-repository resolution
+## Later: cross-repository resolution
 
 Reusable workflows called from other repositories (`owner/repo/.github/workflows/x.yml@ref`) are reported today as
 unverified (`WFC603`). Next, wfc will resolve them — from published contracts or by fetching the referenced

@@ -1,0 +1,179 @@
+---
+title: Impact mode (proposal)
+description: A planned check that compares the release impact a pull request declares with what its workflow changes require, plus lints that keep required status checks from silently breaking.
+---
+
+<Callout type="warn" title="Proposal — not implemented yet">
+This page is the design for an upcoming feature, published for transparency and feedback. Names, rule codes and
+options may change before it ships. Discuss it in a [GitHub issue](https://github.com/rumankazi/wfc/issues).
+</Callout>
+
+## What it answers
+
+**Does the release impact a pull request declares cover what its workflow changes actually require?**
+
+Repositories that publish reusable workflows or actions version them, and consumers pin a major tag (`@v1`). Some
+changes break those consumers without any error in the publishing repository — the classic one is renaming a job:
+consumers' branch protection requires the check `ci / Test`, the job now reports `ci / Unit tests`, and their pull
+requests wait forever on _Expected — Waiting for status to be reported_. Released as a patch, nobody notices until the
+next consumer PR is stuck.
+
+Impact mode grades every change to what consumers can observe as **major, minor, patch or none**, compares it with the
+declared impact (for example the Conventional Commits PR title) and fails when the declared impact is too low.
+
+A second, independent part protects **your own** branch protection: lints that catch a required check that no job
+produces any more, or one that a `paths:` filter keeps from ever reporting.
+
+## Two separate outputs
+
+These answer different questions and never mix:
+
+| | Release impact | Protection lints |
+| --- | --- | --- |
+| Covers | **Published** units: reusable workflows (`workflow_call`) and actions outside `.github/` (configurable with `impact.publish`) | The repository's own required status checks |
+| Result | A semver level and a verdict (declared vs required) | Ordinary findings, no semver level |
+| Typical message | "declared patch, required major: job `test` of `ci-reusable.yml` changes the check `… / Test` to `… / Unit tests`" | "the required check `CI passed` is not produced by any job — update the ruleset in this pull request" |
+
+Renaming your own gate job is not a semver event for anyone; it needs the ruleset updated in the same pull request.
+Internal reusable workflows and `.github/actions/**` are internal unless listed in `impact.publish`.
+
+## How check names are formed
+
+Verified against GitHub's documentation and live check runs (including this repository's):
+
+- A job's check name is its evaluated `name:`, or the job id when it has no name. The workflow name and file name are
+  not part of it; renaming a workflow does not change check names (it does change `github.workflow`, which
+  `workflow_run` listeners and concurrency groups use).
+- A matrix job whose `name` contains no `${{ }}` gets the suffix ` (value1, value2)`, values in the order the matrix
+  keys are declared. If the name contains any expression, there is no suffix: `Test (node ${{ matrix.node }})` reports
+  `Test (node 22)`.
+- A job in a called workflow reports `caller job / callee job`, one more ` / ` per nesting level.
+- A job skipped by its job-level `if:` reports **one** check with its raw, unexpanded name; a skipped caller reports no
+  ` / callee` checks at all.
+- A workflow skipped by `paths`, `paths-ignore` or `branches` filters leaves its checks pending, which blocks merging;
+  a job skipped by `if:` counts as passing. With a merge queue, required checks must also run on `merge_group`.
+
+Edge cases that are only partly verified (blank names, empty or numeric matrix values, values containing `,` or `)`,
+two jobs with the same name, case sensitivity of required checks) are being confirmed in a test repository that
+compares GitHub's real check names with wfc's computed ones, and re-runs on a schedule to catch changes on GitHub's
+side.
+
+## What counts as what (first version)
+
+| Change to a published unit | Required impact |
+| --- | --- |
+| A check name removed or changed: job renamed, job id changed when there is no `name`, matrix key changed or value removed, `${{ }}` added to or removed from `name`, a callee job removed | major |
+| A job-level `if:` added to a matrix job or reusable caller (only the raw name is reported when skipped) | major |
+| New check names (matrix value added, new job) | minor |
+| `workflow_call` input or secret removed, optional → required, new required input or secret, input type changed, choice option removed | major |
+| Output removed (callers silently read `''`) | major |
+| Optional input, secret or output added | minor |
+| Input default changed | minor, with a behaviour-change warning |
+| Workflow file moved or deleted, `workflow_call` removed | major |
+| A job needs a new or higher `permissions:` scope (callers that grant less fail at startup) | major |
+| Action input removed, action output removed, new `required: true` input without a default | major |
+| Action `runs.using` changed (for example `node20` → `node24`), action moved or deleted | major |
+| New third-party `uses:` inside a published unit (organization allow-lists and SHA-pinning policies apply to consumers) | minor, with a warning |
+| Narrower permissions, internal step changes | none or patch |
+
+A `patch`-vs-`none` mismatch is a warning, not an error. Over-declaring (declaring major for a minor change) is
+reported as info only — a release may contain changes wfc does not grade.
+
+## Where the declared impact comes from
+
+The declared impact must be what the release tool will actually read, so exactly one source is **authoritative**
+(`impact.declaredBy`):
+
+| Source | Read from | Maps to |
+| --- | --- | --- |
+| `explicit` | CLI `--expect`, action input `expected-impact` | as given |
+| `title` (default) | the pull request title in the event payload | `type!:` → major, `feat` → minor, `fix` / `perf` → patch, other types → none |
+| `labels` | `semver:major` / `semver:minor` / `semver:patch` / `semver:none` (configurable) | as given |
+| `commits` | every commit in the pull request (for merge-commit or rebase repositories) | the highest level |
+
+- The **title** describes the squash commit — valid when pull requests are squash-merged with the title as the commit
+  message. A title that is not a Conventional Commit counts as _not declared_, never as `none`.
+- **Other sources are advisory.** If an advisory source declares a _higher_ impact than the authoritative one (a
+  `semver:major` label on a `fix:` title), that is an error: the release tool would cut a patch.
+- A `BREAKING CHANGE:` footer in the pull request body counts only when the repository copies the body into the squash
+  commit.
+- **Release pull requests** (release-please) are detected and checked differently: the baseline is the last release
+  tag and the declared impact is the proposed version. Before 1.0, release-please's `bump-minor-pre-major` setting is
+  respected (a 0.x minor bump counts as breaking). If the bump is too small, wfc suggests a `Release-As:` commit.
+- When nothing is declared, wfc reports the required impact without failing.
+
+## Baseline
+
+wfc analyses the **base** of the pull request straight from git (read-only, no shell) and the head from the working
+tree, with the same version of every rule on both sides, so an upgrade of wfc never shows up as a change. Committed
+contracts are not used for impact.
+
+- Pull requests: the base commit (the first parent of the merge commit GitHub checks out). Release pull requests: the
+  last release tag.
+- The action fetches the missing commit or tags itself, also with `persist-credentials: false` (it uses a one-off
+  authorization header for that fetch; nothing is written to `.git/config`). `contents: read` is enough.
+- Policy settings (`impact.*`, `requiredChecks`) are read from the **base** configuration, so a pull request cannot
+  relax its own check.
+- `pull_request_target` is refused: it checks out the default branch, so it would compare the default branch with
+  itself. `merge_group` runs pass with an info note (impact was checked on the pull request). On `push` and tags, impact
+  runs only with an explicit `--expect`.
+
+## Required checks for the protection lints
+
+GitHub does not read rulesets from the repository, so wfc needs to be told which checks are required:
+
+- **Config** (primary): `requiredChecks: [{ context: "CI passed", app: 15368 }]`.
+- **Ruleset exports** (opt-in): JSON files in GitHub's ruleset export format, if the repository keeps its rulesets in
+  code. Their `enforcement`, `target` and branch conditions are respected.
+- **GitHub API** (opt-in, later): the active rules of the base branch.
+
+Planned lints, all without a baseline (codes tentative):
+
+| Code | Finding |
+| --- | --- |
+| `WFC610` | A required check is not produced by any job. An error for checks from GitHub Actions; info for checks that other apps may report (for example Codecov). |
+| `WFC611` | A required check comes from a workflow with `paths` / `branches` filters on its pull request trigger, or a merge queue is used and the workflow has no `merge_group` trigger. |
+| `WFC612` | A required check comes from a job that can be skipped and no other job reports the same name. |
+| `WFC806` | A check name that the base produced is gone (with the ruleset entry that requires it). |
+| `WFC810`+ | Impact verdict: under-declared (error), conflicting advisory source (error), over-declared (info), not declared (info). |
+
+## Using it
+
+One action call does everything — lint, contracts and impact share a single analysis, one job summary and one set of
+annotations:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  wfc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rumankazi/wfc@v0
+        with:
+          mode: check
+          impact: auto   # off (default) | auto | on
+```
+
+`auto` turns impact on for pull requests in repositories that publish units. Outputs such as `required-impact`,
+`declared-impact` and `impact-ok` let later steps gate on impact separately; a separate required check for impact is
+a second step with `impact: on` and `fail-on: never` for the other findings.
+
+On the command line: `wfc check --impact --base origin/main`, or `wfc impact` as a shortcut. The impact verdict has
+its own JSON schema; existing report and contract schemas do not change.
+
+## Plan
+
+1. **Parsing:** job names as expressions, job-level `if`/`needs`, trigger filters, permissions and runner labels in
+   the model.
+2. **Check names and protection lints** (`WFC610`–`WFC612`) with `requiredChecks` in the config — useful on their own.
+3. **Impact:** git baseline, published units, declared-impact sources, release pull requests, the verdict in every
+   output format, the action input and outputs.
+4. Later: the GitHub API as a required-check source, duplicate check names, GitHub Enterprise Server limits.
+
+Not planned: grading code outside workflows and actions, or finding consumers in other repositories.
