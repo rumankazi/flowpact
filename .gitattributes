@@ -1,0 +1,11 @@
+# Bundled GitHub Action (rebuilt by `pnpm build`, checked by .github/workflows/action-ci.yml)
+packages/action/dist/** linguist-generated=true
+
+# Generated files
+apps/docs/content/docs/rules/** linguist-generated=true
+apps/docs/public/schemas/** linguist-generated=true
+apps/docs/public/screenshots/** linguist-generated=true
+
+# Contracts are compared byte for byte; keep LF everywhere.
+.github/workflow-contracts/** text eol=lf
+fixtures/**/.github/workflow-contracts/** text eol=lf

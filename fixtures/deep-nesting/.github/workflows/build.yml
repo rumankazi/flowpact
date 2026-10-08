@@ -1,0 +1,34 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      notes:
+        type: string
+        required: true
+      verbose:
+        type: boolean
+        default: false
+    outputs:
+      artifact-url:
+        value: ${{ jobs.package.outputs.url }}
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    outputs:
+      checksum: ${{ steps.sum.outputs.sha }}
+    steps:
+      - id: sum
+        run: echo "sha256=$(sha256sum out.bin)" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: compile
+    uses: ./.github/workflows/package.yml
+    with:
+      environment: ${{ inputs.environment }}
+      release-notes: ${{ inputs.notes }}
+    secrets:
+      registry-token: ${{ secrets.REGISTRY_TOKEN }}

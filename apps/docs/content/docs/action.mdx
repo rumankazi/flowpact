@@ -1,0 +1,291 @@
+---
+title: GitHub Action
+description: Run wfc in GitHub Actions with inline annotations, a job summary, SARIF for code scanning and the regenerated contracts as an artifact.
+---
+
+The wfc action runs the same engine as the [CLI](/docs/cli), bundled into the action itself, so the job does not need
+Node.js or a package install. On top of the CLI's checks it:
+
+- **annotates** every finding on the file and line it is about, in the run and in the pull request diff;
+- writes a **job summary** with the findings, their fixes and links to the rule docs;
+- writes **JSON, SARIF or Markdown reports** for other steps (for example code scanning);
+- in `check` mode, when [contracts](/docs/contracts) drifted, **uploads the regenerated contracts and a patch** as an
+  artifact, so anyone can update them without running wfc.
+
+<Callout title="Version tag">
+  `rumankazi/wfc@v0` follows the latest `0.x` release. wfc is before 1.0, so a minor release can add rules or change
+  defaults; pin an exact release (`@v0.1.0`) or a commit SHA to upgrade on your own schedule.
+</Callout>
+
+## Usage
+
+### Lint workflows on pull requests
+
+```yaml title=".github/workflows/workflow-contracts.yml"
+name: Workflow contracts
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/workflow-contracts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  wfc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rumankazi/wfc@v0
+```
+
+The step fails when there are errors. Use `fail-on: warning` to be stricter or `fail-on: never` to report without
+failing.
+
+### Check contracts and hand out the fix
+
+Once you commit contracts (`wfc generate`, see [Contracts](/docs/contracts)), use `mode: check`. It runs every lint
+rule and also fails when the contracts no longer match the workflows:
+
+```yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rumankazi/wfc@v0
+        with:
+          mode: check
+```
+
+When contracts drifted, the action uploads a `wfc-contracts` artifact with a patch, and the job summary says how to
+apply it (see [Contract drift without the CLI](#contract-drift-without-the-cli)).
+
+### Upload findings to code scanning (SARIF)
+
+```yaml
+jobs:
+  wfc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rumankazi/wfc@v0
+        with:
+          report-sarif: wfc.sarif
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: wfc.sarif
+          category: wfc
+```
+
+`if: always()` uploads the report even when the wfc step failed because of findings. Findings then appear under
+**Security → Code scanning**. Findings accepted by an [override](/docs/configuration) are included as suppressed
+results, with the override's reason.
+
+### Use the outputs
+
+```yaml
+      - id: wfc
+        uses: rumankazi/wfc@v0
+        with:
+          mode: check
+          fail-on: never
+      - if: steps.wfc.outputs.breaking != '0'
+        run: echo "::warning::${{ steps.wfc.outputs.breaking }} breaking contract change(s)"
+```
+
+## Inputs
+
+All inputs are optional.
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `mode` | `lint` | `lint` analyzes workflows and local actions. `check` also compares them with the locked contracts in `.github/workflow-contracts/`. |
+| `paths` | `''` | Workflow or action files or directories to report on, separated by spaces or newlines, relative to working-directory. Empty reports on everything. |
+| `working-directory` | `.` | Directory holding the `.github` folder to analyze, relative to the workspace. |
+| `config` | `''` | Path to the wfc config file, relative to working-directory. Empty uses `.github/workflow-contracts/wfc.config.yml` when it exists. |
+| `fail-on` | `error` | Fail the step when findings at this level exist: `error`, `warning` or `never`. |
+| `annotations` | `true` | Annotate findings on the files in the run and pull request. |
+| `summary` | `true` | Write a Markdown report to the job summary. |
+| `summary-graph` | `false` | Add the workflow call graph (Mermaid) to the job summary. |
+| `max-findings` | `50` | Findings listed in full in the job summary; the rest are counted. |
+| `report-json` | `''` | Write the JSON report to this path (relative to the workspace). |
+| `report-sarif` | `''` | Write a SARIF 2.1.0 report to this path (relative to the workspace), for github/codeql-action/upload-sarif. |
+| `report-markdown` | `''` | Write the Markdown report to this path (relative to the workspace), e.g. for a pull request comment. |
+| `upload-contracts` | `true` | In check mode, when contracts drifted, upload the regenerated contracts and a patch as an artifact. |
+| `artifact-name` | `wfc-contracts` | Name of the contract drift artifact. Defaults to `wfc-contracts-<working-directory>` when `working-directory` is set. Must be unique per run — set it in matrix jobs. |
+| `retention-days` | `7` | Days to keep the contract drift artifact (0 uses the repository default). |
+| `plugins` | `auto` | Load the plugins listed in the config: `auto`, `true` or `false`. Plugins run JavaScript from the checkout; `auto` disables them on `pull_request_target` and `workflow_run` events. |
+| `debug` | `false` | Print wfc debug logs (also enabled by re-running the job with debug logging). |
+
+Even when `paths` limits the report to some files, wfc reads every workflow and local action, because findings
+depend on the callers and callees.
+
+## Outputs
+
+| Output | Description |
+| --- | --- |
+| `errors` | Number of error findings. |
+| `warnings` | Number of warning findings. |
+| `infos` | Number of info findings. |
+| `suppressed` | Number of findings accepted by overrides. |
+| `findings` | Total number of findings (errors, warnings and info). |
+| `drift` | `true` when check mode found that the contracts drifted, otherwise `false`. |
+| `breaking` | Number of breaking contract changes (check mode). |
+| `exit-code` | The exit code the CLI would return: 0, or 1 when findings reach fail-on. |
+| `report-json` | Absolute path of the JSON report, when report-json was set. |
+| `report-sarif` | Absolute path of the SARIF report, when report-sarif was set. |
+| `patch` | Absolute path of the contract patch on the runner, when contracts drifted. |
+| `artifact-id` | ID of the uploaded contract drift artifact, when one was uploaded. |
+
+## Annotations
+
+Each finding becomes an error, warning or notice annotation (matching its severity) on the file and line it is about.
+The title is the rule code and name, and the message ends with the suggested fix and a link to the rule's docs page.
+With `working-directory`, file paths are adjusted so annotations land on the right files in the repository.
+
+GitHub limits how many annotations a single step can show. The job summary lists the first `max-findings` findings (raise it if needed); the SARIF and JSON reports list every finding,
+so use those when a run has many.
+
+## Job summary
+
+The summary has:
+
+- the tool and schema versions and how long the analysis took;
+- a status line and a table of counts (errors, warnings, info, suppressed, workflows, actions, jobs, matrix
+  combinations);
+- the findings, errors first, each with its rule docs link, its location (linked to the file at the commit being
+  checked), the affected matrix combinations, and a collapsed **Why / fix** section with the related locations;
+- in `check` mode, a **Contracts** section: which contract files are new, changed or removed, every change (breaking
+  ones in bold) and how to apply the regenerated contracts;
+- the findings accepted by overrides, in a collapsed table with each override's reason, expiry and owner;
+- with `summary-graph: true`, the call graph between workflows and local actions as a Mermaid diagram.
+
+After `max-findings` findings, the rest are only counted. This is the summary for a repository where one matrix leg
+passes an empty input to a reusable workflow (the `incident-matrix` fixture in the wfc repository). In a run, the
+locations are links:
+
+````markdown
+## wfc lint
+
+<sub>wfc v0.1.0 · config schema v1 · contract schema v1 · report schema v1 · 24 ms</sub>
+
+❌ **1 error**
+
+| Errors | Warnings | Info | Suppressed | Workflows | Actions | Jobs | Matrix combinations |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0 | 0 | 0 | 3 | 0 | 3 | 3 |
+
+### ❌ Errors (1)
+
+**[`WFC401`](https://rumankazi.github.io/wfc/docs/rules/wfc401) empty-binding-for-matrix-combo** · `.github/workflows/tests.yml:23:19`
+
+Input "config" for .github/workflows/run-suite.yml is empty in 1 of 3 matrix combinations — matrix.config is not defined there
+
+Matrix: `{ name: windows }`
+
+<details><summary>Why / fix</summary>
+
+**Why:** GitHub evaluates a missing matrix key to an empty string — no error, no warning. The affected matrix leg runs with an empty input, so the callee may skip its real work (e.g. a test configuration) while the run stays green.
+
+**Fix:** Set `config` in every combination, or use a fallback: `${{ matrix.config || '<default>' }}`.
+
+**Related locations:**
+
+- `.github/workflows/pipeline.yml:9:11` — jobs.tests calls .github/workflows/tests.yml
+- `.github/workflows/tests.yml:18:13` — this include entry has no `config`
+- `.github/workflows/run-suite.yml:11:7` — receives the empty value: input "config"
+
+</details>
+````
+
+`report-markdown` writes the same Markdown to a file, for example to post it as a pull request comment with another
+action.
+
+## Contract drift without the CLI
+
+In `check` mode, when the contracts drifted, the action writes:
+
+- `wfc-contracts.patch`: a patch, relative to the repository root, that creates, updates and deletes the contract
+  files;
+- `wfc-contracts/README.md`: how to apply it;
+- `wfc-contracts/<contract files>`: the regenerated contracts, for reference (removed contracts are only in the patch).
+
+With `upload-contracts: true` (the default) these are uploaded as the `wfc-contracts` artifact (`artifact-name`), kept
+for `retention-days` days. The artifact holds only the patch and the `wfc-contracts/` folder, so downloading it into
+the repository does not overwrite any file. To update the contracts without Node.js or wfc:
+
+<Steps>
+<Step>
+### Download the artifact
+
+From the repository root, with the [GitHub CLI](https://cli.github.com) (the job summary shows this command with the
+run ID filled in):
+
+```sh
+gh run download <run-id> -n wfc-contracts
+```
+
+Or download it from the run's **Artifacts** section and unzip it in the repository root.
+</Step>
+<Step>
+### Apply the patch
+
+```sh
+git apply --index wfc-contracts.patch   # --index also stages new contract files
+rm -r wfc-contracts.patch wfc-contracts
+git commit -m "Update workflow contracts"
+```
+</Step>
+<Step>
+### Review and commit
+
+Check the changes; breaking ones are listed in the job summary. Then commit the updated contracts.
+</Step>
+</Steps>
+
+The `patch` output holds the path of the patch on the runner, if a later step wants to use it (for example to push a
+commit). If the upload fails, the action logs a warning and goes on; the job summary then suggests `wfc generate`.
+
+## Monorepos and subdirectories
+
+`working-directory` points wfc at a folder that holds its own `.github` directory. Annotations, SARIF locations, the
+summary's links and the paths in the contract patch are all rewritten relative to the repository root, so they still
+point at the right files. `paths` and `config` are relative to `working-directory`; the report paths are relative to
+the workspace.
+
+Each step stages its drift artifact in its own folder and, unless `artifact-name` is set, names it after
+`working-directory`, so several wfc steps in one job do not overwrite each other. Artifact names must be unique within
+a run: in a matrix over projects, set `artifact-name` from the matrix (for example `wfc-contracts-${{ matrix.project }}`).
+
+<Callout type="warn" title="Plugins run code from the checkout">
+Plugins listed in the config are JavaScript modules from the repository being analyzed, executed inside the action
+with the job's environment. Never enable them (`plugins: true`) on untrusted code that runs with secrets or a write
+token — for example `pull_request_target` workflows that check out the pull request head. With the default `auto`,
+the action skips them on `pull_request_target` and `workflow_run`.
+</Callout>
+
+## Debug logging
+
+The log of the wfc step starts with a banner (tool and schema versions and the Node.js version), then shows the root,
+the config file and short progress lines in a collapsible group. These are log lines, not annotations.
+
+For more detail:
+
+- set the `debug` input to `true`: wfc prints its debug logs (config resolution, every file parsed, matrix expansion,
+  timing per rule) as ordinary log lines; or
+- **re-run the job with debug logging enabled**: GitHub turns on step debug logging and wfc sends the same logs to the
+  debug log. `WFC_DEBUG=1` in the step's `env` works too (`WFC_DEBUG=trace` for even more).
+
+Unexpected errors are reported with a stack trace when debug logging is on.
+
+## Permissions
+
+- `contents: read` to check out the repository. The action itself does not call the GitHub API.
+- Uploading the contract drift artifact needs no extra permission.
+- `security-events: write` on the job that uploads SARIF to code scanning (private repositories also need
+  `actions: read` for that upload). Pull requests from forks get a read-only token, so the SARIF upload only works for
+  branches in the repository itself.

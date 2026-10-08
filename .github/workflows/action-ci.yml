@@ -1,0 +1,55 @@
+name: Action CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dist:
+    name: Bundle is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wfc/action build
+      - name: Compare with the committed bundle
+        run: |
+          if [ -n "$(git status --porcelain packages/action/dist)" ]; then
+            git status --short packages/action/dist
+            echo "::error::packages/action/dist is out of date. Run 'pnpm --filter @wfc/action build' and commit the result."
+            exit 1
+          fi
+
+  dogfood:
+    name: Run the action on this repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: wfc
+        uses: ./
+        with:
+          mode: lint
+          fail-on: warning
+          report-sarif: wfc.sarif
+      - name: Upload SARIF to code scanning
+        # Pull requests from forks get a read-only token, so only upload for this repository's own refs.
+        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: wfc.sarif
+          category: wfc

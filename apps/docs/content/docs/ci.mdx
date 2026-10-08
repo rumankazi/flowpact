@@ -1,0 +1,117 @@
+---
+title: CI usage
+description: Run wfc on every pull request that touches workflows, fail on errors and contract drift, and keep the report.
+---
+
+## The wfc action
+
+The simplest setup is the [wfc GitHub Action](/docs/action). It runs the same engine as the CLI and adds a job
+summary, inline annotations on the pull request and — when contracts drifted — the regenerated contracts as a
+downloadable artifact.
+
+```yaml title=".github/workflows/workflow-contracts.yml"
+name: Workflow contracts
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/workflow-contracts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  wfc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rumankazi/wfc@v0
+        with:
+          mode: check   # or lint, if you do not commit contracts
+```
+
+See [GitHub Action](/docs/action) for every input and output (`fail-on`, SARIF upload, the contracts artifact, …).
+
+## The CLI in GitHub Actions
+
+The CLI works in any job that has Node.js:
+
+```yaml title=".github/workflows/workflow-contracts.yml"
+name: Workflow contracts
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - '.github/workflow-contracts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  wfc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check workflows and contracts
+        run: npx --yes workflow-contracts check --output wfc-report.md --patch wfc-contracts.patch
+      - name: Job summary
+        if: always()
+        run: cat wfc-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the regenerated contracts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfc-contracts
+          path: wfc-contracts.patch
+          if-no-files-found: ignore
+```
+
+- Use `wfc lint` instead of `wfc check` if you do not commit [contracts](/docs/contracts).
+- `--output wfc-report.md` writes a Markdown report (format by extension), which the next step appends to the job
+  summary. Use `.json` for a machine-readable report instead.
+- The step fails (exit `1`) when there are errors, which in `wfc check` includes missing, outdated, breaking, orphaned
+  and invalid contracts. Use `--fail-on warning` to be stricter or `--fail-on never` to report without failing.
+- `--patch` writes `wfc-contracts.patch` only when contracts drifted. Anyone can download it from the run and apply it
+  with `git apply wfc-contracts.patch` — no local Node.js needed.
+- The terminal output in the job log is the same as locally (colors are kept in GitHub's log viewer).
+- When you re-run a job with **debug logging enabled**, GitHub sets `RUNNER_DEBUG=1` and wfc switches to debug logs
+  automatically.
+
+### Code scanning (SARIF)
+
+To see findings in the **Security → Code scanning** tab and as pull request annotations, write SARIF and upload it:
+
+```yaml
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      # …checkout and setup-node as above
+      - run: npx --yes workflow-contracts check --output wfc.sarif
+      - if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: wfc.sarif
+          category: wfc
+```
+
+### Pin the version
+
+```sh
+npx --yes workflow-contracts@0.1.0 check
+```
+
+The banner at the top of the log shows the exact tool and schema versions that produced the result.
+
+## Other CI systems
+
+wfc only needs Node.js and the repository files:
+
+```sh
+npx --yes workflow-contracts check --format json --output wfc-report.json --patch wfc-contracts.patch
+```

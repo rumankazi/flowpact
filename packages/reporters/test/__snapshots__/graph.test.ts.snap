@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderGraphTree > draws the tree from entry points and marks cycles and missing targets 1`] = `
+"Main (.github/workflows/main.yml) · on: workflow_dispatch
+├── jobs.stage-b → B (.github/workflows/b.yml)
+│   └── jobs.next → C (.github/workflows/c.yml)
+│       └── jobs.back → B (.github/workflows/b.yml) ↻ cycle
+├── jobs.missing → .github/workflows/does-not-exist.yml (missing)
+└── jobs.remote → octo-org/shared/.github/workflows/lint.yml@v2 (remote)"
+`;
+
+exports[`renderGraphTree > renders nested workflows 1`] = `
+"Pipeline (.github/workflows/pipeline.yml) · on: workflow_dispatch
+└── jobs.build (inherit) → Build (.github/workflows/build.yml)
+    └── jobs.package → Package (.github/workflows/package.yml)
+        └── jobs.publish → Publish (.github/workflows/publish.yml)"
+`;
+
+exports[`renderMermaid and renderDot > renders a Graphviz digraph 1`] = `
+"digraph wfc {
+  rankdir=LR;
+  node [fontname="Helvetica", fontsize=11];
+  edge [fontname="Helvetica", fontsize=9];
+  ".github/workflows/b.yml" [label="B\\n.github/workflows/b.yml", shape=box, style="rounded,filled", fillcolor="#e8f1ff", color="#3b82f6"];
+  ".github/workflows/c.yml" [label="C\\n.github/workflows/c.yml", shape=box, style="rounded,filled", fillcolor="#e8f1ff", color="#3b82f6"];
+  ".github/workflows/main.yml" [label="Main\\n.github/workflows/main.yml", shape=box, style="rounded,filled", fillcolor="#e8f1ff", color="#3b82f6"];
+  "remote:octo-org/shared/.github/workflows/lint.yml@v2" [label="octo-org/shared/.github/workflows/lint.yml@v2", shape=box, style=dashed, color="#64748b"];
+  ".github/workflows/does-not-exist.yml" [label=".github/workflows/does-not-exist.yml (missing)", shape=box, style=filled, fillcolor="#fee2e2", color="#dc2626", fontcolor="#991b1b"];
+  ".github/workflows/b.yml" -> ".github/workflows/c.yml" [label="jobs.next"];
+  ".github/workflows/c.yml" -> ".github/workflows/b.yml" [label="jobs.back"];
+  ".github/workflows/main.yml" -> ".github/workflows/b.yml" [label="jobs.stage-b"];
+  ".github/workflows/main.yml" -> ".github/workflows/does-not-exist.yml" [label="jobs.missing"];
+  ".github/workflows/main.yml" -> "remote:octo-org/shared/.github/workflows/lint.yml@v2" [label="jobs.remote"];
+}
+"
+`;
+
+exports[`renderMermaid and renderDot > renders a Mermaid flowchart with safe ids and classes 1`] = `
+"flowchart LR
+  wf_b_yml("B<br/>.github/workflows/b.yml"):::workflow
+  wf_c_yml("C<br/>.github/workflows/c.yml"):::workflow
+  wf_main_yml("Main<br/>.github/workflows/main.yml"):::workflow
+  remote_octo_org_shared_github_workflows_lint_yml_v2["octo-org/shared/.github/workflows/lint.yml@v2"]:::remote
+  missing_does_not_exist_yml[".github/workflows/does-not-exist.yml (missing)"]:::missing
+  wf_b_yml -->|"jobs.next"| wf_c_yml
+  wf_c_yml -->|"jobs.back"| wf_b_yml
+  wf_main_yml -->|"jobs.stage-b"| wf_b_yml
+  wf_main_yml -->|"jobs.missing"| missing_does_not_exist_yml
+  wf_main_yml -->|"jobs.remote"| remote_octo_org_shared_github_workflows_lint_yml_v2
+  classDef workflow fill:#e8f1ff,stroke:#3b82f6,color:#0f172a
+  classDef action fill:#f3e8ff,stroke:#8b5cf6,color:#0f172a
+  classDef remote fill:#f8fafc,stroke:#64748b,stroke-dasharray:5 5,color:#334155
+  classDef missing fill:#fee2e2,stroke:#dc2626,color:#991b1b
+  classDef invalid fill:#fee2e2,stroke:#dc2626,stroke-dasharray:5 5,color:#991b1b
+"
+`;

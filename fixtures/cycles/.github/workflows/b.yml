@@ -1,0 +1,5 @@
+name: B
+on: workflow_call
+jobs:
+  next:
+    uses: ./.github/workflows/c.yml

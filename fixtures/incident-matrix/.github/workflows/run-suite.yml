@@ -1,0 +1,21 @@
+name: Run suite
+on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        required: true
+      variant:
+        type: string
+        required: true
+      config:
+        type: string
+        required: false
+
+jobs:
+  test:
+    if: inputs.config != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./run-tests.sh --suite "${{ inputs.suite }}" --variant "${{ inputs.variant }}" --config "${{ inputs.config }}"

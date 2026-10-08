@@ -1,0 +1,19 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "getting-started",
+    "how-it-works",
+    "---Usage---",
+    "cli",
+    "ci",
+    "action",
+    "configuration",
+    "contracts",
+    "---Reference---",
+    "rules",
+    "custom-rules",
+    "comparison",
+    "roadmap"
+  ]
+}

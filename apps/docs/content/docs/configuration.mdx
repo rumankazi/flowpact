@@ -1,0 +1,165 @@
+---
+title: Configuration
+description: Configure severities, limits, ignored paths, overrides, matrix shapes and plugins in .github/workflow-contracts/wfc.config.yml.
+---
+
+wfc works without configuration. To change behaviour, create
+`.github/workflow-contracts/wfc.config.yml` (or pass `--config <file>`):
+
+```yaml title=".github/workflow-contracts/wfc.config.yml"
+# yaml-language-server: $schema=https://rumankazi.github.io/wfc/schemas/config/v1.json
+version: 1
+
+# owner/repo of this repository, so `uses: owner/repo/.github/workflows/x.yml@ref` resolves locally.
+# Detected from GITHUB_REPOSITORY or .git/config when omitted.
+repository: acme/platform
+
+rules:
+  # by code or by name; values: error | warning | info | off
+  WFC104: error
+  secrets-inherit: off
+  needs-without-data: info   # opt-in rule
+
+limits:
+  nestingDepth: 10   # WFC602: workflows in one call chain, counting the top-level workflow
+  maxInputs: 30      # WFC605: workflow_call inputs before suggesting to group them
+
+ignore:
+  - .github/workflows/experimental/   # path prefix
+  - .github/workflows/legacy-*.yml    # glob (* within a segment, ** across)
+
+overrides:
+  - rule: unused-input
+    target: .github/workflows/pipeline.yml#inputs.legacy-flag
+    reason: Read by the external release dispatcher; remove after the migration (JIRA-123)
+    expires: 2026-12-31
+    owner: '@platform-team'
+
+matrixShapes:
+  .github/workflows/tests.yml#e2e:
+    keys: [os, browser]
+
+plugins:
+  - ./ci/wfc-rules.mjs
+```
+
+The config is validated strictly: unknown keys, unknown rule codes or names, and invalid values are reported with
+their path (exit code `2`); misspelled rule codes and names get a suggestion.
+
+## Editor autocomplete
+
+The schema is published at [`/schemas/config/v1.json`](/schemas/config/v1.json). The comment on the first line of the
+example enables completion, hover docs and validation in editors that use the YAML language server (VS Code with the
+Red Hat YAML extension, JetBrains IDEs, Neovim):
+
+```yaml
+# yaml-language-server: $schema=https://rumankazi.github.io/wfc/schemas/config/v1.json
+```
+
+## Overrides
+
+`rules:` and `ignore:` change a rule or a path everywhere. An **override** accepts one specific finding, with a reason
+that stays next to it in the repository:
+
+```yaml
+overrides:
+  - rule: unused-input                                        # code (WFC104) or name
+    target: .github/workflows/pipeline.yml#inputs.legacy-flag  # the symbol the finding is about
+    reason: Read by the external release dispatcher; remove after the migration (JIRA-123)
+    expires: 2026-12-31                                       # optional, YYYY-MM-DD
+    owner: '@platform-team'                                   # optional
+
+  - rule: remote-unverified
+    file: .github/workflows/release.yml    # every finding of this rule in this file
+    reason: Calls into acme/shared-workflows are verified in that repository
+```
+
+| Key | Required | Description |
+| --- | --- | --- |
+| `rule` | yes | Rule code or name. An unknown rule is a config error. |
+| `target` | `target` or `file` | The finding's symbol id. `*` matches within a path segment, `**` across segments, e.g. `.github/workflows/*.yml#inputs.legacy-*`. |
+| `file` | `target` or `file` | The file the finding is reported in: a path, a path prefix or a glob. |
+| `reason` | yes | Why the finding is accepted (at least 10 characters). |
+| `expires` | no | `YYYY-MM-DD` (a UTC date). The override is honored through the end of that day in UTC; from the next day the finding is reported again. |
+| `owner` | no | Who owns the exception, shown in expiry messages. |
+
+Either `target` or `file` is required, so an override cannot silence a rule everywhere (use `rules:` for that). When
+both are set, both must match.
+
+**Finding the symbol.** Every finding has a `symbol` in JSON output — copy it into `target`:
+
+```sh
+wfc lint --format json | jq -r '.findings[] | "\(.code) \(.symbol)"'
+```
+
+**What happens to accepted findings.** They are removed from the report and from the error/warning/info counts, so
+they do not fail the build. They are not lost: JSON output lists them under `suppressed`, each with the override that
+accepted it (`index`, `reason`, `expires`, `owner`), and `summary.suppressed` counts them.
+
+**Keeping overrides honest.** Three rules check the overrides themselves (they run after overrides are applied, so
+they cannot be overridden):
+
+| Code | Severity | Reported when |
+| --- | --- | --- |
+| [`WFC901`](/docs/rules/wfc901) `override-expired` | error | The `expires` date has passed. The findings it accepted are reported again. |
+| [`WFC902`](/docs/rules/wfc902) `override-unused` | warning | The override matches no finding — the problem was fixed, or the target is misspelled. |
+| [`WFC903`](/docs/rules/wfc903) `override-expiring-soon` | info | It expires within 14 days and still matches findings. |
+
+Overrides apply to every rule, including the [contract rules](/docs/contracts) — but an intended interface change is
+better recorded by regenerating the contracts than by overriding `WFC803`.
+
+## Matrix shapes
+
+A matrix computed at runtime (`matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}`) cannot be expanded statically,
+so by default wfc reports it as unverifiable (`WFC403`) and does not check its `matrix.*` reads. If you know which keys
+the generated matrix has, declare them:
+
+```yaml
+matrixShapes:
+  # <workflow path>#<job id>
+  .github/workflows/tests.yml#e2e:
+    keys: [os, browser, shard]
+```
+
+wfc then checks every `matrix.*` read in that job against the declared keys and reports unknown ones as `WFC404`
+(for example `matrix.brower`); `WFC403` is no longer reported for the job. The values of the keys stay unknown, so
+per-combination checks (`WFC401`, `WFC402`) do not apply. The declaration is used only for jobs whose matrix (or
+`include`) is actually computed at runtime.
+
+## Plugins
+
+Organization-specific rules can be loaded from JavaScript modules:
+
+```yaml
+plugins:
+  - ./ci/wfc-rules.mjs
+```
+
+Paths are relative to the repository root. A module default-exports a rule or an array of rules (or exports them as
+`rules`). Plugin rules need their own code prefix and a `docsUrl`; see [Custom rules](/docs/custom-rules) for the rule
+format. Plugins are loaded by `wfc lint`, `wfc check` and `wfc generate`, and by the [GitHub Action](/docs/action).
+
+<Callout type="warn" title="Plugins run code from the repository">
+Loading a plugin executes it, with the permissions of whoever runs wfc. Only run wfc with plugins on code you trust.
+The GitHub Action skips plugins on `pull_request_target` and `workflow_run` events unless its `plugins` input is set
+to `true`.
+</Callout>
+
+When plugins are skipped, `rules:` and `overrides:` entries for rules that are not loaded are ignored for that run and
+listed in a warning. A name that starts with `WFC` or is close to a built-in rule (`unused-inptu`) is still a config
+error, so a typo is never hidden.
+
+## Reference
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `$schema` | string | — | JSON Schema reference for editors (the `# yaml-language-server` comment works too). |
+| `version` | `1` | `1` | Config schema version. |
+| `repository` | `owner/repo` | detected | Lets same-repository `owner/repo/...@ref` references resolve locally. |
+| `rules` | map of code or name → `error` \| `warning` \| `info` \| `off` | `{}` | Severity per rule. |
+| `limits.nestingDepth` | positive integer | `10` | Maximum workflows in one call chain (WFC602). |
+| `limits.maxInputs` | positive integer | `30` | `workflow_call` inputs before WFC605. |
+| `ignore` | list of paths or globs | `[]` | Findings in matching files are suppressed. |
+| `overrides` | list of `{rule, target?, file?, reason, expires?, owner?}` | `[]` | Accepted findings, each with a reason and an optional expiry date ([details](#overrides)). |
+| `matrixShapes` | map of `<workflow path>#<job id>` → `{ keys: [...] }` | `{}` | Declared keys of runtime-computed matrices ([details](#matrix-shapes)). |
+| `plugins` | list of paths | `[]` | JavaScript modules exporting extra rules ([details](#plugins)). |

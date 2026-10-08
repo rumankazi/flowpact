@@ -1,0 +1,32 @@
+name: Install tools
+description: Installs the tools pinned in a versions file
+inputs:
+  versions-file:
+    description: Path to the versions file
+    required: true
+  cache:
+    description: Cache the tools directory
+    default: 'false'
+  token:
+    description: Token for private registries
+    required: false
+outputs:
+  version:
+    description: Detected tool version
+    value: ${{ steps.detect.outputs.version }}
+  cache_key:
+    description: Cache key used
+    value: ${{ steps.detect.outputs.key }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      run: |
+        echo "version=$(cat ${{ inputs.versions-file }})" >> "$GITHUB_OUTPUT"
+        echo "key=tools-${{ hashFiles(inputs.versions-file) }}" >> "$GITHUB_OUTPUT"
+    - if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.tools
+        key: ${{ steps.detect.outputs.key }}

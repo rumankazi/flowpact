@@ -1,0 +1,39 @@
+name: Pipeline
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, production]
+        default: staging
+      skip-tests:
+        type: boolean
+        default: false
+      release-notes:
+        type: string
+        required: false
+      legacy-flag:
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      environment: ${{ inputs.environment }}
+      notes: ${{ inputs.release-notes }}
+      verbose: true
+    secrets: inherit
+
+  deploy:
+    needs: build
+    if: ${{ !inputs.skip-tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy.sh "${{ needs.build.outputs.artifact-url }}" "${{ needs.build.outputs.image-digest }}"
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "deployed ${{ needs.build.outputs.artifact-url }}"

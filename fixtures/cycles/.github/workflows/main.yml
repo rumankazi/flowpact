@@ -1,0 +1,15 @@
+name: Main
+on: workflow_dispatch
+
+jobs:
+  stage-b:
+    uses: ./.github/workflows/b.yml
+  missing:
+    uses: ./.github/workflows/does-not-exist.yml
+  remote:
+    uses: octo-org/shared/.github/workflows/lint.yml@v2
+  report:
+    needs: [stage-b, linting]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo done

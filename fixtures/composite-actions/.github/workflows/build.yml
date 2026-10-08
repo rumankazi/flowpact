@@ -1,0 +1,15 @@
+name: Build
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "tools ${{ steps.tools.outputs.version }}"
+      - id: tools
+        uses: ./.github/actions/install-tools
+        with:
+          version-file: .tool-versions
+          cache: true
+      - run: echo "cache key ${{ steps.tools.outputs.cache-key }}"

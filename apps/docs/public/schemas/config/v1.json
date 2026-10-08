@@ -1,0 +1,147 @@
+{
+  "$id": "https://rumankazi.github.io/wfc/schemas/config/v1.json",
+  "title": "wfc configuration",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "JSON Schema reference for editor autocomplete.",
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "description": "Config schema version. Currently 1.",
+      "type": "number",
+      "const": 1
+    },
+    "repository": {
+      "description": "owner/repo of this repository. Lets `uses: owner/repo/.github/workflows/x.yml@ref` resolve locally.",
+      "type": "string",
+      "pattern": "^[\\w.-]+\\/[\\w.-]+$"
+    },
+    "rules": {
+      "default": {},
+      "description": "Severity per rule, keyed by code (WFC401) or name (empty-binding-for-matrix-combo).",
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "enum": [
+          "error",
+          "warning",
+          "info",
+          "off"
+        ]
+      }
+    },
+    "limits": {
+      "description": "Thresholds used by structure rules.",
+      "default": {},
+      "type": "object",
+      "properties": {
+        "nestingDepth": {
+          "default": 10,
+          "description": "Maximum workflows in one call chain, counting the top-level workflow (WFC602).",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxInputs": {
+          "default": 30,
+          "description": "Inputs on one workflow_call interface before WFC605 suggests grouping them.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false
+    },
+    "ignore": {
+      "default": [],
+      "description": "Repo-relative path prefixes or globs (`*`, `**`) whose findings are suppressed.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overrides": {
+      "default": [],
+      "description": "Accepted findings, each with a reason and an optional expiry date.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Rule code (WFC104) or name (unused-input) to suppress."
+          },
+          "target": {
+            "description": "Symbol the finding is about, e.g. `.github/workflows/ci.yml#inputs.legacy`. Supports `*` and `**`.",
+            "type": "string"
+          },
+          "file": {
+            "description": "Repo-relative file path, prefix or glob the finding is located in.",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Why this finding is accepted. Required, at least 10 characters."
+          },
+          "expires": {
+            "description": "YYYY-MM-DD (UTC). After the end of this day the finding is reported again, together with WFC901.",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "owner": {
+            "description": "Who owns the exception, e.g. `@platform-team`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "matrixShapes": {
+      "default": {},
+      "description": "Declared keys of runtime-computed matrices, keyed by `<workflow path>#<job id>`. Lets wfc verify `matrix.*` reads (WFC404) instead of reporting WFC403.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[^#]+#[^#]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "plugins": {
+      "default": [],
+      "description": "Repo-relative JavaScript modules (.js/.mjs) exporting extra rules (default export: rule or array of rules).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

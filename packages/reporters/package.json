@@ -1,0 +1,26 @@
+{
+  "name": "@wfc/reporters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Output formatters for wfc analysis results (pretty terminal, JSON).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean --target node22",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@wfc/core": "workspace:*",
+    "picocolors": "^1.1.1",
+    "string-width": "^8.3.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1"
+  }
+}

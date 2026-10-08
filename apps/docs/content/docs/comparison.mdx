@@ -1,0 +1,34 @@
+---
+title: Comparison
+description: How wfc relates to actionlint, zizmor and the lockfile tools for GitHub Actions.
+---
+
+| Tool | Focus | Overlap with wfc |
+| --- | --- | --- |
+| [actionlint](https://github.com/rhysd/actionlint) | Deep single-file checks: expression types, shell scripts (shellcheck), runner labels, action inputs, one level of local `workflow_call` | Missing/unknown inputs and secrets on direct calls, `needs` references |
+| [zizmor](https://github.com/zizmorcore/zizmor), ghalint | Security: injection, permissions, pinning | None |
+| gh-actions-lockfile, ghasum, actionspack, GitHub's `dependencies:` lock | Pin action and workflow **versions** (SHAs, hashes) | None — they lock *what code runs*, wfc checks *what data flows* |
+
+**Recommendation:** run actionlint and wfc together. wfc focuses on what crosses file boundaries and matrix
+combinations.
+
+## Measured on the fixture repositories
+
+The repositories under [`fixtures/`](https://github.com/rumankazi/wfc/tree/main/fixtures) were linted with both tools:
+
+| Fixture | actionlint | wfc |
+| --- | --- | --- |
+| `incident-matrix` — one include entry without `config` | **0 findings** | `WFC401` naming `{ name: windows }`, the include entry and the receiving input |
+| `deep-nesting` — four levels of reusable workflows | 4 findings | the same 4 at identical positions **plus 9**: optional→required forwarding, dropped pass-throughs, unused inputs/outputs/secrets, an output never written by its step, inherited secrets, an undefined env var |
+| `composite-actions` | 4 findings | the same 4 at identical positions plus unused action inputs/outputs |
+| `clean` | 0 | 0 |
+
+## What only wfc reports
+
+- per-matrix-combination evaluation of bindings (`WFC401`, `WFC402`);
+- values forwarded from optional inputs into required ones (`WFC107`);
+- dead inputs, secrets and outputs computed across all callers (`WFC104`, `WFC106`, `WFC203`, `WFC303`);
+- step outputs read but never written to `$GITHUB_OUTPUT` (`WFC304`);
+- what `secrets: inherit` actually needs (`WFC204`);
+- call cycles and nesting depth across the whole repository (`WFC601`, `WFC602`);
+- `wfc trace` for any value, in both directions.

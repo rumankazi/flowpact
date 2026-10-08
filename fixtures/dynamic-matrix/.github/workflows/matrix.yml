@@ -1,0 +1,36 @@
+name: Matrix
+on: push
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - id: gen
+        run: echo "matrix=$(./gen-matrix.sh)" >> "$GITHUB_OUTPUT"
+
+  dynamic:
+    needs: setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    steps:
+      - run: ./test.sh --config "${{ matrix.config }}"
+
+  sharded:
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental == true }}
+    strategy:
+      matrix:
+        suite: [unit, e2e]
+        include:
+          - suite: e2e
+            shard: 1
+          - suite: canary
+            experimental: true
+    steps:
+      - run: ./test.sh --suite ${{ matrix.suite }} --shard ${{ matrix.shard }}
+      - if: matrix.experimental
+        run: echo "experimental run"
+      - run: echo "${{ matrix.sute }}"

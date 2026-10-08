@@ -1,0 +1,113 @@
+---
+title: How it works
+description: From YAML to a data-flow graph — how wfc finds problems that span workflows and matrix combinations.
+---
+
+wfc is a static analyzer. Nothing is executed and no GitHub API is called; everything comes from the files in your
+repository.
+
+```text
+ YAML files ──▶ IR ──▶ expressions ──▶ graph ──▶ matrix expansion ──▶ contracts ──▶ rules ──▶ overrides ──▶ reporters
+   (yaml +    (jobs,   (@actions/    (symbols,    (exact include/    (wfc check)  (45 rules)  (reason,  (terminal, JSON,
+ positions)   steps)  expressions)    edges)      exclude rules)                               expiry)  Markdown, SARIF)
+```
+
+<Steps>
+<Step>
+### 1. Load and build the IR
+
+Every workflow and local action is parsed with exact source positions into an intermediate representation: triggers,
+the `workflow_call` / `workflow_dispatch` interface (inputs with type/required/default, secrets, outputs), env at every
+scope, jobs (`needs`, `if`, `strategy.matrix`, `uses`, `with`, `secrets` / `inherit`, outputs) and steps (`id`, `uses`,
+`with`, `env`, `run`).
+
+Files are also validated against GitHub's schema with
+[`@actions/workflow-parser`](https://www.npmjs.com/package/@actions/workflow-parser) — the parser behind GitHub's
+Actions language service — and reported as `WFC503`.
+
+Local references are followed until closure: `uses: ./.github/workflows/x.yml`, `uses: ./path/to/action`, and
+`owner/repo/...@ref` when it points at this same repository.
+</Step>
+<Step>
+### 2. Parse every expression
+
+Every `${{ }}` (and every bare `if:` condition) is parsed with GitHub's
+[`@actions/expressions`](https://www.npmjs.com/package/@actions/expressions) into an AST. wfc extracts typed references
+such as `inputs.config`, `needs.build.outputs['version']`, `steps.meta.outputs.tag`, `matrix.os` or
+`github.event.inputs.x`, each with its own line and column.
+</Step>
+<Step>
+### 3. Build the graph
+
+References become edges between **symbols** with stable ids, for example
+`.github/workflows/test.yml#inputs.config` or `.github/workflows/ci.yml#jobs.build.outputs.version`:
+
+- `with:` on a reusable call or local action **binds** a caller expression to a callee input;
+- step output → job output → `workflow_call` output → the caller's `needs.<job>.outputs.<name>`;
+- `secrets: inherit` is expanded to the secrets the callee tree actually reads;
+- `needs`, `calls` and `uses` edges describe the structure.
+
+`wfc trace` is a walk over this graph, `wfc graph` draws its call structure, and `wfc lint --dump-graph graph.json`
+writes it out.
+</Step>
+<Step>
+### 4. Expand matrices — the part that catches silent empties
+
+Matrices are expanded with GitHub's exact rules: cartesian product of the dimensions, `exclude` partial matches, then
+each `include` entry is merged into every original combination it does not conflict with — or becomes a new
+combination. (The implementation is checked against GitHub's documented examples and against an independent reference
+implementation with property-based tests.)
+
+Every `with:` value and every expression in the job is then **evaluated once per combination** with a partial
+evaluator that implements GitHub's operators and functions (`||`, `&&`, `==`, `format`, `contains`, `fromJSON`, …). A
+missing matrix key evaluates to `null` and carries a *taint*. If that taint survives into a value — and is not
+neutralized by a fallback such as `matrix.config || 'default'` — the binding is reported with the exact combinations
+(`WFC401`, `WFC402`).
+
+Values that depend on runtime state (`github.sha`, `fromJSON(needs.setup.outputs.matrix)`) evaluate to *unknown* and
+are never guessed at; runtime-computed matrices are reported as unverifiable (`WFC403`) unless you declare their keys
+under [`matrixShapes`](/docs/configuration#matrix-shapes).
+</Step>
+<Step>
+### 5. Compare with the contracts (`wfc check`)
+
+In check mode, wfc builds a [contract](/docs/contracts) for every workflow and local action from the graph — interface,
+calls, local action uses and consumers — and compares it with the committed file in `.github/workflow-contracts/`.
+The comparison is semantic: each difference is classified as breaking or non-breaking, and missing, orphaned and
+unreadable contract files are recorded. `wfc generate` uses the same comparison to decide what to write.
+</Step>
+<Step>
+### 6. Run rules
+
+Rules are small functions over the graph (and, in check mode, the contract comparison). Each finding carries a code,
+severity, message, primary location, related locations (the call chain, outermost first), affected combinations, the
+symbol id, why/fix text and a docs URL — plus a stable fingerprint that survives line shifts. Built-in rules and
+[plugin rules](/docs/custom-rules) run the same way.
+
+Findings outside the paths you asked for, or matching `ignore` patterns, are dropped after analysis, so cross-file
+rules still see the whole picture.
+</Step>
+<Step>
+### 7. Apply overrides
+
+Each remaining finding is matched against the [overrides](/docs/configuration#overrides) in the config by rule and
+symbol or file. Accepted findings move to a separate `suppressed` list with the reason that accepted them. Then a last
+set of rules checks the overrides themselves: expired (`WFC901`, the findings come back), unused (`WFC902`) and
+expiring soon (`WFC903`).
+</Step>
+<Step>
+### 8. Report
+
+The same result is rendered for the terminal, as JSON, Markdown or SARIF, and the exit code is derived from the
+counts and `--fail-on`.
+</Step>
+</Steps>
+
+## What wfc deliberately does not do
+
+- **Guess runtime values.** Anything that depends on events, previous job results or scripts is *unknown*, so wfc stays
+  quiet rather than produce false positives.
+- **Analyze other repositories.** Calls to reusable workflows in other repositories are reported as unverified
+  (`WFC603`).
+- **Replace actionlint.** actionlint checks single files in depth (shell scripts, action inputs of marketplace actions,
+  runner labels). Run both — see [Comparison](/docs/comparison).

@@ -1,0 +1,40 @@
+name: Test
+on:
+  workflow_call:
+    inputs:
+      os:
+        type: string
+        required: true
+      node-version:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      coverage:
+        type: boolean
+        default: false
+    secrets:
+      codecov-token:
+        required: false
+    outputs:
+      report:
+        description: Path of the test report
+        value: ${{ jobs.unit.outputs.report }}
+
+jobs:
+  unit:
+    runs-on: ${{ inputs.os }}
+    outputs:
+      report: ${{ steps.run.outputs.report }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ inputs.node-version }}
+      - id: run
+        run: |
+          npm test -- --version "${{ inputs.version }}"
+          echo "report=reports/junit.xml" >> "$GITHUB_OUTPUT"
+      - if: inputs.coverage
+        run: npx codecov --token "${{ secrets.codecov-token }}"

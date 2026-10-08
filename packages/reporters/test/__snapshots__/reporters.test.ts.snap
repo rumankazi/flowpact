@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderPretty > renders the incident with code frame, matrix, context, why, fix and docs 1`] = `
+"
+── .github/workflows/tests.yml ──────────────────────────────────────────────────────────── 1 error
+
+✖  ERROR  WFC401 empty-binding-for-matrix-combo
+  Input "config" for .github/workflows/run-suite.yml is empty in 1 of 3 matrix combinations —
+  matrix.config is not defined there
+
+  ▶ .github/workflows/tests.yml:23:19
+    21 │       suite: \${{ inputs.suite }}
+    22 │       variant: \${{ matrix.name }}
+    23 │       config: \${{ matrix.config }}
+       │                   ━━━━━━━━━━━━━
+
+  matrix  { name: windows }
+  context ├─ .github/workflows/pipeline.yml:9:11   jobs.tests calls .github/workflows/tests.yml
+          ├─ .github/workflows/tests.yml:18:13     this include entry has no \`config\`
+          └─ .github/workflows/run-suite.yml:11:7  receives the empty value: input "config"
+  why     GitHub evaluates a missing matrix key to an empty string — no error, no warning. The
+          affected matrix leg runs with an empty input, so the callee may skip its real work
+          (e.g. a test configuration) while the run stays green.
+  fix     Set \`config\` in every combination, or use a fallback: \`\${{ matrix.config ||
+          '<default>' }}\`.
+  docs    https://rumankazi.github.io/wfc/docs/rules/wfc401
+
+╭─ Summary ──────────────────────────────────────────────────╮
+│ ✖ 1 error   ▲ 0 warnings   ● 0 info                        │
+│ 3 workflows · 0 actions · 3 jobs · 3 matrix combinations   │
+│ graph: 12 symbols, 5 edges · 7 ms                          │
+│                                                            │
+│ ✖ WFC401  empty-binding-for-matrix-combo    1              │
+│                                                            │
+│ Explain any code: wfc explain <code>                       │
+╰────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`renderTrace > draws the flow tree downward and upward 1`] = `
+".github/workflows/tests.yml#inputs.suite:5:7 (input)
+└── ▶ .github/workflows/run-suite.yml#inputs.suite:5:7 (input)
+    via \${{ inputs.suite }}  @ .github/workflows/tests.yml:21:18
+    └── run script in jobs.test › steps[1] › run  .github/workflows/run-suite.yml:21:42
+        ./run-tests.sh --suite "\${{ inputs.suite }}" --variant "\${{ inputs.variant }}..."
+`;

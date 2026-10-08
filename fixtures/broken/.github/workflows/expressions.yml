@@ -1,0 +1,13 @@
+name: Bad expressions
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: string
+        default: debug
+jobs:
+  build:
+    if: ${{ inputs.mode = 'release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ inputs.mode == 'release' && }}"

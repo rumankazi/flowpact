@@ -1,0 +1,41 @@
+---
+title: Roadmap
+description: What is shipped and what comes next — an editor extension with a language server, then cross-repository resolution.
+---
+
+## Shipped
+
+- **Data-flow engine:** workflows and local composite actions, nested reusable workflows, same-repository references.
+- **Exact matrix expansion** and per-combination evaluation; declared shapes for runtime-computed matrices
+  (`matrixShapes`).
+- **45 rules** (`WFC1xx`–`WFC9xx`) with stable codes, docs pages and `wfc explain`.
+- **[Contracts](/docs/contracts):** `wfc generate` writes a deterministic lockfile per workflow and local action;
+  `wfc check` reports missing, outdated, orphaned and invalid contracts and breaking interface changes
+  (`WFC801`–`WFC805`), with a `git apply`-able patch for anyone who cannot run the CLI.
+- **[Overrides](/docs/configuration#overrides)** with a mandatory reason, an optional expiry date and owner; expired,
+  unused and soon-expiring overrides are reported (`WFC901`–`WFC903`).
+- **[GitHub Action](/docs/action):** job summary, pull request annotations, SARIF and the regenerated contracts as an
+  artifact.
+- **CLI:** `lint`, `check`, `generate`, `graph` (tree, Mermaid, DOT, JSON), `trace`, `explain`, `rules`; pretty, JSON,
+  Markdown and SARIF output; debug logging.
+- **[Plugins](/docs/custom-rules):** organization-specific rules loaded from the config.
+- Config file, contracts and reports with published JSON Schemas.
+
+## Next: VS Code extension and language server
+
+wfc already knows, for every expression in every workflow, which symbol it refers to and where that symbol is
+defined. A language server makes that available while editing, in VS Code and any other editor that speaks LSP:
+
+- **Diagnostics as you type** — the same findings as `wfc lint` / `wfc check`, across files, without a terminal.
+- **Hover traces** — hover an input, secret or output to see where its value comes from and where it goes, through
+  every level of nesting and per matrix combination.
+- **Go to definition across workflow calls** — from `with: config:` to the callee's input, from
+  `needs.build.outputs.url` to the step that writes it, from a contract entry to the workflow.
+- **Quick fixes** — add a missing input, remove an unused one, add the missing matrix key, regenerate contracts, or
+  **add an override** with a reason prompt.
+
+## Then: cross-repository resolution
+
+Reusable workflows called from other repositories (`owner/repo/.github/workflows/x.yml@ref`) are reported today as
+unverified (`WFC603`). Next, wfc will resolve them — from published contracts or by fetching the referenced
+workflow — so interfaces and breaking changes can be checked across repository boundaries.

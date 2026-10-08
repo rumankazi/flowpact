@@ -1,0 +1,31 @@
+name: Package
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      release-notes:
+        type: string
+        required: false
+      channel:
+        type: string
+        required: true
+    secrets:
+      registry-token:
+        required: true
+      signing-key:
+        required: true
+    outputs:
+      url:
+        value: ${{ jobs.publish.outputs.url }}
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish.yml
+    with:
+      environment: ${{ inputs.environment }}
+      channel: ${{ inputs.channel }}
+      notes: ${{ inputs.release-notes }}
+    secrets:
+      token: ${{ secrets.registry-token }}

@@ -1,0 +1,19 @@
+name: Notify
+description: Posts a message to the team channel
+inputs:
+  message:
+    description: Text to post
+    required: true
+  channel:
+    description: Channel to post to
+    required: false
+    default: '#releases'
+  emoji:
+    description: Emoji prefix for the message
+    required: false
+    default: ':rocket:'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: ./notify.sh --channel "${{ inputs.channel }}" --text "${{ inputs.emoji }} ${{ inputs.message }}"

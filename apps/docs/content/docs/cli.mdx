@@ -1,0 +1,254 @@
+---
+title: CLI
+description: Every wfc command, flag, output format and environment variable.
+---
+
+| Command | What it does |
+| --- | --- |
+| [`wfc lint`](#wfc-lint) | Analyze workflows and local actions and report findings. |
+| [`wfc check`](#wfc-check) | `lint` plus a comparison with the committed [contracts](/docs/contracts). |
+| [`wfc generate`](#wfc-generate) | Write (or preview) the contracts. |
+| [`wfc graph`](#wfc-graph) | Show the call graph of workflows and actions. |
+| [`wfc trace`](#wfc-trace) | Follow a value down to where it is used, or up to where it comes from. |
+| [`wfc explain`](#wfc-explain) | Print the docs for a rule. |
+| [`wfc rules`](#wfc-rules) | List the rules and their effective severities. |
+
+Every run starts by printing the tool version and the version of every schema it reads or writes (to stderr, so JSON on
+stdout stays clean):
+
+```text
+ wfc  v0.1.0  config schema v1 · contract schema v1 · report schema v1 · node v24.4.0
+root . · config .github/workflow-contracts/wfc.config.yml
+```
+
+`wfc --version` prints the same line.
+
+## `wfc lint`
+
+Analyzes all workflows and local actions and reports findings.
+
+```sh
+wfc lint [paths…] [options]
+```
+
+<Screenshot name="lint-deep-nesting" alt="wfc lint output for a four-level chain of reusable workflows" caption="Nested reusable workflows: a missing required input two levels down, an undeclared output, a needs edge that is missing." />
+
+| Option | Description |
+| --- | --- |
+| `[paths…]` | Files or directories to report on. Everything is still analyzed. |
+| `--root <dir>` | Repository root (default: current directory). |
+| `--config <file>` | Config file (default: `.github/workflow-contracts/wfc.config.yml`). |
+| `--format pretty\|json\|markdown\|sarif` | Output on stdout (default `pretty`). See [output formats](#output-formats). |
+| `-o, --output <file>` | Also write the report to a file, format by extension: `.sarif` / `.sarif.json` → SARIF, `.json` → JSON, `.md` → Markdown, anything else → plain text. |
+| `--fail-on error\|warning\|never` | Exit `1` when findings at this level exist (default `error`). |
+| `--only <codes>` | Comma-separated codes or names to run, e.g. `WFC401,unused-input`. |
+| `--hide-info` | Pretty terminal output only: do not list info findings (they are still counted). JSON, Markdown and SARIF always include them. |
+| `--include-graph` | Add the data-flow graph to JSON output and the call graph (Mermaid) to Markdown output. |
+| `--dump-graph <file>` | Write the data-flow graph as JSON (debugging). |
+| `--no-schema` | Skip validation against GitHub's workflow schema. |
+| `-d, --debug` | Debug logging (see below). |
+| `-v` / `-vv` | Verbose / trace logging. |
+| `-q, --quiet` | No banner or logs, only the report and errors. |
+| `--no-color` | Disable colors (also `NO_COLOR=1`). |
+| `--ascii` | ASCII-only symbols for limited terminals. |
+
+The summary card at the end:
+
+<Screenshot name="lint-summary" alt="wfc summary card with counts per severity and the most frequent codes" />
+
+### Output formats
+
+| Format | Use it for |
+| --- | --- |
+| `pretty` | The terminal: code frames, call chains, matrix combinations and a summary card. |
+| `json` | Tooling. Follows [`/schemas/report/v1.json`](/schemas/report/v1.json) (below). |
+| `markdown` | Job summaries and pull request comments: counts, findings grouped by severity with docs links, and contract changes in `wfc check`. Inside GitHub Actions, locations link to the file at the commit being checked. |
+| `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) for GitHub code scanning and other SARIF viewers. Findings accepted by overrides are included as suppressed results. |
+
+```sh
+wfc lint -o wfc-report.json           # JSON file + pretty output in the terminal
+wfc lint -o wfc.sarif                 # SARIF file for code scanning
+wfc lint -o wfc-report.md             # Markdown file, e.g. for $GITHUB_STEP_SUMMARY
+wfc lint -o wfc-report.txt            # plain-text copy of the pretty report
+wfc lint --format json > report.json  # JSON only
+```
+
+### JSON report
+
+The JSON report follows [`/schemas/report/v1.json`](/schemas/report/v1.json):
+
+```json
+{
+  "$schema": "https://rumankazi.github.io/wfc/schemas/report/v1.json",
+  "meta": { "tool": "wfc", "version": "0.1.0", "schemas": { "config": 1, "contract": 1, "report": 1 }, "durationMs": 31 },
+  "summary": { "errors": 1, "warnings": 0, "infos": 0, "suppressed": 0, "byCode": { "WFC401": 1 } },
+  "findings": [
+    {
+      "code": "WFC401",
+      "name": "empty-binding-for-matrix-combo",
+      "severity": "error",
+      "message": "Input \"config\" for .github/workflows/run-suite.yml is empty in 1 of 3 matrix combinations — matrix.config is not defined there",
+      "loc": { "file": ".github/workflows/tests.yml", "line": 23, "column": 19, "endLine": 23, "endColumn": 32 },
+      "related": [{ "loc": { "file": ".github/workflows/tests.yml", "line": 18, "column": 13 }, "message": "this include entry has no `config`" }],
+      "combos": ["{ name: windows }"],
+      "symbol": ".github/workflows/run-suite.yml#inputs.config",
+      "why": "…", "fix": "…",
+      "docsUrl": "https://rumankazi.github.io/wfc/docs/rules/wfc401",
+      "fingerprint": "3f2a9c0d81b7e645"
+    }
+  ],
+  "suppressed": []
+}
+```
+
+- `symbol` identifies what the finding is about; use it as the `target` of an
+  [override](/docs/configuration#overrides).
+- `suppressed` lists findings accepted by overrides, each with an `override` object (`index`, `reason`, `expires`,
+  `owner`); they are not part of the counts.
+- In `wfc check`, `contracts` holds the contract comparison: `drift`, the number of `breaking` changes, `counts` per
+  status and one entry per contract file with its status and semantic changes.
+- `fingerprint` is stable across unrelated edits (line shifts, changed counts), so it can be used to track findings
+  over time.
+
+## `wfc check`
+
+Everything `wfc lint` does, plus a comparison with the [contracts](/docs/contracts) committed in
+`.github/workflow-contracts/`.
+
+```sh
+wfc check [paths…] [options] [--patch <file>]
+```
+
+It takes the same options as `wfc lint`. Contract findings — missing (`WFC801`), outdated (`WFC802`), breaking
+(`WFC803`), orphaned (`WFC804`) and invalid (`WFC805`) contracts — are errors by default, so the command exits `1`
+until the contracts are regenerated.
+
+With `paths`, the comparison covers the contracts of those workflows and actions, and the contracts that list them as
+a consumer: a caller that stops passing an input or reading an output changes its callee's contract, so that drift
+is reported too.
+
+| Option | Description |
+| --- | --- |
+| `--patch <file>` | When contracts drifted, also write a `git apply`-able patch with the regenerated contracts. |
+
+<Screenshot name="check-drift" alt="wfc check reporting an outdated contract, an unused override, an orphaned contract and a breaking change" caption="wfc check on the contracts-drift fixture." />
+
+## `wfc generate`
+
+Writes the contract for every workflow and local action, and deletes contracts whose workflow or action no longer
+exists.
+
+```sh
+wfc generate [--dry-run] [--patch <file>] [--out <dir>]
+```
+
+| Option | Description |
+| --- | --- |
+| `--dry-run` | Print the table of changes and a colored unified diff; write nothing. |
+| `--patch <file>` | Write the changes as a `git apply`-able patch instead of applying them. |
+| `--out <dir>` | Write all contracts (changed or not) under `<dir>`, keeping their relative paths, instead of the repository. Nothing is deleted. |
+
+It also accepts `--root`, `--config` and the logging and color options. The table lists every contract file as new,
+changed, removed or unchanged, with the semantic changes underneath; breaking changes are marked. Running it twice
+in a row changes nothing.
+
+<Screenshot name="generate-dry-run" alt="wfc generate --dry-run listing new contract files and a unified diff of their contents" />
+
+## `wfc graph`
+
+Shows which workflows call which reusable workflows and local actions.
+
+```sh
+wfc graph [--format tree|mermaid|dot|json]
+```
+
+| Format | Output |
+| --- | --- |
+| `tree` (default) | A tree per top-level workflow in the terminal. |
+| `mermaid` | A Mermaid `flowchart`, rendered by GitHub in Markdown files, issues and pull requests. |
+| `dot` | Graphviz DOT, e.g. `wfc graph --format dot \| dot -Tsvg > graph.svg`. |
+| `json` | Nodes and edges for tooling. |
+
+Edges are labelled with the calling job (`jobs.build`, or the step for local actions), `×N` when the call fans out over
+N matrix combinations, and `(inherit)` for `secrets: inherit`. Reusable workflows in other repositories appear as
+**remote** nodes, local targets that do not exist as **missing** nodes, and job-level calls to files outside
+`.github/workflows` ([`WFC606`](/docs/rules/wfc606)) as **invalid location** nodes.
+
+<Screenshot name="graph-tree" alt="wfc graph showing a pipeline calling three levels of reusable workflows" />
+
+## `wfc trace`
+
+Shows where a value flows to, or with `--up` where it comes from.
+
+```sh
+wfc trace <symbol> [--up] [--depth n] [--format pretty|json]
+```
+
+Each symbol is expanded once per trace; where the same value is reached again through another path (for example
+shared callees), the tree says `↑ shown above` instead of repeating it. `--format json` always prints
+`{ "query", "direction", "traces": [...] }`, however many symbols matched.
+
+Symbols can be written in several ways:
+
+| Query | Matches |
+| --- | --- |
+| `.github/workflows/ci.yml#inputs.env` | exactly that symbol |
+| `ci.yml#inputs.env` | by file name |
+| `ci.yml:env` | inputs, secrets or outputs named `env` |
+| `ci.yml` | the whole interface of the workflow (every input, secret and output) |
+
+<Screenshot name="trace-down" alt="wfc trace following an input through four levels of reusable workflows" caption="Downstream: an input passed through three levels and finally used as the deployment environment." />
+
+<Screenshot name="trace-up" alt="wfc trace --up showing the matrix values feeding an input, with one combination missing" caption="Upstream: the input is fed by matrix.config, which one combination does not define." />
+
+## `wfc explain`
+
+```sh
+wfc explain WFC401
+wfc explain empty-binding-for-matrix-combo
+```
+
+<Screenshot name="explain" alt="wfc explain output with why, fix, examples and docs link" />
+
+## `wfc rules`
+
+Lists every built-in rule with its effective severity (after your config). `--format json` for tooling.
+
+<Screenshot name="rules" alt="wfc rules listing codes, severities and summaries" />
+
+## Debug mode and logging
+
+wfc logs every stage of the analysis: config resolution, file discovery, parsing per file, graph construction,
+matrix expansion per job (combinations, keys, exactness), each rule with its finding count and timing, and the
+final summary.
+
+| Enable with | Level |
+| --- | --- |
+| `--debug`, `-d`, `-v`, `WFC_DEBUG=1` | debug |
+| `-vv`, `WFC_DEBUG=trace` | trace (adds per-file timings and skipped rules) |
+| `RUNNER_DEBUG=1`, `ACTIONS_STEP_DEBUG=true` | debug — set automatically when you re-run a GitHub job with debug logging |
+
+Logs go to stderr, so `--format json` output stays parseable.
+
+<Screenshot name="debug" alt="wfc lint --debug showing stage-by-stage logs" />
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | No findings at or above `--fail-on` (default: `error`). |
+| `1` | Findings at or above `--fail-on` — including contract findings in `wfc check`. |
+| `2` | Usage or configuration error (unknown rule, invalid config, plugin that fails to load, nothing to analyze). |
+| `3` | Internal error — please [report it](https://github.com/rumankazi/wfc/issues) with `--debug` output. |
+
+`wfc generate`, `wfc graph`, `wfc trace`, `wfc explain` and `wfc rules` exit `0` on success.
+
+## Environment variables
+
+| Variable | Effect |
+| --- | --- |
+| `NO_COLOR` / `FORCE_COLOR` | Disable / force colors. |
+| `WFC_DEBUG` | `1` for debug logs, `trace` for trace logs. |
+| `WFC_NO_HYPERLINKS` | Disable clickable docs links (OSC 8). |
+| `GITHUB_REPOSITORY` | `owner/repo`, used to resolve same-repository `uses:` references (also read from `.git/config` or the `repository` config key). |
+| `COLUMNS` | Output width when not attached to a terminal. |

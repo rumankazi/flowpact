@@ -1,0 +1,22 @@
+{
+  "name": "@wfc/action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub Action for wfc: annotations, job summary, reports and contract drift artifacts.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@wfc/core": "workspace:*",
+    "@wfc/reporters": "workspace:*",
+    "tsup": "^8.5.1",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "@actions/artifact": "^6.3.1",
+    "@actions/core": "^3.0.1"
+  }
+}

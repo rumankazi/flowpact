@@ -1,0 +1,21 @@
+name: Setup Node
+description: Install Node.js with npm caching
+inputs:
+  node-version:
+    description: Node.js version to install
+    required: true
+outputs:
+  cache-hit:
+    description: Whether the npm cache was restored
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: npm-${{ hashFiles('**/package-lock.json') }}

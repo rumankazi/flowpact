@@ -1,0 +1,106 @@
+name: 'wfc — workflow contracts'
+description: 'Lint the data flow between GitHub Actions workflows and check their locked contracts, with annotations, a job summary and SARIF.'
+author: 'Ruman Kazi'
+branding:
+  icon: git-merge
+  color: blue
+
+inputs:
+  mode:
+    description: '`lint` analyzes workflows and local actions. `check` also compares them with the locked contracts in `.github/workflow-contracts/`.'
+    required: false
+    default: 'lint'
+  paths:
+    description: 'Workflow or action files or directories to report on, separated by spaces or newlines, relative to working-directory. Empty reports on everything.'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory holding the `.github` folder to analyze, relative to the workspace.'
+    required: false
+    default: '.'
+  config:
+    description: 'Path to the wfc config file, relative to working-directory. Empty uses `.github/workflow-contracts/wfc.config.yml` when it exists.'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Fail the step when findings at this level exist: `error`, `warning` or `never`.'
+    required: false
+    default: 'error'
+  annotations:
+    description: 'Annotate findings on the files in the run and pull request.'
+    required: false
+    default: 'true'
+  summary:
+    description: 'Write a Markdown report to the job summary.'
+    required: false
+    default: 'true'
+  summary-graph:
+    description: 'Add the workflow call graph (Mermaid) to the job summary.'
+    required: false
+    default: 'false'
+  max-findings:
+    description: 'Findings listed in full in the job summary; the rest are counted.'
+    required: false
+    default: '50'
+  report-json:
+    description: 'Write the JSON report to this path (relative to the workspace).'
+    required: false
+    default: ''
+  report-sarif:
+    description: 'Write a SARIF 2.1.0 report to this path (relative to the workspace), for github/codeql-action/upload-sarif.'
+    required: false
+    default: ''
+  report-markdown:
+    description: 'Write the Markdown report to this path (relative to the workspace), e.g. for a pull request comment.'
+    required: false
+    default: ''
+  upload-contracts:
+    description: 'In check mode, when contracts drifted, upload the regenerated contracts and a patch as an artifact.'
+    required: false
+    default: 'true'
+  artifact-name:
+    description: 'Name of the contract drift artifact. Defaults to wfc-contracts, or wfc-contracts-<working-directory> when working-directory is set. Must be unique per run (set it for matrix jobs).'
+    required: false
+    default: 'wfc-contracts'
+  retention-days:
+    description: 'Days to keep the contract drift artifact (0 uses the repository default).'
+    required: false
+    default: '7'
+  plugins:
+    description: 'Load the plugins listed in the config (auto, true, false). Plugins run JavaScript from the checkout; auto disables them on pull_request_target and workflow_run events.'
+    required: false
+    default: 'auto'
+  debug:
+    description: 'Print wfc debug logs (also enabled by re-running the job with debug logging).'
+    required: false
+    default: 'false'
+
+outputs:
+  errors:
+    description: 'Number of error findings.'
+  warnings:
+    description: 'Number of warning findings.'
+  infos:
+    description: 'Number of info findings.'
+  suppressed:
+    description: 'Number of findings accepted by overrides.'
+  findings:
+    description: 'Total number of findings (errors, warnings and info).'
+  drift:
+    description: '`true` when check mode found that the contracts drifted, otherwise `false`.'
+  breaking:
+    description: 'Number of breaking contract changes (check mode).'
+  exit-code:
+    description: 'The exit code the CLI would return: 0, or 1 when findings reach fail-on.'
+  report-json:
+    description: 'Absolute path of the JSON report, when report-json was set.'
+  report-sarif:
+    description: 'Absolute path of the SARIF report, when report-sarif was set.'
+  patch:
+    description: 'Absolute path of the contract patch on the runner, when contracts drifted.'
+  artifact-id:
+    description: 'ID of the uploaded contract drift artifact, when one was uploaded.'
+
+runs:
+  using: node24
+  main: packages/action/dist/index.js

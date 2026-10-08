@@ -1,0 +1,9 @@
+name: Broken YAML
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "unterminated
+        more
+  other: [1, 2

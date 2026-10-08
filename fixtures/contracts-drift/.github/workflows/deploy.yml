@@ -1,0 +1,41 @@
+name: Deploy
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      dry-run:
+        type: boolean
+        required: false
+        default: false
+      legacy-flag:
+        description: Read by the old release dispatcher only
+        type: string
+        required: false
+        default: ''
+    secrets:
+      deploy-token:
+        required: true
+    outputs:
+      url:
+        description: Where the release was deployed
+        value: ${{ jobs.deploy.outputs.url }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      url: ${{ steps.push.outputs.url }}
+    steps:
+      - id: push
+        run: |
+          ./deploy.sh --version "${{ inputs.version }}" --dry-run "${{ inputs.dry-run }}" --token "${{ secrets.deploy-token }}"
+          echo "url=https://${{ inputs.environment }}.example.com" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/notify
+        with:
+          message: Deployed ${{ inputs.version }} to ${{ inputs.environment }}

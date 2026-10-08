@@ -1,0 +1,13 @@
+node_modules/
+dist/
+# The GitHub Action runs its committed bundle.
+!packages/action/dist/
+coverage/
+.next/
+out/
+.source/
+*.tsbuildinfo
+.DS_Store
+wfc-report.*
+apps/docs/next-env.d.ts
+apps/docs/.source/

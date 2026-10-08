@@ -1,0 +1,48 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+      - id: setup
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: echo "cache hit ${{ steps.setup.outputs.cache-hit }}"
+
+  test:
+    needs: build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '22']
+        include:
+          - os: ubuntu-latest
+            coverage: true
+    uses: ./.github/workflows/test.yml
+    with:
+      os: ${{ matrix.os }}
+      node-version: ${{ matrix.node }}
+      version: ${{ needs.build.outputs.version }}
+      coverage: ${{ matrix.coverage == true }}
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  release:
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "releasing ${{ needs.build.outputs.version }} (${{ needs.test.outputs.report }})"

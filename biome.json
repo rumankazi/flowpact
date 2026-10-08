@@ -1,0 +1,29 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/coverage",
+      "!**/.next",
+      "!**/out",
+      "!**/.source",
+      "!**/next-env.d.ts",
+      "!fixtures",
+      "!apps/docs/content/docs/rules",
+      "!apps/docs/public/schemas"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
+  "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "always", "trailingCommas": "all" } },
+  "linter": {
+    "rules": {
+      "style": { "noNonNullAssertion": "off" },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noTemplateCurlyInString": "off",
+        "noControlCharactersInRegex": "off"
+      }
+    }
+  }
+}
