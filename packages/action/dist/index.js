@@ -135511,7 +135511,12 @@ function gitFileSystem(root, commit) {
     files.add(path4.slice(prefix2.length));
   }
   const cache = /* @__PURE__ */ new Map();
-  const norm = (p) => p.replace(/^\.\//, "").replace(/\/+$/, "");
+  const norm = (p) => {
+    const s = p.startsWith("./") ? p.slice(2) : p;
+    let end = s.length;
+    while (end > 0 && s[end - 1] === "/") end--;
+    return s.slice(0, end);
+  };
   const under = (dir2) => {
     const d = norm(dir2);
     return d === "" || d === "." ? "" : `${d}/`;
