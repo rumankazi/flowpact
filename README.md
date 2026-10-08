@@ -11,6 +11,8 @@
 [![Release](https://github.com/rumankazi/flowpact/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/release.yml)
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-flowpact-blue?logo=github)](https://github.com/marketplace/actions/flowpact)
 [![npm](https://img.shields.io/npm/v/flowpact?logo=npm)](https://www.npmjs.com/package/flowpact)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-0b8496)](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact)
+[![Open VSX](https://img.shields.io/open-vsx/v/flowpact/vscode-flowpact?label=Open%20VSX)](https://open-vsx.org/extension/flowpact/vscode-flowpact)
 [![Node.js](https://img.shields.io/node/v/flowpact?logo=nodedotjs)](https://www.npmjs.com/package/flowpact)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rumankazi/flowpact/badge)](https://scorecard.dev/viewer/?uri=github.com/rumankazi/flowpact)
 [![License: MIT](https://img.shields.io/github/license/rumankazi/flowpact)](LICENSE)
@@ -96,10 +98,11 @@ fails when they are out of date.
 ## Status
 
 Shipped: the engine, 50 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
-the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`), the GitHub Action and a
-[language server](https://rumankazi.github.io/flowpact/docs/editors) (diagnostics as you type, hover traces, go to
-definition across workflow calls). Next: the VS Code extension on the Marketplace, quick fixes, then cross-repository
-resolution — see the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap).
+the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`), the GitHub Action, a language server and the
+[VS Code extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact) (diagnostics as you
+type, hover traces, go to definition across workflow calls; also on
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact)). Next: quick fixes in the editor, then
+cross-repository resolution — see the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap).
 
 ## License
 

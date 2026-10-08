@@ -34,19 +34,21 @@ key's syntax.
 
 ## VS Code
 
-The flowpact extension bundles the language server; it needs nothing else installed. It works in VS Code 1.101 and
-later, and in editors built on it.
+Install **flowpact** from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact), or from
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact) in VSCodium, Cursor, Windsurf and other editors
+built on VS Code:
 
-<Callout title="Not on the Marketplace yet">
-  Until the extension is published, build it from a checkout of the repository and install the `.vsix` with
-  **Extensions: Install from VSIX…**:
+```bash
+code --install-extension flowpact.vscode-flowpact
+```
 
-  ```bash
-  pnpm install
-  pnpm --filter ./packages/vscode build
-  pnpm --filter ./packages/vscode package
-  ```
-</Callout>
+It bundles the language server, so nothing else needs to be installed, and works in VS Code 1.101 and later.
+
+It complements GitHub's [GitHub Actions](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions)
+extension, which completes and validates workflow syntax file by file: flowpact adds what crosses files (the data flow
+through reusable workflows and local actions, go to definition and references across them), and by default hides the
+four rules both would report (`flowpact.overlappingRules`).
 
 ### Settings
 
@@ -70,6 +72,15 @@ In an untrusted workspace (Restricted Mode), everything works except plugins, wh
 Trusting the workspace loads them without a restart; the language status item next to the file type says when they
 are off. Plugins load only for repositories inside the workspace folders: not for a file opened from elsewhere, nor
 for a repository above the folder you opened.
+
+### Limitations
+
+- A repository needs a `.github` folder to be analyzed in the editor; one with only an `action.yml` gets no
+  diagnostics there yet (`flowpact lint` checks it).
+- `env` set on a step or in a composite action, `steps.<id>.outcome` / `conclusion` and step ids are not navigable
+  yet.
+- Contract files (`.github/flowpact/contracts/`) show their findings but have no hover or go to definition.
+- There are no quick fixes, rename or completion yet.
 
 ## Other editors
 
