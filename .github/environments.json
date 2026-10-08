@@ -1,4 +1,6 @@
 {
   "npm": { "branches": ["main"] },
-  "github-pages": { "branches": ["main"] }
+  "github-pages": { "branches": ["main"] },
+  "vscode-marketplace": { "branches": ["main"] },
+  "open-vsx": { "branches": ["main"] }
 }

@@ -22,8 +22,9 @@ function positionOf(doc, needle, offset = 0) {
 }
 
 exports.run = async () => {
-  const extension = vscode.extensions.getExtension('rumankazi.vscode-flowpact');
-  assert.ok(extension, 'the extension is not installed');
+  const id = process.env.FLOWPACT_EXTENSION_ID;
+  const extension = id && vscode.extensions.getExtension(id);
+  assert.ok(extension, `the extension ${id} is not installed`);
   await extension.activate();
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder, 'no workspace folder is open');

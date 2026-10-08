@@ -5,5 +5,7 @@ allowBuilds:
   esbuild: true
   # Installs vsce's native signing binary; packaging and publishing do not need it.
   '@vscode/vsce-sign': false
+  # Builds ovsx's OS keychain access (through its own vsce 3); publishing from CI passes credentials directly.
+  keytar: false
 minimumReleaseAgeExclude:
   - execa@10.1.0
