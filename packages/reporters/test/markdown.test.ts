@@ -183,7 +183,7 @@ describe('renderMarkdown contracts and suppressions', () => {
     const out = renderMarkdown(r);
     expect(out).toContain('<details><summary>1 suppressed finding</summary>');
     expect(out).toContain('| Code | Location | Reason | Expires | Owner |');
-    expect(out).toContain('Kept for callers on v1 \\| removed in v3 | 2099-01-01 | &#64;platform |');
+    expect(out).toContain('Kept for callers on v1 \\| removed in v3 | 2099-01-01 | @\u200bplatform |');
   });
 
   it('links the location of a suppressed finding instead of escaping the link', () => {
@@ -223,11 +223,12 @@ describe('markdown escaping of untrusted names', () => {
     });
     const out = renderMarkdown(r);
     // Raw HTML never survives; outside code spans links and mentions are escaped (inside a code span they are inert).
+    // GitHub finds mentions after decoding entities, so `@` gets a zero-width space rather than `&#64;`.
     expect(out).not.toContain("<a href='https://evil.example'>");
     const message = out.split('\n').find((l) => l.startsWith('.github/workflows/r.yml has no input'))!;
     expect(message).toContain('&lt;a href=');
     expect(message).toContain('\\[link\\](https://evil.example)');
-    expect(message).toContain('&#64;team');
+    expect(message).toContain('@\u200bteam');
   });
 
   it('escapes backslashes, so one cannot cancel the escape of a link bracket or a table pipe', async () => {
@@ -248,5 +249,54 @@ describe('markdown escaping of untrusted names', () => {
       .find((l) => l.startsWith('.github/workflows/r.yml has no input'))!;
     // Each backslash is doubled, so it renders as itself and the bracket escapes stay in force.
     expect(message).toContain('\\\\\\[x\\\\\\](https://evil.example) a\\\\|b');
+  });
+
+  it('keeps values with backtick runs inside their code span, and links stay whole', async () => {
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
+    const file = '.github/workflows/x`` @octocat <img src=x> [click](https:evil.example) ``.yml';
+    const r = analyze({
+      root: '/v',
+      fs: memoryFileSystem({
+        [file]:
+          'on:\n  workflow_call:\n    inputs:\n      a: {}\njobs:\n  j:\n    runs-on: x\n    steps:\n      - run: echo ${{ inputs.b }} ${{ inputs.a }}\n',
+      }),
+      validateSchema: false,
+      repository: 'a/b',
+    });
+    const heading = renderMarkdown(r, { repoUrl: 'https://github.com/a/b', sha: 'abc' })
+      .split('\n')
+      .find((l) => l.includes('undefined-input-ref'))!;
+    // A fence longer than the value's longest backtick run: the double runs inside cannot close it.
+    expect(heading).toContain(`[\`\`\` ${file}:9:23 \`\`\`](https://github.com/a/b/blob/abc/`);
+    // Parentheses in the path are encoded, so the link destination ends where it should.
+    expect(heading).toMatch(/%5Bclick%5D%28https%3Aevil\.example%29%20%60%60\.yml#L9\)$/);
+  });
+
+  it('does not pair a code span across a blank line', async () => {
+    const { analyze, memoryFileSystem, planContracts } = await import('@flowpact/core');
+    const dep =
+      'on:\n  workflow_call:\n    inputs:\n      a:\n        type: string\njobs:\n  j:\n    runs-on: x\n    steps:\n      - run: echo ${{ inputs.a }}\n';
+    const caller = 'on: push\njobs:\n  c:\n    uses: ./.github/workflows/d.yml\n    with:\n      a: x\n';
+    const v1 = { '.github/workflows/d.yml': dep, '.github/workflows/c.yml': caller };
+    const locked = planContracts(
+      analyze({ root: '/r', fs: memoryFileSystem(v1), validateSchema: false }).index,
+      memoryFileSystem(v1),
+    ).entries;
+    const files: Record<string, string> = { ...v1 };
+    for (const e of locked) files[e.file] = e.after ?? '';
+    const contract = locked.find((e) => e.file.endsWith('d.contract.yml'))!.file;
+    files[contract] = files[contract]!.replace(
+      /inputs:\n/,
+      'inputs:\n    "`\\n\\n[pwn](https://evil.example) <ins>x</ins> `": { type: 5 }\n',
+    );
+    const out = renderMarkdown(
+      analyze({ root: '/r', fs: memoryFileSystem(files), validateSchema: false, checkContracts: true }),
+    );
+    // The contracts list carries the raw zod path (with real newlines): after the blank line the backtick is unmatched,
+    // so it is escaped and the link and tag stay text.
+    const section = out.slice(out.indexOf('could not be read as a contract'));
+    const rest = section.slice(0, section.indexOf('\n#'));
+    expect(rest).toContain('\\[pwn\\](https://evil.example) &lt;ins&gt;');
+    expect(rest).not.toContain('<ins>');
   });
 });
