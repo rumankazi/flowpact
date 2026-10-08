@@ -126784,6 +126784,14 @@ function findTemplateSegments(text2) {
   }
   return segments;
 }
+function withoutPosition(message) {
+  const at = message.indexOf("Located at position");
+  if (at < 0) return message;
+  let end = at;
+  while (end > 0 && /\s/.test(message[end - 1])) end--;
+  if (message[end - 1] === ".") end--;
+  return message.slice(0, end);
+}
 var CONTEXT_FUNCTIONS = [
   { name: "hashFiles", minArgs: 1, maxArgs: 255 },
   { name: "success", minArgs: 0, maxArgs: 0 },
@@ -126808,7 +126816,7 @@ function parseExpression(source) {
     result = {
       source,
       refs: [],
-      error: { message: message.replace(/\.?\s*Located at position.*$/s, ""), offset }
+      error: { message: withoutPosition(message), offset }
     };
   }
   exprCache.set(source, result);
@@ -136252,8 +136260,23 @@ var PROSE_ESCAPES = {
   ">": "&gt;",
   "[": "\\[",
   "]": "\\]",
-  "@": "&#64;"
+  // GitHub finds mentions after decoding entities (`&#64;team` still pings); a zero-width space after `@` does not.
+  "@": "@\u200B"
 };
+function longestRun(s, ch) {
+  let longest = 0;
+  let run2 = 0;
+  for (const c of s) {
+    run2 = c === ch ? run2 + 1 : 0;
+    if (run2 > longest) longest = run2;
+  }
+  return longest;
+}
+function blankLineAfter(s, at) {
+  let k = at + 1;
+  while (s[k] === " " || s[k] === "	") k++;
+  return s[k] === "\n" || s[k] === "\r";
+}
 function text(s) {
   let out = "";
   let i = 0;
@@ -136264,6 +136287,7 @@ function text(s) {
       while (s[i + n] === "`") n++;
       let close = -1;
       for (let j = i + n; j < s.length; ) {
+        if (s[j] === "\n" && blankLineAfter(s, j)) break;
         if (s[j] !== "`") {
           j++;
           continue;
@@ -136297,14 +136321,16 @@ function cell(s) {
   return tableCell(text(s));
 }
 function code(s) {
-  const fence = s.includes("`") ? "``" : "`";
-  return `${fence}${fence.length > 1 ? " " : ""}${s}${fence.length > 1 ? " " : ""}${fence}`;
+  const longest = longestRun(s, "`");
+  const fence = "`".repeat(longest + 1);
+  const pad = longest ? " " : "";
+  return `${fence}${pad}${s}${pad}${fence}`;
 }
 function locLink(loc, opts, withColumn = true) {
   const label = code(`${loc.file}:${loc.line}${withColumn ? `:${loc.column}` : ""}`);
   if (!opts.repoUrl || !opts.sha) return label;
   const base = trimChar(opts.repoUrl, "/");
-  const path4 = loc.file.split("/").map(encodeURIComponent).join("/");
+  const path4 = loc.file.split("/").map((part) => encodeURIComponent(part).replace(/\(/g, "%28").replace(/\)/g, "%29")).join("/");
   return `[${label}](${base}/blob/${opts.sha}/${path4}#L${loc.line})`;
 }
 var plural2 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -136323,7 +136349,7 @@ function labeled(label, value) {
   const [first = "", ...rest] = value.split("\n");
   const out = [`**${label}:** ${text(first)}`];
   if (!rest.length) return out;
-  const longest = Math.max(0, ...(rest.join("\n").match(/`+/g) ?? []).map((run2) => run2.length));
+  const longest = longestRun(rest.join("\n"), "`");
   const fence = "`".repeat(Math.max(3, longest + 1));
   out.push("", `${fence}yaml`, ...rest, fence);
   return out;

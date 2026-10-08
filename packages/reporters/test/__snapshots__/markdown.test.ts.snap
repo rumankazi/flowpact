@@ -332,7 +332,7 @@ Run \`flowpact generate\` and commit the result to update the locked contracts.
 
 | Code | Location | Reason | Expires | Owner |
 | --- | --- | --- | --- | --- |
-| [\`FP104\`](https://rumankazi.github.io/flowpact/docs/rules/fp104) | \`.github/workflows/deploy.yml:11:7\` | Kept for callers on v1 \\| removed in v3 | 2099-01-01 | &#64;platform |
+| [\`FP104\`](https://rumankazi.github.io/flowpact/docs/rules/fp104) | \`.github/workflows/deploy.yml:11:7\` | Kept for callers on v1 \\| removed in v3 | 2099-01-01 | @​platform |
 
 </details>
 "
