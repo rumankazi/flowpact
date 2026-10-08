@@ -3,8 +3,8 @@ title: GitHub Action
 description: Run wfc in GitHub Actions with inline annotations, a job summary, SARIF for code scanning and the regenerated contracts as an artifact.
 ---
 
-The wfc action runs the same engine as the [CLI](/docs/cli), bundled into the action itself, so the job does not need
-Node.js or a package install. On top of the CLI's checks it:
+The wfc action ([GitHub Marketplace](https://github.com/marketplace/actions/wfc-workflow-contracts)) runs the same
+engine as the [CLI](/docs/cli), bundled into the action itself, so the job does not need Node.js or a package install. On top of the CLI's checks it:
 
 - **annotates** every finding on the file and line it is about, in the run and in the pull request diff;
 - writes a **job summary** with the findings, their fixes and links to the rule docs;

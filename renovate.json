@@ -51,6 +51,12 @@
       "matchCurrentVersion": "/^v?0\\./",
       "matchUpdateTypes": ["minor"],
       "automerge": false
+    },
+    {
+      "description": "Pinning to a commit SHA keeps the same version: merge it right away instead of waiting out the release age, and apart from version updates.",
+      "matchUpdateTypes": ["pin", "pinDigest"],
+      "minimumReleaseAge": null,
+      "groupName": "pin dependencies"
     }
   ],
   "minimumReleaseAge": "2 days",
