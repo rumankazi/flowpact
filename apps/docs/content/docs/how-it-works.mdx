@@ -23,7 +23,8 @@ scope, jobs (`needs`, `if`, `strategy.matrix`, `uses`, `with`, `secrets` / `inhe
 
 Files are also validated against GitHub's schema with
 [`@actions/workflow-parser`](https://www.npmjs.com/package/@actions/workflow-parser) — the parser behind GitHub's
-Actions language service — and reported as `FP503`.
+Actions language service — and reported as `FP503`. Syntax GitHub already runs but the parser does not accept yet
+(background steps, `cache-mode`) is allowed, and keys GitHub accepts but ignores are warnings, not errors.
 
 Local references are followed until closure: `uses: ./.github/workflows/x.yml`, `uses: ./path/to/action`, and
 `owner/repo/...@ref` when it points at this same repository.
