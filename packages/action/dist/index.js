@@ -93687,9 +93687,9 @@ var BlobSASPermissions = class _BlobSASPermissions {
    *
    * @param permissions -
    */
-  static parse(permissions) {
+  static parse(permissions2) {
     const blobSASPermissions = new _BlobSASPermissions();
-    for (const char of permissions) {
+    for (const char of permissions2) {
       switch (char) {
         case "r":
           blobSASPermissions.read = true;
@@ -93824,41 +93824,41 @@ var BlobSASPermissions = class _BlobSASPermissions {
    * @returns A string which represents the BlobSASPermissions
    */
   toString() {
-    const permissions = [];
+    const permissions2 = [];
     if (this.read) {
-      permissions.push("r");
+      permissions2.push("r");
     }
     if (this.add) {
-      permissions.push("a");
+      permissions2.push("a");
     }
     if (this.create) {
-      permissions.push("c");
+      permissions2.push("c");
     }
     if (this.write) {
-      permissions.push("w");
+      permissions2.push("w");
     }
     if (this.delete) {
-      permissions.push("d");
+      permissions2.push("d");
     }
     if (this.deleteVersion) {
-      permissions.push("x");
+      permissions2.push("x");
     }
     if (this.tag) {
-      permissions.push("t");
+      permissions2.push("t");
     }
     if (this.move) {
-      permissions.push("m");
+      permissions2.push("m");
     }
     if (this.execute) {
-      permissions.push("e");
+      permissions2.push("e");
     }
     if (this.setImmutabilityPolicy) {
-      permissions.push("i");
+      permissions2.push("i");
     }
     if (this.permanentDelete) {
-      permissions.push("y");
+      permissions2.push("y");
     }
-    return permissions.join("");
+    return permissions2.join("");
   }
 };
 
@@ -93870,9 +93870,9 @@ var ContainerSASPermissions = class _ContainerSASPermissions {
    *
    * @param permissions -
    */
-  static parse(permissions) {
+  static parse(permissions2) {
     const containerSASPermissions = new _ContainerSASPermissions();
-    for (const char of permissions) {
+    for (const char of permissions2) {
       switch (char) {
         case "r":
           containerSASPermissions.read = true;
@@ -94029,47 +94029,47 @@ var ContainerSASPermissions = class _ContainerSASPermissions {
    *
    */
   toString() {
-    const permissions = [];
+    const permissions2 = [];
     if (this.read) {
-      permissions.push("r");
+      permissions2.push("r");
     }
     if (this.add) {
-      permissions.push("a");
+      permissions2.push("a");
     }
     if (this.create) {
-      permissions.push("c");
+      permissions2.push("c");
     }
     if (this.write) {
-      permissions.push("w");
+      permissions2.push("w");
     }
     if (this.delete) {
-      permissions.push("d");
+      permissions2.push("d");
     }
     if (this.deleteVersion) {
-      permissions.push("x");
+      permissions2.push("x");
     }
     if (this.list) {
-      permissions.push("l");
+      permissions2.push("l");
     }
     if (this.tag) {
-      permissions.push("t");
+      permissions2.push("t");
     }
     if (this.move) {
-      permissions.push("m");
+      permissions2.push("m");
     }
     if (this.execute) {
-      permissions.push("e");
+      permissions2.push("e");
     }
     if (this.setImmutabilityPolicy) {
-      permissions.push("i");
+      permissions2.push("i");
     }
     if (this.permanentDelete) {
-      permissions.push("y");
+      permissions2.push("y");
     }
     if (this.filterByTags) {
-      permissions.push("f");
+      permissions2.push("f");
     }
-    return permissions.join("");
+    return permissions2.join("");
   }
 };
 
@@ -127213,6 +127213,7 @@ function classify(kind, p) {
       }
       const f = p[2];
       if (f === "if" && p.length === 3) return { field: "job.if", job, cond: true };
+      if (f === "name" && p.length === 3) return { field: "job.name", job, cond: false };
       if (f === "with" && typeof p[3] === "string") return { field: "job.with", job, key: p[3], cond: false };
       if (f === "secrets" && typeof p[3] === "string")
         return { field: "job.secrets", job, key: p[3], cond: false };
@@ -127580,12 +127581,21 @@ function jobs(unit, node2, ctx) {
     const secretsInherit2 = (0, import_yaml2.isScalar)(secretsPair?.value) && String(secretsPair.value.value) === "inherit";
     const ifSite = unit.siteByPath.get(pathKey([...p, "if"]));
     const name = str(get(j, "name"));
+    const nameSite = unit.siteByPath.get(pathKey([...p, "name"]));
+    const namePair = getPair(j, "name");
+    const perms = permissions(get(j, "permissions"));
+    const ifNode = get(j, "if");
+    const ifValue = (0, import_yaml2.isScalar)(ifNode) && typeof ifNode.value === "boolean" ? ifNode.value : void 0;
     const strategy = get(j, "strategy");
     const m = matrix(unit, strategy, [...p, "strategy"]);
     out[id] = {
       id,
       loc: nodeLoc(unit.source, pair.key),
-      ...name ? { name } : {},
+      ...name !== void 0 ? { name } : {},
+      ...nameSite ? { nameSite } : {},
+      ...namePair?.value ? { nameLoc: nodeLoc(unit.source, namePair.value) } : {},
+      ...perms ? { permissions: perms } : {},
+      ...ifValue !== void 0 ? { ifValue } : {},
       needs,
       ...ifSite ? { ifSite } : {},
       ...usesRaw ? { uses: classifyUses(usesRaw, "job", nodeLoc(unit.source, usesNode), ctx) } : {},
@@ -127598,6 +127608,20 @@ function jobs(unit, node2, ctx) {
       ...m ? { matrix: m } : {},
       steps: steps(unit, get(j, "steps"), [...p, "steps"], "workflow", ctx)
     };
+  }
+  return out;
+}
+function permissions(node2) {
+  if ((0, import_yaml2.isScalar)(node2)) {
+    const v = String(node2.value);
+    return v === "read-all" || v === "write-all" ? v : void 0;
+  }
+  if (!(0, import_yaml2.isMap)(node2)) return void 0;
+  const out = {};
+  for (const pair of node2.items) {
+    const key = (0, import_yaml2.isScalar)(pair.key) ? String(pair.key.value) : void 0;
+    const value = (0, import_yaml2.isScalar)(pair.value) ? String(pair.value.value) : void 0;
+    if (key && (value === "read" || value === "write" || value === "none")) out[key] = value;
   }
   return out;
 }
@@ -127677,6 +127701,7 @@ function parseWorkflowFile(path4, text2, ctx) {
     inputs: inputDecls(unit, get(dispatchPair?.value, "inputs"))
   } : void 0;
   const name = str(get(root, "name"));
+  const workflowPermissions = permissions(get(root, "permissions"));
   return {
     kind: "workflow",
     path: path4,
@@ -127690,6 +127715,7 @@ function parseWorkflowFile(path4, text2, ctx) {
     ...call ? { call } : {},
     ...dispatch ? { dispatch } : {},
     env: bindings(unit, get(root, "env"), ["env"]),
+    ...workflowPermissions ? { permissions: workflowPermissions } : {},
     jobs: jobs(unit, get(root, "jobs"), ctx)
   };
 }

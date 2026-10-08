@@ -32,23 +32,21 @@ reusable workflow produces is treated as one a consumer may require**: removing 
 
 ## How check names are formed
 
-Verified against GitHub's documentation and live check runs (including this repository's):
+Verified against the check runs GitHub reported for a lab repository with one workflow per case (the workflows and
+the captured names are flowpact's `fixtures/checknames-lab`, and a test requires an exact match):
 
-- A job's check name is its evaluated `name:`, or the job id when it has no name. The workflow name and file name are
-  not part of it; renaming a workflow does not change check names (it does change `github.workflow`, which
-  `workflow_run` listeners and concurrency groups use).
-- A matrix job whose `name` contains no `${{ }}` gets the suffix ` (value1, value2)`, values in the order the matrix
-  keys are declared. If the name contains any expression, there is no suffix: `Test (node ${{ matrix.node }})` reports
-  `Test (node 22)`.
-- A job in a called workflow reports `caller job / callee job`, one more ` / ` per nesting level.
-- A job skipped by its job-level `if:` reports **one** check with its raw, unexpanded name; a skipped caller reports no
-  ` / callee` checks at all.
-- A job skipped by `if:` counts as passing for a required check.
-
-Edge cases that are only partly verified (blank names, empty or numeric matrix values, values containing `,` or `)`,
-two jobs with the same name, case sensitivity of required checks) are being confirmed in a test repository that
-compares GitHub's real check names with flowpact's computed ones, and re-runs on a schedule to catch changes on GitHub's
-side.
+- A job's check name is its `name:`, trimmed at both ends, or the job id when it has no name or the name is blank.
+  The workflow name and file name are not part of it.
+- A matrix job gets the suffix ` (value1, value2)` unless its name is dynamic: text around an expression
+  (`Lit ${{ 'X' }}`) or an expression that reads anything (`${{ matrix.os }}`) gets no suffix, so such names can
+  collide; a name that is a single literal expression (`${{ 'Only' }}`) keeps the suffix.
+- The suffix lists the matrix dimensions in declared order; keys an `include` adds to existing combinations are not
+  shown, while combinations an `include` creates show all their values. `null` and `''` are skipped, objects and
+  arrays are flattened, and numbers are formatted like .NET (`3.10` → `3.1`, `1e15` → `1E+15`).
+- A job in a called workflow reports `caller job / callee job`, one more ` / ` per nesting level; callee names can
+  read the caller's `with:` values.
+- A job skipped by its `if:` (or because a job it needs failed) reports **one** check with its raw, unexpanded name,
+  and a skipped caller reports no ` / callee` checks at all.
 
 ## What counts as what (first version)
 
