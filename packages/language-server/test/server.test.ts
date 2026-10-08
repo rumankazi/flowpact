@@ -283,13 +283,11 @@ describe('navigation', () => {
       position: position(REPO[CALLEE]!, 'inputs.name', 8),
     });
     const value = (hover as { contents: { value: string } }).contents.value;
-    expect(value).toContain('`inputs.name` — input in `.github/workflows/callee.yml`');
-    expect(value).toContain('type `string` · optional');
+    expect(value.split('\n')[0]).toMatch(/^\*\*flowpact\*\* · input · \[docs\]\(.+#hover\)$/);
+    expect(value).toContain('`inputs.name` in `callee.yml` · `string` · optional');
     expect(value).toContain('Who to greet');
-    expect(value).toMatch(
-      /\*\*Comes from\*\*[\s\S]*literal in `.github\/workflows\/caller.yml › jobs.call`: `"x"`/,
-    );
-    expect(value).toMatch(/\*\*Flows to\*\*[\s\S]*run script in `jobs.greet › steps\[0\] › run`/);
+    expect(value).toContain('**From** literal `"x"` in `caller.yml › jobs.call`');
+    expect(value).toContain('**To** run script in `jobs.greet › steps[0] › run`');
   });
 
   it('goes from a `with:` key to the callee’s input', async () => {
