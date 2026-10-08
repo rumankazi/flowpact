@@ -83,8 +83,8 @@ jobs:
 ```
 
 `if: always()` uploads the report even when the flowpact step failed because of findings. Findings then appear under
-**Security → Code scanning**. Findings accepted by an [override](/docs/configuration) are included as suppressed
-results, with the override's reason.
+**Security → Code scanning**. Findings accepted by an [override](/docs/configuration) are left out: code scanning
+has no way to mark them as accepted and would open an alert for each. The JSON report lists them under `suppressed`.
 
 ### Use the outputs
 
