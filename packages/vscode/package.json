@@ -41,7 +41,8 @@
     "workspaceContains:**/.github/workflows/**",
     "workspaceContains:**/action.yml",
     "workspaceContains:**/action.yaml",
-    "onLanguage:github-actions-workflow"
+    "onLanguage:github-actions-workflow",
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "extensionKind": [
