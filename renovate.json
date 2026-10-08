@@ -1,6 +1,35 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
+  "extends": ["config:recommended", ":semanticCommits", ":semanticPrefixFixDepsChoreOthers"],
+  "description": "Pull request titles follow Conventional Commits (the PR title check and release-please rely on it).",
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/vendor/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**",
+    "fixtures/**"
+  ],
+  "schedule": ["before 6am on monday"],
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "description": "Workflow actions: ci(deps), one grouped pull request.",
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "ci",
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Development dependencies: chore(deps), grouped unless major.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev dependencies (non-major)"
+    },
+    {
+      "description": "Runtime dependencies are bundled into the CLI and the action: fix(deps), so they ship in a patch release.",
+      "matchDepTypes": ["dependencies"],
+      "semanticCommitType": "fix"
+    }
   ]
 }
