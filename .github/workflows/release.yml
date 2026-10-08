@@ -235,12 +235,17 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           cd "$RUNNER_TEMP"
-          # The registry can take a moment to serve a new version everywhere.
+          # The registry can take a moment to serve a new version everywhere. --prefer-online revalidates npm's cached
+          # metadata on every attempt (the registry marks it fresh for 5 minutes, so a cached miss would repeat).
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            npm pack "flowpact@$VERSION" --silent && break
+            npm pack "flowpact@$VERSION" --prefer-online --loglevel=error && break
             echo "not available yet (attempt $attempt); retrying in 30s"
             sleep 30
           done
+          if [ ! -f "flowpact-$VERSION.tgz" ]; then
+            echo "::error::flowpact@$VERSION is still not available from the registry"
+            exit 1
+          fi
           # The exact published tarball, linked as users' `flowpact` command.
           mkdir -p flowpact-package
           tar -xzf "flowpact-$VERSION.tgz" -C flowpact-package
@@ -265,17 +270,26 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      # The same npm as the smoke test, not the runner image's default.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
       - name: Fetch the published tarball
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
+          # --prefer-online: see the smoke test; without it a miss cached on the first attempt repeats for 5 minutes.
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            npm pack "flowpact@$VERSION" --silent && break
+            npm pack "flowpact@$VERSION" --prefer-online --loglevel=error && break
             echo "not available yet (attempt $attempt); retrying in 30s"
             sleep 30
           done
+          if [ ! -f "flowpact-$VERSION.tgz" ]; then
+            echo "::error::flowpact@$VERSION is still not available from the registry"
+            exit 1
+          fi
           # It must be byte for byte what the registry serves.
-          expected=$(npm view "flowpact@$VERSION" dist.integrity)
+          expected=$(npm view "flowpact@$VERSION" dist.integrity --prefer-online)
           actual="sha512-$(openssl dgst -sha512 -binary "flowpact-$VERSION.tgz" | base64 -w0)"
           if [ "$expected" != "$actual" ]; then
             echo "::error::tarball integrity $actual does not match the registry ($expected)"
