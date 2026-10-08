@@ -1,6 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommits", ":semanticPrefixFixDepsChoreOthers"],
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticPrefixFixDepsChoreOthers",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
   "description": "Pull request titles follow Conventional Commits (the PR title check and release-please rely on it). pnpm 11 refuses versions younger than a day, hence minimumReleaseAge; commits by the release bot (rebuilt action bundle) do not stop Renovate from updating its branches.",
   "ignorePaths": [
     "**/node_modules/**",
@@ -35,8 +40,22 @@
       "description": "The docs site is not published to npm: its dependencies are chore(deps), not releases.",
       "matchFileNames": ["apps/docs/package.json"],
       "semanticCommitType": "chore"
+    },
+    {
+      "description": "Non-major updates merge themselves once every required check passes; Renovate bypasses only the code owner review (.github/rulesets/main-reviews.json). Anything that ships still waits for the release pull request, which needs approval.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "description": "0.x minor versions may break: review them.",
+      "matchCurrentVersion": "/^v?0\\./",
+      "matchUpdateTypes": ["minor"],
+      "automerge": false
     }
   ],
   "minimumReleaseAge": "2 days",
-  "gitIgnoredAuthors": ["290186233+rk-release-bot[bot]@users.noreply.github.com"]
+  "gitIgnoredAuthors": ["290186233+rk-release-bot[bot]@users.noreply.github.com"],
+  "platformAutomerge": false,
+  "automergeType": "pr",
+  "automergeStrategy": "squash"
 }

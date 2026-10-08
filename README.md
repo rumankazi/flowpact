@@ -1,5 +1,13 @@
 # wfc — workflow contracts for GitHub Actions
 
+[![CI](https://github.com/rumankazi/wfc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/wfc/actions/workflows/ci.yml)
+[![Release](https://github.com/rumankazi/wfc/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/wfc/actions/workflows/release.yml)
+[![npm](https://img.shields.io/npm/v/workflow-contracts?logo=npm)](https://www.npmjs.com/package/workflow-contracts)
+[![Node.js](https://img.shields.io/node/v/workflow-contracts?logo=nodedotjs)](https://www.npmjs.com/package/workflow-contracts)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rumankazi/wfc/badge)](https://scorecard.dev/viewer/?uri=github.com/rumankazi/wfc)
+[![License: MIT](https://img.shields.io/github/license/rumankazi/wfc)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-rumankazi.github.io%2Fwfc-blue)](https://rumankazi.github.io/wfc)
+
 **Lint, trace and lock the data flow between your GitHub Actions workflows.**
 
 wfc follows every input, secret, env var, matrix key and output across nested reusable workflows and composite
