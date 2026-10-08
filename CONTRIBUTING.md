@@ -90,8 +90,10 @@ on 2026-12-01):
    budget alert at $0 makes sure of that. In [Azure Cloud Shell](https://shell.azure.com) (Bash):
 
    ```bash
-   az group create --name flowpact-publishing --location westeurope
-   az identity create --name flowpact-marketplace --resource-group flowpact-publishing
+   # New subscriptions cannot create resources in some busy regions (West Europe, East US): if Azure answers
+   # "The selected region is currently not accepting new customers", pick another one. The region does not matter.
+   az group create --name flowpact-publishing --location swedencentral
+   az identity create --name flowpact-marketplace --resource-group flowpact-publishing --location swedencentral
    # GitHub names this repository's jobs by owner and repository id (immutable subjects); the subject must match
    # exactly. `gh api repos/rumankazi/flowpact/actions/oidc/customization/sub` shows the prefix.
    az identity federated-credential create --name github-release --identity-name flowpact-marketplace \
