@@ -25,6 +25,8 @@ const wfc = (args: string[], env: Record<string, string> = { NO_COLOR: '1' }) =>
   const base = Object.fromEntries(Object.entries(process.env).filter(([k]) => !SCRUB.includes(k)));
   return execa('node', [BIN, ...args], {
     reject: false,
+    // A hang fails the one call (exit code undefined, with its arguments in the assertion), not the whole test.
+    timeout: 45_000,
     cwd: ROOT,
     extendEnv: false,
     env: { ...base, GITHUB_REPOSITORY: 'acme/fixtures', ...env },
@@ -319,6 +321,8 @@ describe('plugins in rules / explain', () => {
 describe('review fixes', () => {
   it('exits 2 for argument errors, unknown --only rules and missing paths', async () => {
     const root = fixture('broken');
+    const notADir = join(mkdtempSync(join(tmpdir(), 'wfc-notdir-')), 'file');
+    writeFileSync(notADir, 'x');
     const cases = [
       ['lint', '--format', 'xml'],
       ['lint', '--fail-on', 'bogus'],
@@ -329,7 +333,8 @@ describe('review fixes', () => {
       ['lint', '--root', root, 'README.md'],
       ['trace', 'x.yml', '--depth', '0', '--root', root],
       ['generate', '--root', mkdtempSync(join(tmpdir(), 'wfc-empty-gen-'))],
-      ['lint', '--root', fixture('clean'), '-o', '/proc/definitely/not/writable/report.json'],
+      // Under a regular file: fails on every OS (a path in /proc can make Node's recursive mkdir loop on Linux).
+      ['lint', '--root', fixture('clean'), '-o', join(notADir, 'sub', 'report.json')],
     ];
     // Independent processes: run them together so slow CI runners stay well within the timeout.
     const results = await Promise.all(cases.map((args) => wfc(args)));
