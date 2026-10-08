@@ -3,6 +3,8 @@ import { Provider } from '@/components/provider';
 import './global.css';
 
 export const metadata: Metadata = {
+  // Absolute URLs for the Open Graph image (app/opengraph-image.png); Next.js adds the base path.
+  metadataBase: new URL('https://rumankazi.github.io'),
   title: { template: '%s · flowpact', default: 'flowpact — workflow contracts for GitHub Actions' },
   description: 'Lint, trace and lock the data flow between your GitHub Actions workflows.',
 };

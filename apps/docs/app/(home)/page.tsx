@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/logo';
 import { Screenshot } from '@/components/screenshot';
 
 const features = [
@@ -24,6 +25,7 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-16">
       <section className="flex flex-col items-center gap-6 text-center">
+        <Logo className="size-16" />
         <span className="rounded-full border border-fd-border px-3 py-1 font-mono text-xs text-fd-muted-foreground">
           flowpact · workflow contracts for GitHub Actions
         </span>

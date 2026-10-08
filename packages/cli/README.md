@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/rumankazi/flowpact/main/assets/brand/app-icon-128.png" alt="" width="64" height="64">
+
 # flowpact (`flowpact`)
 
 **Lint, trace and lock the data flow between your GitHub Actions workflows.**
