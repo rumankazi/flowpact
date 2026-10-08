@@ -3,6 +3,7 @@ import {
   CATEGORIES,
   type Finding,
   formatLoc,
+  type ImpactResult,
   type Loc,
   type RuleDefinition,
   type RuleRegistry,
@@ -10,6 +11,7 @@ import {
   type SourceFile,
   type ToolMeta,
 } from '@flowpact/core';
+import { describeDeclared, listedChanges, shortCommit } from './impact';
 import {
   box,
   createTheme,
@@ -169,9 +171,40 @@ export function renderPretty(result: AnalysisResult, opts: PrettyOptions): strin
       out.push(renderFinding(t, f, sources));
     }
   }
+  if (result.impact) {
+    out.push('');
+    out.push(renderImpact(t, result.impact));
+  }
   out.push('');
   out.push(renderSummary(result, opts, shown.length !== result.findings.length));
   return finalize(out.join('\n'), opts);
+}
+
+/** The impact verdict: declared vs required, the changes behind it, and the baseline. */
+export function renderImpact(t: Theme, impact: ImpactResult): string {
+  const { c, sym } = t;
+  const v = impact.verdict;
+  const levelText = (l: string) =>
+    l === 'major' ? c.red(c.bold(l.toUpperCase())) : l === 'minor' ? c.yellow(c.bold(l)) : c.bold(l);
+  const mark = v.ok ? c.green(sym.ok) : c.red(sym.error);
+  const lines = [
+    `${c.bold('Impact')}  declared ${c.bold(safe(describeDeclared(impact)))}  ${c.dim(sym.dot)}  required ${levelText(v.required)}  ${mark}`,
+  ];
+  for (const ch of listedChanges(impact).slice(0, 30)) {
+    const tag = (ch.level === 'major' ? c.red : ch.level === 'minor' ? c.yellow : c.dim)(ch.level.padEnd(5));
+    lines.push(
+      `  ${tag}  ${c.dim(safe(ch.unit))}  ${safe(ch.message)}${ch.certain ? '' : c.dim(' (uncertain)')}`,
+    );
+  }
+  const more = listedChanges(impact).length - 30;
+  if (more > 0) lines.push(c.dim(`  … ${more} more (see --format json)`));
+  if (listedChanges(impact).length === 0) lines.push(c.dim('  no changes to published workflows or actions'));
+  lines.push(
+    c.dim(
+      `  baseline: ${impact.baseline.kind === 'release' ? 'last release ' : ''}${safe(impact.baseline.ref)} (${shortCommit(impact.baseline.commit)})`,
+    ),
+  );
+  return lines.join('\n');
 }
 
 function countBySeverity(findings: Finding[]) {

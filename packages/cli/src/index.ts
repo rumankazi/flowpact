@@ -5,6 +5,7 @@ import { checkCommand } from './commands/check';
 import { explainCommand } from './commands/explain';
 import { generateCommand } from './commands/generate';
 import { graphCommand } from './commands/graph';
+import { impactCommand } from './commands/impact';
 import { lintCommand } from './commands/lint';
 import { migrateCommand } from './commands/migrate';
 import { rulesCommand } from './commands/rules';
@@ -36,6 +37,7 @@ const main = defineCommand({
     lint: lintCommand,
     check: checkCommand,
     generate: generateCommand,
+    impact: impactCommand,
     trace: traceCommand,
     graph: graphCommand,
     explain: explainCommand,

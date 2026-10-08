@@ -1,5 +1,6 @@
-import type { AnalysisResult, ContractPlan, Finding, Loc, Severity } from '@flowpact/core';
+import type { AnalysisResult, ContractPlan, Finding, ImpactResult, Loc, Severity } from '@flowpact/core';
 import { buildCallGraph, renderMermaid } from './graph';
+import { describeDeclared, listedChanges, shortCommit } from './impact';
 
 export interface MarkdownOptions {
   /** Heading of the report. Default: `flowpact report`. */
@@ -217,6 +218,35 @@ function renderContracts(plan: ContractPlan, opts: MarkdownOptions): string[] {
   return out;
 }
 
+function renderImpactMarkdown(impact: ImpactResult, opts: MarkdownOptions): string[] {
+  const v = impact.verdict;
+  const icon = v.ok ? '✅' : '❌';
+  const out = [
+    '### Impact',
+    '',
+    `${icon} Declared **${text(describeDeclared(impact))}** · required **${v.required}**`,
+  ];
+  const changes = listedChanges(impact);
+  if (changes.length) {
+    out.push('', '| Impact | Unit | Change |', '| --- | --- | --- |');
+    const limit = Math.max(1, opts.maxFindings ?? 50);
+    for (const c of changes.slice(0, limit)) {
+      out.push(
+        `| ${c.level === 'major' ? '**major**' : c.level}${c.certain ? '' : ' (uncertain)'} | ${cell(code(c.unit))} | ${cell(c.message)} |`,
+      );
+    }
+    if (changes.length > limit)
+      out.push('', `_… ${changes.length - limit} more changes (see the JSON report)._`);
+  } else {
+    out.push('', 'No changes to published workflows or actions.');
+  }
+  out.push(
+    '',
+    `<sub>Baseline: ${impact.baseline.kind === 'release' ? 'last release ' : ''}${code(impact.baseline.ref)} (${shortCommit(impact.baseline.commit)})</sub>`,
+  );
+  return out;
+}
+
 /** GitHub-flavored Markdown for job summaries and pull request comments. */
 export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {}): string {
   const s = result.summary;
@@ -261,6 +291,11 @@ export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {
   if (result.contracts) {
     out.push('');
     out.push(...renderContracts(result.contracts, opts));
+  }
+
+  if (result.impact) {
+    out.push('');
+    out.push(...renderImpactMarkdown(result.impact, opts));
   }
 
   if (result.suppressed.length) {

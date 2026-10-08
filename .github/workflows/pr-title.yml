@@ -1,7 +1,7 @@
 name: PR title
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions: {}
 
@@ -20,3 +20,18 @@ jobs:
             echo "::error::The pull request title must follow Conventional Commits, e.g. 'fix(core): handle empty matrix includes'. Types: feat, fix, perf, refactor, docs, test, build, ci, chore, revert, style; '!' marks a breaking change. Retitle GitHub's Revert PRs as 'revert: ...'."
             exit 1
           fi
+
+  impact:
+    # This repository publishes the action (action.yml): the title must declare the impact of its changes.
+    name: Release impact
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./
+        with:
+          mode: lint
+          impact: on

@@ -428,6 +428,47 @@ describe('action.yml', () => {
   });
 });
 
+describe('impact mode', () => {
+  /** A git repository whose reusable workflow's job is renamed on a branch. */
+  function renamedRepo(): string {
+    const workspace = mkdtempSync(join(temp, 'impact-'));
+    const wf = join(workspace, '.github/workflows/ci-reusable.yml');
+    mkdirSync(join(workspace, '.github/workflows'), { recursive: true });
+    const g = (...args: string[]) => execFileSync('git', args, { cwd: workspace, stdio: 'pipe' });
+    g('init', '-q', '-b', 'main');
+    g('config', 'user.email', 't@example.com');
+    g('config', 'user.name', 't');
+    g('config', 'commit.gpgsign', 'false');
+    const body = (name: string) =>
+      `on: workflow_call\njobs:\n  test:\n    name: ${name}\n    runs-on: ubuntu-latest\n    steps: [{ run: 'true' }]\n`;
+    writeFileSync(wf, body('Test'));
+    g('add', '-A');
+    g('commit', '-q', '-m', 'base');
+    g('checkout', '-q', '-b', 'change');
+    writeFileSync(wf, body('Unit tests'));
+    g('commit', '-q', '-am', 'change');
+    return workspace;
+  }
+
+  it('fails an under-declared change and sets the impact outputs', async () => {
+    const s = await action(renamedRepo(), { impact: 'on', 'base-ref': 'main', 'expected-impact': 'patch' });
+    expect(s.outputs['required-impact']).toBe('major');
+    expect(s.outputs['declared-impact']).toBe('patch');
+    expect(s.outputs['impact-ok']).toBe('false');
+    expect(s.failed).toHaveLength(1);
+    expect(s.annotations.some((a) => String(a.props?.title ?? '').startsWith('FP810'))).toBe(true);
+    expect(s.summary).toContain('### Impact');
+  });
+
+  it('passes a declared major and stays off by default', async () => {
+    const ok = await action(renamedRepo(), { impact: 'on', 'base-ref': 'main', 'expected-impact': 'major' });
+    expect(ok.outputs['impact-ok']).toBe('true');
+    expect(ok.failed).toEqual([]);
+    const off = await action(renamedRepo(), {});
+    expect(off.outputs['impact-ok']).toBe('');
+  });
+});
+
 describe('review fixes', () => {
   it('fails (exit 2) on paths that do not exist, instead of reporting nothing', async () => {
     const s = await action(join(FIXTURES, 'broken'), { paths: '.github/workflow/schema.yml' });

@@ -70,6 +70,22 @@ inputs:
     description: 'Load the plugins listed in the config (auto, true, false). Plugins run JavaScript from the checkout; auto disables them on pull_request_target and workflow_run events.'
     required: false
     default: 'auto'
+  impact:
+    description: 'Check the release impact of changes to published workflows and actions against the impact the pull request declares (title, labels or expected-impact): off, auto (on pull requests in repositories that publish workflows or actions) or on.'
+    required: false
+    default: 'off'
+  expected-impact:
+    description: 'The declared impact (none, patch, minor or major); overrides the pull request title and labels.'
+    required: false
+    default: ''
+  base-ref:
+    description: 'Baseline to compare with in impact mode: a commit, tag or branch (read from origin/<branch>, fetched when missing). Empty uses the pull request base, the commit before a push, or the last release tag for a release pull request.'
+    required: false
+    default: ''
+  token:
+    description: 'Token used only to fetch the baseline commit or release tags when the checkout is shallow (contents: read is enough).'
+    required: false
+    default: '${{ github.token }}'
   debug:
     description: 'Print flowpact debug logs (also enabled by re-running the job with debug logging).'
     required: false
@@ -100,6 +116,12 @@ outputs:
     description: 'Absolute path of the contract patch on the runner, when contracts drifted.'
   artifact-id:
     description: 'ID of the uploaded contract drift artifact, when one was uploaded.'
+  required-impact:
+    description: 'Impact mode: the release impact the changes to published workflows and actions require (none, patch, minor or major).'
+  declared-impact:
+    description: 'Impact mode: the impact the pull request declares, empty when none is declared.'
+  impact-ok:
+    description: 'Impact mode: true when the declared impact covers the required one (or nothing is declared), false otherwise, empty when impact mode did not run.'
 
 runs:
   using: node24

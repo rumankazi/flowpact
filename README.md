@@ -87,7 +87,7 @@ fails when they are out of date.
 
 ## Status
 
-Shipped: the engine, 46 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
+Shipped: the engine, 51 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
 the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`) and the GitHub Action. Next: a VS Code extension and
 language server (diagnostics, hover traces, go to definition across workflow calls, quick fixes), then
 cross-repository resolution — see the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap).

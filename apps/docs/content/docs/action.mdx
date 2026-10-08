@@ -120,6 +120,10 @@ All inputs are optional.
 | `artifact-name` | `flowpact-contracts` | Name of the contract drift artifact. Defaults to `flowpact-contracts-<working-directory>` when `working-directory` is set. Must be unique per run — set it in matrix jobs. |
 | `retention-days` | `7` | Days to keep the contract drift artifact (0 uses the repository default). |
 | `plugins` | `auto` | Load the plugins listed in the config: `auto`, `true` or `false`. Plugins run JavaScript from the checkout; `auto` disables them on `pull_request_target` and `workflow_run` events. |
+| `impact` | `off` | [Impact mode](/docs/impact-mode): `off`, `auto` (on pull requests in repositories that publish workflows or actions) or `on`. |
+| `expected-impact` | `''` | The declared impact (`none`, `patch`, `minor`, `major`); overrides the pull request title and labels. |
+| `base-ref` | `''` | Baseline for impact mode: a commit, tag or branch (read from `origin/<branch>`, fetched when missing). Empty uses the pull request base, the commit before a push, or the last release tag for a release pull request. |
+| `token` | `${{ github.token }}` | Used only to fetch the baseline commit or release tags when the checkout is shallow. |
 | `debug` | `false` | Print flowpact debug logs (also enabled by re-running the job with debug logging). |
 
 Even when `paths` limits the report to some files, flowpact reads every workflow and local action, because findings
@@ -141,6 +145,9 @@ depend on the callers and callees.
 | `report-sarif` | Absolute path of the SARIF report, when report-sarif was set. |
 | `patch` | Absolute path of the contract patch on the runner, when contracts drifted. |
 | `artifact-id` | ID of the uploaded contract drift artifact, when one was uploaded. |
+| `required-impact` | Impact mode: the impact the changes require (`none`, `patch`, `minor`, `major`). |
+| `declared-impact` | Impact mode: the impact the pull request declares; empty when nothing is declared. |
+| `impact-ok` | Impact mode: `true` when the declaration covers the changes (or nothing is declared), `false` otherwise; empty when impact mode did not run. |
 
 ## Annotations
 
