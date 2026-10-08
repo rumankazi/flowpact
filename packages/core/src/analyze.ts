@@ -81,6 +81,11 @@ export interface Summary {
   byFile: Record<string, number>;
   /** Findings accepted by overrides (not counted above). */
   suppressed: number;
+  /**
+   * Findings not reported because they are about the internals of generated files (rules with
+   * `generatedFiles: 'skip'`; not counted above).
+   */
+  skippedInGenerated: number;
 }
 
 export interface AnalysisResult {
@@ -247,11 +252,9 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
   const ruleLog = logger.child('rules');
   // Generated files (gh-aw lock files, `DO NOT EDIT` headers) are checked as callers and callees, but rules about their
   // internals (`generatedFiles: 'skip'`) stay quiet: nobody can act on them in the file itself.
-  const generatedFiles = new Map<string, string>();
-  for (const u of [...project.workflows.values(), ...project.actions.values()])
-    if (u.generated) generatedFiles.set(u.file, u.generated);
+  const generatedFiles = generatedFilesOf(project, config);
   for (const [file, marker] of generatedFiles) logger.debug(`generated file: ${file}`, { marker });
-  let skippedInGenerated = 0;
+  const skipped: Finding[] = [];
 
   const contractInScope = contractsInScope(index);
   let contracts: ContractPlan | undefined;
@@ -299,8 +302,9 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
         ...(impact ? { impact } : {}),
         ...extra,
         report: (input) => {
-          if (rule.generatedFiles === 'skip' && generatedFiles.has(input.loc.file)) skippedInGenerated++;
-          else out.push(toFinding(rule, severity, input, registry));
+          const finding = toFinding(rule, severity, input, registry);
+          if (rule.generatedFiles === 'skip' && generatedFiles.has(input.loc.file)) skipped.push(finding);
+          else out.push(finding);
         },
       };
       const t0 = performance.now();
@@ -321,11 +325,6 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
   };
 
   const findings = dedupe(runRules('main', {}));
-  if (skippedInGenerated > 0) {
-    logger.info(
-      `skipped ${skippedInGenerated} finding(s) about the internals of ${generatedFiles.size} generated file(s)`,
-    );
-  }
   // Overrides are matched against the whole repository, so linting a subset of files does not make
   // overrides for other files look unused; the scope filter is applied afterwards.
   const applied = applyOverrides(
@@ -348,6 +347,11 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
         ? !opts.impact
         : rule.category === 'contracts' && !opts.checkContracts);
     if (severity === 'off' || (only && !only.includes(code)) || notRun) u.inactive = true;
+    // An override written for findings that are now skipped in generated files (FP902 says why it matches nothing).
+    if (!u.matched && rule) {
+      const n = skipped.filter((f) => overrideMatches(u.override, rule.code, f)).length;
+      if (n) u.skippedInGenerated = n;
+    }
   }
   // The contract of a targeted workflow belongs to it (e.g. a conflicted contract, FP805), and so do the contracts
   // that list it as a consumer.
@@ -365,6 +369,12 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
     !config.ignore.some((p) => matchesPattern(f.loc.file, p));
   const accepted = applied.kept.filter(inScope);
   const suppressed = applied.suppressed.filter(inScope);
+  const skippedInScope = dedupe(skipped).filter(inScope);
+  if (skippedInScope.length > 0) {
+    logger.info(
+      `skipped ${skippedInScope.length} finding(s) about the internals of ${new Set(skippedInScope.map((f) => f.loc.file)).size} generated file(s)`,
+    );
+  }
   const usage = applied.usage;
   if (accepted.length + suppressed.length !== findings.length) {
     logger.debug(
@@ -388,7 +398,7 @@ export function analyze(opts: AnalyzeOptions): AnalysisResult {
       a.code.localeCompare(b.code),
   );
 
-  const summary = summarize(project, index, kept, combinations, suppressed.length);
+  const summary = summarize(project, index, kept, combinations, suppressed.length, skippedInScope.length);
   const durationMs = Math.round(performance.now() - started);
   logger.info(
     `analysis finished: ${summary.errors} error(s), ${summary.warnings} warning(s), ${summary.infos} info`,
@@ -465,6 +475,7 @@ function summarize(
   findings: Finding[],
   combinations: number,
   suppressed: number,
+  skippedInGenerated: number,
 ): Summary {
   const byCode: Record<string, number> = {};
   const byFile: Record<string, number> = {};
@@ -485,7 +496,24 @@ function summarize(
     byCode,
     byFile,
     suppressed,
+    skippedInGenerated,
   };
+}
+
+/**
+ * Generated workflow and action files, with the reason: the marker `generatedMarker` found, or the config. Files in
+ * `generated.exclude` are never generated; files in `generated.include` always are.
+ */
+function generatedFilesOf(project: Project, config: FlowpactConfig): Map<string, string> {
+  const out = new Map<string, string>();
+  const listed = (u: UnitDecl, patterns: string[]) =>
+    patterns.some((p) => matchesPattern(u.file, p) || matchesPattern(u.path, p));
+  for (const u of [...project.workflows.values(), ...project.actions.values()]) {
+    if (listed(u, config.generated.exclude)) continue;
+    if (u.generated) out.set(u.file, u.generated);
+    else if (listed(u, config.generated.include)) out.set(u.file, 'generated.include');
+  }
+  return out;
 }
 
 const DAY = 86_400_000;

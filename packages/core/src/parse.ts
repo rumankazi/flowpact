@@ -476,14 +476,25 @@ function scriptWrites(item: unknown, fileVar: 'GITHUB_OUTPUT' | 'GITHUB_ENV') {
 }
 
 /**
- * True when a script hands its toolkit to code flowpact cannot see, which may then set any output or variable: it loads
- * a module (`require(...)`, `import(...)`), evaluates code, or passes `core` on — `run({ core })`,
- * `setupGlobals(core, github)`, `const c = core` — instead of only calling `core.<method>(...)` itself.
+ * Node built-in modules that cannot run other code, so loading them does not hand the script's writes elsewhere.
+ * `child_process`, `vm`, `worker_threads` and `module` can, and still count as delegation.
+ */
+const INERT_BUILTIN =
+  /(?<![\w$.])(?:require|import)\s*\(\s*(['"])(?:node:)?(?:assert|buffer|crypto|dns|events|fs|http|https|net|os|path|querystring|readline|stream|string_decoder|timers|tls|url|util|zlib)(?:\/[\w/]*)?\1\s*\)/g;
+
+/**
+ * True when a script's writes cannot be seen in its text: it hands its toolkit to code flowpact cannot see, which may
+ * then set any output or variable — it loads a module (`require(...)`, `import(...)`; Node built-ins such as `fs` or
+ * `path` aside), evaluates code, runs a program (`exec.exec(...)`, which inherits `GITHUB_OUTPUT`), or passes `core`
+ * on (`run({ core })`, `setupGlobals(core, github)`, `const c = core`) instead of only calling `core.<method>(...)`
+ * itself — or a `${{ }}` expression puts code into it.
  */
 function scriptDelegates(script: string): boolean {
-  const code = withoutStringsAndComments(script);
+  const code = codeOf(script.replace(INERT_BUILTIN, 'null'));
+  // An expression outside a literal is substituted into the code before the script runs (`script: ${{ inputs.code }}`).
+  if (code.includes('${{')) return true;
   if (
-    /(?<![\w$.])(?:require|__original_require__|import|eval)\s*\(|^\s*import\s|\bnew\s+Function\b|(?<![\w$.])arguments\b/m.test(
+    /(?<![\w$.])(?:require|__original_require__|import|eval)\s*\(|^\s*import\s|\bnew\s+Function\b|(?<![\w$.])arguments\b(?!\s*:)|(?<![\w$.])exec\s*\.\s*(?:exec|getExecOutput)\s*\(/m.test(
       code,
     )
   )
@@ -493,32 +504,69 @@ function scriptDelegates(script: string): boolean {
 }
 
 /**
- * JavaScript source with quoted strings and comments blanked out, so a word inside them is not mistaken for code.
- * Template literals are kept as they are, since `${...}` holds code. A linear scan: regexes for comments backtrack.
+ * The code of a JavaScript source, so a word in prose is not mistaken for code: comments and the text of string and
+ * template literals are dropped, but the code in a template's `${...}` is kept. A `${{ }}` expression inside a literal
+ * is text as well; one in code position stays. A linear scan, since regexes for comments backtrack.
  */
-function withoutStringsAndComments(src: string): string {
-  let out = '';
+function codeOf(src: string): string {
   let i = 0;
-  while (i < src.length) {
-    const ch = src[i]!;
-    if (ch === '/' && src[i + 1] === '/') {
-      const nl = src.indexOf('\n', i);
-      i = nl < 0 ? src.length : nl;
-    } else if (ch === '/' && src[i + 1] === '*') {
-      const end = src.indexOf('*/', i + 2);
-      i = end < 0 ? src.length : end + 2;
-      out += ' ';
-    } else if (ch === "'" || ch === '"' || ch === '`') {
-      let j = i + 1;
-      while (j < src.length && src[j] !== ch && (ch === '`' || src[j] !== '\n')) j += src[j] === '\\' ? 2 : 1;
-      out += ch === '`' ? src.slice(i, j + 1) : '""';
-      i = j + 1;
-    } else {
-      out += ch;
-      i++;
+  /** Code up to the end of the source, or within a template substitution up to the `}` that closes it. */
+  const code = (substitution: boolean): string => {
+    let out = '';
+    let depth = 0;
+    while (i < src.length) {
+      const ch = src[i]!;
+      if (ch === '/' && src[i + 1] === '/') {
+        const nl = src.indexOf('\n', i);
+        i = nl < 0 ? src.length : nl;
+      } else if (ch === '/' && src[i + 1] === '*') {
+        const end = src.indexOf('*/', i + 2);
+        i = end < 0 ? src.length : end + 2;
+        out += ' ';
+      } else if (ch === "'" || ch === '"') {
+        let j = i + 1;
+        while (j < src.length && src[j] !== ch && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
+        out += '""';
+        i = j + 1;
+      } else if (ch === '`') {
+        i++;
+        out += `""${template()}""`;
+      } else {
+        if (ch === '{') depth++;
+        else if (ch === '}' && depth-- === 0 && substitution) {
+          i++;
+          return out;
+        }
+        out += ch;
+        i++;
+      }
     }
-  }
-  return out;
+    return out;
+  };
+  /** The code in the substitutions of a template literal, from after its opening backtick to past the closing one. */
+  const template = (): string => {
+    let out = '';
+    while (i < src.length) {
+      const ch = src[i]!;
+      if (ch === '\\') {
+        i += 2;
+      } else if (ch === '`') {
+        i++;
+        return out;
+      } else if (ch === '$' && src[i + 1] === '{' && src[i + 2] === '{') {
+        // A GitHub expression: its value becomes part of the text before the script runs.
+        const end = src.indexOf('}}', i + 3);
+        i = end < 0 ? src.length : end + 2;
+      } else if (ch === '$' && src[i + 1] === '{') {
+        i += 2;
+        out += ` ${code(true)} `;
+      } else {
+        i++;
+      }
+    }
+    return out;
+  };
+  return code(false);
 }
 
 function matrixEntries(unit: Unit, node: unknown, base: YPath): MatrixEntry[] {
@@ -720,23 +768,43 @@ function load(path: string, text: string): { unit: Unit; root: Node | undefined 
   };
 }
 
-/** Comment lines that mark a generated file: `DO NOT EDIT`, `automatically generated`, `@generated`, `Generated by …`. */
-const GENERATED_HEADER =
-  /\bDO NOT EDIT\b|\bauto(?:matically)?[- ]?generated\b|@generated\b|(?<=^#\s*)(?:this (?:file|workflow) (?:is|was|has been) )?generated\b/i;
+const AUTO = '(?:auto(?:matically)?[- ]?)?';
+
+/**
+ * Comment text, without its `#`, that marks a generated file. Each pattern is a generator's own phrasing, so a header
+ * that only talks about generated things (`Generated docs are published by this workflow`, `Builds the autogenerated
+ * client`, `Please do not edit the deploy keys`) does not count.
+ */
+const GENERATED_HEADER = [
+  // Capitals, as generators write it (`DO NOT EDIT.`, `DO NOT EDIT MANUALLY`), unless a lowercase sentence follows.
+  /\bDO NOT (?:EDIT|MODIFY)\b(?!\s+[a-z])/,
+  /\bdo not (?:edit|modify) (?:this (?:file|workflow)|manually|by hand|directly)\b/i,
+  /@generated\b/,
+  new RegExp(`\\b(?:this|the) (?:file|workflow) (?:is|was|has been|will be) ${AUTO}generated\\b`, 'i'),
+  new RegExp(`\\bthis is an? ${AUTO}generated (?:file|workflow)\\b`, 'i'),
+  // Only at the start of the comment: `Generated by praktika`, `Code generated from x.j2`, `AUTOGENERATED FILE`.
+  new RegExp(`^(?:(?:code|file|workflow) )?${AUTO}generated (?:(?:by|from|with|using) \\S+|file\\b)`, 'i'),
+];
 const GENERATED_HEADER_LINES = 10;
 
 /**
  * Why a workflow or action file counts as generated, if it does: a marker in the comment block that opens the file
  * (within its first lines), or the `.lock.yml` suffix of GitHub Agentic Workflows. Comments further down, like
- * `# run.sh is generated by …`, do not count.
+ * `# run.sh is generated by …`, do not count. The `generated` config setting can overrule this (see `analyze`).
  */
 export function generatedMarker(path: string, text: string): string | undefined {
   for (const line of text.split('\n', GENERATED_HEADER_LINES)) {
     const t = line.trim();
-    if (t === '' || t === '---') continue;
+    // Blank lines, the document start and directives (`%YAML 1.2`) may come before the header.
+    if (t === '' || t === '---' || t.startsWith('%')) continue;
     if (!t.startsWith('#')) break;
-    const m = GENERATED_HEADER.exec(t);
-    if (m) return m[0];
+    const comment = t.replace(/^#+\s*/, '');
+    let first: RegExpExecArray | undefined;
+    for (const re of GENERATED_HEADER) {
+      const m = re.exec(comment);
+      if (m && (!first || m.index < first.index)) first = m;
+    }
+    if (first) return first[0];
   }
   return /\.lock\.ya?ml$/i.test(path) ? '.lock.yml' : undefined;
 }

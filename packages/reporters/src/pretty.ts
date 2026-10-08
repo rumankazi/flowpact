@@ -246,6 +246,13 @@ export function renderSummary(result: AnalysisResult, opts: RenderOptions, infoH
       ),
     );
   }
+  if (s.skippedInGenerated) {
+    lines.push(
+      c.dim(
+        `${s.skippedInGenerated} finding${s.skippedInGenerated === 1 ? '' : 's'} not reported in generated files (-v lists the files)`,
+      ),
+    );
+  }
   if (result.contracts) {
     const k = result.contracts.counts;
     lines.push(

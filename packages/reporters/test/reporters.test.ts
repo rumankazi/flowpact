@@ -1,5 +1,13 @@
 import { fileURLToPath } from 'node:url';
-import { analyze, createRegistry, reportSchema, sym, toolMeta, trace } from '@flowpact/core';
+import {
+  analyze,
+  createRegistry,
+  memoryFileSystem,
+  reportSchema,
+  sym,
+  toolMeta,
+  trace,
+} from '@flowpact/core';
 import {
   codeFrame,
   createTheme,
@@ -44,6 +52,22 @@ describe('renderPretty', () => {
 
   it('reports a clean run', () => {
     expect(renderPretty(result('clean'), plain)).toContain('✔ No problems found');
+    expect(renderPretty(result('clean'), plain)).not.toContain('generated files');
+  });
+
+  it('notes how many findings it left out in generated files', () => {
+    const r = analyze({
+      root: '/virtual/repo',
+      fs: memoryFileSystem({
+        '.github/workflows/triage.lock.yml':
+          'on: push\njobs:\n  j:\n    runs-on: x\n    outputs:\n      a: x\n      b: y\n    steps: [{ run: echo }]\n',
+      }),
+      validateSchema: false,
+    });
+    expect(r.summary.skippedInGenerated).toBe(2);
+    expect(renderPretty(r, plain)).toContain(
+      '2 findings not reported in generated files (-v lists the files)',
+    );
   });
 
   it('can hide info findings but still counts them', () => {

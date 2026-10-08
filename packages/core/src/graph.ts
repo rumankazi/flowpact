@@ -537,7 +537,8 @@ export class ProjectIndex {
   /**
    * Every symbol a reference reads. Besides the single symbol of `resolveRef`, a reference that stops at a whole object
    * of outputs reads each of them: `toJSON(needs.build.outputs)`, `needs.build`, `steps.meta.outputs`,
-   * `needs.build.outputs[matrix.key]`, or `toJSON(needs)` (every job the reading job needs).
+   * `needs.build.outputs[matrix.key]`, `toJSON(needs)` (every job the reading job needs), or `toJSON(steps)` (every
+   * step that ran before the reading step).
    */
   readsOf(unit: UnitDecl, site: ExprSite, ref: LocatedRef): string[] {
     const one = this.resolveRef(unit, site, ref);
@@ -574,7 +575,10 @@ export class ProjectIndex {
       case 'steps': {
         const steps =
           unit.kind === 'action' ? unit.steps : site.job ? (unit.jobs[site.job]?.steps ?? []) : [];
-        const named = computed(a) ? steps : steps.filter((s) => s.id?.toLowerCase() === a!.toLowerCase());
+        // In a step, the `steps` context holds only the steps that ran before it; job and action outputs see them all.
+        const named = computed(a)
+          ? steps.filter((s) => site.step === undefined || s.index < site.step)
+          : steps.filter((s) => s.id?.toLowerCase() === a!.toLowerCase());
         return named.flatMap((step) => {
           const action = this.actionOf(step);
           if (!step.id || !action) return [];

@@ -4,6 +4,14 @@ import { lookup, type StepDecl, type UnitDecl } from '../ir';
 import { defineRule, type RuleDefinition } from './types';
 import { didYouMean, listNames, quote, readsContextDynamically, refsOf } from './util';
 
+/** FP303's fix for an output of a unit that other repositories might use: published units are not judged. */
+function publishedFix(kind: 'workflow' | 'action', file: string, publish: string[] | undefined): string {
+  const remove = `Remove the output, or make a ${kind === 'workflow' ? 'caller' : 'user'} read it.`;
+  return publish
+    ? `${remove} If other repositories use this ${kind}, add ${quote(file)} to \`impact.publish\`.`
+    : `${remove} If other repositories use this ${kind}, set \`impact.publish\` to the units they use, ${quote(file)} included; it replaces the default (reusable workflows and the root action.yml).`;
+}
+
 function stepsInScope(unit: UnitDecl, jobId: string | undefined): StepDecl[] {
   if (unit.kind === 'action') return unit.steps;
   return jobId ? (unit.jobs[jobId]?.steps ?? []) : [];
@@ -166,11 +174,12 @@ export const unusedOutput = defineRule({
     fix: 'Remove the output, or make the intended consumer read it.',
     scope:
       'Job outputs are always judged: only the jobs and workflow outputs of the same workflow can read them. Outputs of a ' +
-      'reusable workflow or a composite action are judged only for an internal unit that this repository uses. Published ' +
+      'reusable workflow or an action are judged only for an internal unit that this repository uses. Published ' +
       'units are not reported, because their consumers live in other repositories: reusable workflows (except files ' +
       'starting with `_`), the root `action.yml`, or exactly the units listed in `impact.publish` when it is set. ' +
-      'Reading the whole object (`toJSON(needs.build.outputs)`, `needs.build.outputs[matrix.key]`) counts as reading ' +
-      'every output.',
+      'Actions in subdirectories (`owner/repo/restore@v1`) count as internal unless `impact.publish` lists them. ' +
+      'Reading the whole object (`toJSON(needs.build.outputs)`, `needs.build.outputs[matrix.key]`, `toJSON(steps)`) ' +
+      'counts as reading every output.',
     examples: {
       bad: `build:
   outputs:
@@ -212,6 +221,10 @@ deploy:
           message: `Workflow output ${quote(o.name)} of ${wf.path} is not read by any of its ${callers.length} caller${callers.length > 1 ? 's' : ''}`,
           loc: o.loc,
           symbol: sym.output(wf.path, o.name),
+          // Without `impact.publish`, a workflow is internal here only because its name starts with `_`.
+          ...(ctx.config.impact.publish
+            ? { fix: publishedFix('workflow', wf.file, ctx.config.impact.publish) }
+            : {}),
         });
       }
     }
@@ -229,6 +242,7 @@ deploy:
           message: `Output ${quote(o.name)} of ${action.path} is not read by any of its ${users.length} user${users.length > 1 ? 's' : ''}`,
           loc: o.loc,
           symbol: sym.output(action.path, o.name),
+          fix: publishedFix('action', action.file, ctx.config.impact.publish),
         });
       }
     }
@@ -249,7 +263,9 @@ export const stepOutputNeverWritten = defineRule({
     scope:
       'Only scripts whose writes flowpact can name are judged. A step is skipped when its writes cannot be seen: ' +
       '`cat file >> "$GITHUB_OUTPUT"`, a computed name (`core.setOutput(name, …)`), or an `actions/github-script` ' +
-      'script that loads a module (`require()`, `import()`) or hands `core` to other code (`run({ core })`). ' +
+      'script that loads a module (`require()`, `import()`; Node built-ins like `fs` aside), runs a program ' +
+      '(`exec.exec()`), hands `core` to other code (`run({ core })`), or takes code from an expression ' +
+      '(`script: ${{ inputs.code }}`). Words in strings, comments and template text do not count. ' +
       'Steps of other actions are not judged, since an action may set outputs of its own.',
     examples: {
       bad: `- id: meta

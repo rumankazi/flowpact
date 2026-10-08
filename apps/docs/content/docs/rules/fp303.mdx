@@ -19,7 +19,7 @@ Remove the output, or make the intended consumer read it.
 
 ## Scope
 
-Job outputs are always judged: only the jobs and workflow outputs of the same workflow can read them. Outputs of a reusable workflow or a composite action are judged only for an internal unit that this repository uses. Published units are not reported, because their consumers live in other repositories: reusable workflows (except files starting with `_`), the root `action.yml`, or exactly the units listed in `impact.publish` when it is set. Reading the whole object (`toJSON(needs.build.outputs)`, `needs.build.outputs[matrix.key]`) counts as reading every output. Not reported in [generated files](/docs/configuration#generated-files), which are not edited by hand.
+Job outputs are always judged: only the jobs and workflow outputs of the same workflow can read them. Outputs of a reusable workflow or an action are judged only for an internal unit that this repository uses. Published units are not reported, because their consumers live in other repositories: reusable workflows (except files starting with `_`), the root `action.yml`, or exactly the units listed in `impact.publish` when it is set. Actions in subdirectories (`owner/repo/restore@v1`) count as internal unless `impact.publish` lists them. Reading the whole object (`toJSON(needs.build.outputs)`, `needs.build.outputs[matrix.key]`, `toJSON(steps)`) counts as reading every output. Not reported in [generated files](/docs/configuration#generated-files), which are not edited by hand.
 
 ## Example
 

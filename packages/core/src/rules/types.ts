@@ -93,6 +93,11 @@ export interface OverrideUsage {
   daysLeft?: number;
   /** The override's rule did not run (turned off or excluded by `--only`), so its usage cannot be judged. */
   inactive?: boolean;
+  /**
+   * When it matches no finding: how many findings it would match that are not reported because they are about the
+   * internals of generated files.
+   */
+  skippedInGenerated?: number;
 }
 
 export interface RuleContext {
