@@ -67,7 +67,55 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
    `uses: rumankazi/flowpact@v0.5` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
    the major, `v1`), and smoke-tests the published package on Linux, macOS and Windows.
 
+4. For stable releases it also packages the VS Code extension, smoke-tests the package in VS Code, attaches the
+   signed `.vsix` to the GitHub release, and publishes that file to the registries set up below.
+
 If publishing fails after the tag exists, run the **Release** workflow manually with that tag; versions already on
-npm are skipped.
+npm, the Marketplace or Open VSX are skipped. The same re-run publishes a release to a registry that was set up after
+it went out.
+
+### Publishing the VS Code extension (one-time setup)
+
+The extension's id is `<publisher>.vscode-flowpact`, with `publisher` from `packages/vscode/package.json`. The
+publisher id must be the same on both registries and can never be renamed. Neither registry stores a long-lived token
+in this repository.
+
+**Visual Studio Marketplace** (Microsoft Entra ID; the Azure DevOps tokens the Marketplace used before stop working
+on 2026-12-01):
+
+1. Sign in at <https://marketplace.visualstudio.com/manage> and create the publisher.
+2. In an Azure subscription (the free tier is enough), create a managed identity that this repository's
+   `vscode-marketplace` environment can sign in as. In [Azure Cloud Shell](https://shell.azure.com) (Bash):
+
+   ```bash
+   az group create --name flowpact-publishing --location westeurope
+   az identity create --name flowpact-marketplace --resource-group flowpact-publishing
+   az identity federated-credential create --name github-release --identity-name flowpact-marketplace \
+     --resource-group flowpact-publishing --issuer https://token.actions.githubusercontent.com \
+     --subject repo:rumankazi/flowpact:environment:vscode-marketplace --audiences api://AzureADTokenExchange
+   az identity show --name flowpact-marketplace --resource-group flowpact-publishing --query clientId -o tsv
+   az account show --query tenantId -o tsv
+   ```
+
+3. Add the two ids as repository **variables** (not secrets) `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`.
+4. Run the **VS Code publisher setup** workflow. Its summary shows the identity's profile id: add it as a
+   **Contributor** under the publisher's **Members**. Run the workflow again with the publisher id to check access.
+
+**Open VSX** (used by VSCodium, Cursor, Windsurf and others; trusted publishing after the first version):
+
+1. Sign in at <https://open-vsx.org> with GitHub. Under **Settings**, log in with an Eclipse account (its GitHub
+   username must be yours) and sign the Publisher Agreement.
+2. Create an access token (**Settings → Access Tokens**) and the namespace, spelled exactly like the publisher:
+   `npx ovsx@1.2.0 create-namespace <publisher> -p <token>`.
+3. Claim the namespace by opening an issue at <https://github.com/EclipseFdn/open-vsx.org/issues>. Until it is
+   granted, the namespace is unverified and trusted publishing cannot be set up.
+4. Add the token as the secret `OVSX_PAT` in the `open-vsx` environment, and set the repository variable
+   `OPEN_VSX_PUBLISH` to `true`. The next release (or a re-run) publishes the first version with the token.
+5. Then, under **Settings → Trusted Publishers** on open-vsx.org, add a GitHub Actions publisher: owner `rumankazi`,
+   repository `flowpact`, workflow `release.yml`, environment `open-vsx`. Delete `OVSX_PAT` here and the token on
+   open-vsx.org; later releases publish through trusted publishing.
+
+The `vscode-marketplace` and `open-vsx` environments come from `.github/environments.json` (deploys from `main`
+only).
 
 Rule codes are stable: a code never changes meaning, and removed codes are not reused.
