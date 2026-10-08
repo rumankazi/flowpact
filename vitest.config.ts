@@ -11,8 +11,9 @@ export default defineConfig({
     include: ['packages/*/test/**/*.test.ts', 'scripts/test/**/*.test.ts'],
     // The CLI e2e tests spawn node processes, which take seconds each on shared CI runners.
     testTimeout: 60_000,
-    // The CLI e2e suites run the bundle; build it once (scripts/test/build-cli.ts).
-    globalSetup: ['scripts/test/build-cli.ts'],
+    // The CLI e2e suites run the bundle; build it once (scripts/test/build-cli.ts). The invalid YAML fixture is
+    // generated (scripts/test/broken-fixture.ts).
+    globalSetup: ['scripts/test/build-cli.ts', 'scripts/test/broken-fixture.ts'],
     // @actions/workflow-parser imports JSON without import attributes; let Vite transform it like the bundler does.
     server: { deps: { inline: [/@actions\/workflow-parser/, /@actions\/expressions/] } },
     coverage: {
