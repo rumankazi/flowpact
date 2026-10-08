@@ -84,15 +84,20 @@ in this repository.
 on 2026-12-01):
 
 1. Sign in at <https://marketplace.visualstudio.com/manage> and create the publisher.
-2. In an Azure subscription (the free tier is enough), create a managed identity that this repository's
-   `vscode-marketplace` environment can sign in as. In [Azure Cloud Shell](https://shell.azure.com) (Bash):
+2. Create a managed identity that this repository's `vscode-marketplace` environment can sign in as. It needs an
+   Azure subscription that stays active: a pay-as-you-go one. A free account's trial subscription is disabled after
+   30 days and later deleted together with the identity, unless it is upgraded. The identity itself costs nothing; a
+   budget alert at $0 makes sure of that. In [Azure Cloud Shell](https://shell.azure.com) (Bash):
 
    ```bash
    az group create --name flowpact-publishing --location westeurope
    az identity create --name flowpact-marketplace --resource-group flowpact-publishing
+   # GitHub names this repository's jobs by owner and repository id (immutable subjects); the subject must match
+   # exactly. `gh api repos/rumankazi/flowpact/actions/oidc/customization/sub` shows the prefix.
    az identity federated-credential create --name github-release --identity-name flowpact-marketplace \
      --resource-group flowpact-publishing --issuer https://token.actions.githubusercontent.com \
-     --subject repo:rumankazi/flowpact:environment:vscode-marketplace --audiences api://AzureADTokenExchange
+     --subject 'repo:rumankazi@37704746/flowpact@1408943843:environment:vscode-marketplace' \
+     --audiences api://AzureADTokenExchange
    az identity show --name flowpact-marketplace --resource-group flowpact-publishing --query clientId -o tsv
    az account show --query tenantId -o tsv
    ```
@@ -100,6 +105,8 @@ on 2026-12-01):
 3. Add the two ids as repository **variables** (not secrets) `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`.
 4. Run the **VS Code publisher setup** workflow. Its summary shows the identity's profile id: add it as a
    **Contributor** under the publisher's **Members**. Run the workflow again with the publisher id to check access.
+   If sign-in fails with AADSTS700213, the subject in step 2 does not match the `subject claim` azure/login logs.
+   A new identity (for example after losing the subscription) has a new profile id: repeat steps 2 to 4.
 
 **Open VSX** (used by VSCodium, Cursor, Windsurf and others; trusted publishing after the first version):
 
