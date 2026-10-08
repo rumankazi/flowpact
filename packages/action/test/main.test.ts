@@ -503,10 +503,10 @@ describe('review fixes', () => {
     const { workspace, root } = repoFrom('clean');
     mkdirSync(join(root, '.github/flowpact'), { recursive: true });
     writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'plugins: [./evil.mjs]\n');
-    writeFileSync(join(root, 'evil.mjs'), 'globalThis.__wfcPluginRan = true;\nexport default [];\n');
+    writeFileSync(join(root, 'evil.mjs'), 'globalThis.__flowpactPluginRan = true;\nexport default [];\n');
     process.env.GITHUB_EVENT_NAME = 'pull_request_target';
     const s = await action(workspace);
-    expect((globalThis as { __wfcPluginRan?: boolean }).__wfcPluginRan).toBeUndefined();
+    expect((globalThis as { __flowpactPluginRan?: boolean }).__flowpactPluginRan).toBeUndefined();
     expect(s.annotations.some((a) => a.level === 'warning' && a.message.includes('plugins'))).toBe(true);
     expect(s.failed).toEqual([]);
   });

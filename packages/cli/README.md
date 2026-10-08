@@ -22,9 +22,6 @@ npm install --global flowpact     # then: flowpact lint
 npm install --save-dev flowpact   # per project: npx flowpact lint
 ```
 
-flowpact was called **wfc** (npm package `workflow-contracts`) before 0.2.0; `flowpact migrate` moves an existing
-setup over. See [Migrating from wfc](https://rumankazi.github.io/flowpact/docs/migrating-from-wfc).
-
 Requires Node.js 22 or newer. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` usage or
 configuration error, `3` internal error.
 
