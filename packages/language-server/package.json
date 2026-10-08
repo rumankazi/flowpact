@@ -1,0 +1,27 @@
+{
+  "name": "@flowpact/language-server",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Language server for flowpact: diagnostics, hover traces, go to definition and references across workflow calls.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --clean --target node22",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@flowpact/core": "workspace:*",
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.15",
+    "vscode-uri": "^3.2.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1"
+  }
+}
