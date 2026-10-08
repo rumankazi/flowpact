@@ -1,13 +1,13 @@
 ---
 title: Configuration
-description: Configure severities, limits, ignored paths, overrides, matrix shapes and plugins in .github/workflow-contracts/wfc.config.yml.
+description: Configure severities, limits, ignored paths, overrides, matrix shapes and plugins in .github/flowpact/flowpact.config.yml.
 ---
 
-wfc works without configuration. To change behaviour, create
-`.github/workflow-contracts/wfc.config.yml` (or pass `--config <file>`):
+flowpact works without configuration. To change behaviour, create
+`.github/flowpact/flowpact.config.yml` (or pass `--config <file>`):
 
-```yaml title=".github/workflow-contracts/wfc.config.yml"
-# yaml-language-server: $schema=https://rumankazi.github.io/wfc/schemas/config/v1.json
+```yaml title=".github/flowpact/flowpact.config.yml"
+# yaml-language-server: $schema=https://rumankazi.github.io/flowpact/schemas/config/v1.json
 version: 1
 
 # owner/repo of this repository, so `uses: owner/repo/.github/workflows/x.yml@ref` resolves locally.
@@ -16,13 +16,13 @@ repository: acme/platform
 
 rules:
   # by code or by name; values: error | warning | info | off
-  WFC104: error
+  FP104: error
   secrets-inherit: off
   needs-without-data: info   # opt-in rule
 
 limits:
-  nestingDepth: 10   # WFC602: workflows in one call chain, counting the top-level workflow
-  maxInputs: 30      # WFC605: workflow_call inputs before suggesting to group them
+  nestingDepth: 10   # FP602: workflows in one call chain, counting the top-level workflow
+  maxInputs: 30      # FP605: workflow_call inputs before suggesting to group them
 
 ignore:
   - .github/workflows/experimental/   # path prefix
@@ -40,7 +40,7 @@ matrixShapes:
     keys: [os, browser]
 
 plugins:
-  - ./ci/wfc-rules.mjs
+  - ./ci/flowpact-rules.mjs
 ```
 
 The config is validated strictly: unknown keys, unknown rule codes or names, and invalid values are reported with
@@ -53,7 +53,7 @@ example enables completion, hover docs and validation in editors that use the YA
 Red Hat YAML extension, JetBrains IDEs, Neovim):
 
 ```yaml
-# yaml-language-server: $schema=https://rumankazi.github.io/wfc/schemas/config/v1.json
+# yaml-language-server: $schema=https://rumankazi.github.io/flowpact/schemas/config/v1.json
 ```
 
 ## Overrides
@@ -63,7 +63,7 @@ that stays next to it in the repository:
 
 ```yaml
 overrides:
-  - rule: unused-input                                        # code (WFC104) or name
+  - rule: unused-input                                        # code (FP104) or name
     target: .github/workflows/pipeline.yml#inputs.legacy-flag  # the symbol the finding is about
     reason: Read by the external release dispatcher; remove after the migration (JIRA-123)
     expires: 2026-12-31                                       # optional, YYYY-MM-DD
@@ -89,7 +89,7 @@ both are set, both must match.
 **Finding the symbol.** Every finding has a `symbol` in JSON output — copy it into `target`:
 
 ```sh
-wfc lint --format json | jq -r '.findings[] | "\(.code) \(.symbol)"'
+flowpact lint --format json | jq -r '.findings[] | "\(.code) \(.symbol)"'
 ```
 
 **What happens to accepted findings.** They are removed from the report and from the error/warning/info counts, so
@@ -101,17 +101,17 @@ they cannot be overridden):
 
 | Code | Severity | Reported when |
 | --- | --- | --- |
-| [`WFC901`](/docs/rules/wfc901) `override-expired` | error | The `expires` date has passed. The findings it accepted are reported again. |
-| [`WFC902`](/docs/rules/wfc902) `override-unused` | warning | The override matches no finding — the problem was fixed, or the target is misspelled. |
-| [`WFC903`](/docs/rules/wfc903) `override-expiring-soon` | info | It expires within 14 days and still matches findings. |
+| [`FP901`](/docs/rules/fp901) `override-expired` | error | The `expires` date has passed. The findings it accepted are reported again. |
+| [`FP902`](/docs/rules/fp902) `override-unused` | warning | The override matches no finding — the problem was fixed, or the target is misspelled. |
+| [`FP903`](/docs/rules/fp903) `override-expiring-soon` | info | It expires within 14 days and still matches findings. |
 
 Overrides apply to every rule, including the [contract rules](/docs/contracts) — but an intended interface change is
-better recorded by regenerating the contracts than by overriding `WFC803`.
+better recorded by regenerating the contracts than by overriding `FP803`.
 
 ## Matrix shapes
 
 A matrix computed at runtime (`matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}`) cannot be expanded statically,
-so by default wfc reports it as unverifiable (`WFC403`) and does not check its `matrix.*` reads. If you know which keys
+so by default flowpact reports it as unverifiable (`FP403`) and does not check its `matrix.*` reads. If you know which keys
 the generated matrix has, declare them:
 
 ```yaml
@@ -121,9 +121,9 @@ matrixShapes:
     keys: [os, browser, shard]
 ```
 
-wfc then checks every `matrix.*` read in that job against the declared keys and reports unknown ones as `WFC404`
-(for example `matrix.brower`); `WFC403` is no longer reported for the job. The values of the keys stay unknown, so
-per-combination checks (`WFC401`, `WFC402`) do not apply. The declaration is used only for jobs whose matrix (or
+flowpact then checks every `matrix.*` read in that job against the declared keys and reports unknown ones as `FP404`
+(for example `matrix.brower`); `FP403` is no longer reported for the job. The values of the keys stay unknown, so
+per-combination checks (`FP401`, `FP402`) do not apply. The declaration is used only for jobs whose matrix (or
 `include`) is actually computed at runtime.
 
 ## Plugins
@@ -132,21 +132,21 @@ Organization-specific rules can be loaded from JavaScript modules:
 
 ```yaml
 plugins:
-  - ./ci/wfc-rules.mjs
+  - ./ci/flowpact-rules.mjs
 ```
 
 Paths are relative to the repository root. A module default-exports a rule or an array of rules (or exports them as
 `rules`). Plugin rules need their own code prefix and a `docsUrl`; see [Custom rules](/docs/custom-rules) for the rule
-format. Plugins are loaded by `wfc lint`, `wfc check` and `wfc generate`, and by the [GitHub Action](/docs/action).
+format. Plugins are loaded by `flowpact lint`, `flowpact check` and `flowpact generate`, and by the [GitHub Action](/docs/action).
 
 <Callout type="warn" title="Plugins run code from the repository">
-Loading a plugin executes it, with the permissions of whoever runs wfc. Only run wfc with plugins on code you trust.
+Loading a plugin executes it, with the permissions of whoever runs flowpact. Only run flowpact with plugins on code you trust.
 The GitHub Action skips plugins on `pull_request_target` and `workflow_run` events unless its `plugins` input is set
 to `true`.
 </Callout>
 
 When plugins are skipped, `rules:` and `overrides:` entries for rules that are not loaded are ignored for that run and
-listed in a warning. A name that starts with `WFC` or is close to a built-in rule (`unused-inptu`) is still a config
+listed in a warning. A name that starts with `FP` or is close to a built-in rule (`unused-inptu`) is still a config
 error, so a typo is never hidden.
 
 ## Reference
@@ -157,8 +157,8 @@ error, so a typo is never hidden.
 | `version` | `1` | `1` | Config schema version. |
 | `repository` | `owner/repo` | detected | Lets same-repository `owner/repo/...@ref` references resolve locally. |
 | `rules` | map of code or name → `error` \| `warning` \| `info` \| `off` | `{}` | Severity per rule. |
-| `limits.nestingDepth` | positive integer | `10` | Maximum workflows in one call chain (WFC602). |
-| `limits.maxInputs` | positive integer | `30` | `workflow_call` inputs before WFC605. |
+| `limits.nestingDepth` | positive integer | `10` | Maximum workflows in one call chain (FP602). |
+| `limits.maxInputs` | positive integer | `30` | `workflow_call` inputs before FP605. |
 | `ignore` | list of paths or globs | `[]` | Findings in matching files are suppressed. |
 | `overrides` | list of `{rule, target?, file?, reason, expires?, owner?}` | `[]` | Accepted findings, each with a reason and an optional expiry date ([details](#overrides)). |
 | `matrixShapes` | map of `<workflow path>#<job id>` → `{ keys: [...] }` | `{}` | Declared keys of runtime-computed matrices ([details](#matrix-shapes)). |

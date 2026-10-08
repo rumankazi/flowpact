@@ -1,5 +1,5 @@
-import { resolveSeverities } from '@wfc/core';
-import { renderRuleList } from '@wfc/reporters';
+import { resolveSeverities } from '@flowpact/core';
+import { renderRuleList } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
 import { commonArgs, createContext, EXIT, guard } from '../shared';

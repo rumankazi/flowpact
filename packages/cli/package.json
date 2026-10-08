@@ -1,7 +1,7 @@
 {
-  "name": "workflow-contracts",
+  "name": "flowpact",
   "version": "0.1.1",
-  "description": "wfc — lint, trace and lock the data flow between your GitHub Actions workflows.",
+  "description": "flowpact — lint, trace and lock the data flow between your GitHub Actions workflows.",
   "keywords": [
     "github-actions",
     "workflow",
@@ -14,20 +14,20 @@
     "sarif",
     "actions"
   ],
-  "homepage": "https://rumankazi.github.io/wfc",
+  "homepage": "https://rumankazi.github.io/flowpact",
   "bugs": {
-    "url": "https://github.com/rumankazi/wfc/issues"
+    "url": "https://github.com/rumankazi/flowpact/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rumankazi/wfc.git",
+    "url": "git+https://github.com/rumankazi/flowpact.git",
     "directory": "packages/cli"
   },
   "license": "MIT",
   "author": "Ruman Kazi",
   "type": "module",
   "bin": {
-    "wfc": "dist/index.js"
+    "flowpact": "dist/index.js"
   },
   "files": [
     "dist",
@@ -46,8 +46,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@wfc/core": "workspace:*",
-    "@wfc/reporters": "workspace:*",
+    "@flowpact/core": "workspace:*",
+    "@flowpact/reporters": "workspace:*",
     "citty": "^0.2.2",
     "execa": "^10.1.0",
     "picocolors": "^1.1.1",

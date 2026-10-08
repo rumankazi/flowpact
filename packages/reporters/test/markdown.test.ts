@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
-import { type AnalysisResult, analyze, memoryFileSystem, parseConfig, planContracts } from '@wfc/core';
-import { renderMarkdown } from '@wfc/reporters';
+import { type AnalysisResult, analyze, memoryFileSystem, parseConfig, planContracts } from '@flowpact/core';
+import { renderMarkdown } from '@flowpact/reporters';
 import { describe, expect, it } from 'vitest';
 
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
@@ -94,10 +94,10 @@ describe('renderMarkdown', () => {
   it('renders the incident report', () => {
     const out = renderMarkdown(fixture('incident-matrix'));
     expect(out).toMatchSnapshot();
-    expect(out.startsWith('## wfc report\n')).toBe(true);
+    expect(out.startsWith('## flowpact report\n')).toBe(true);
     expect(out).toContain('config schema v1 · contract schema v1 · report schema v1');
     expect(out).toContain('❌ **1 error**');
-    expect(out).toContain('[`WFC401`](https://rumankazi.github.io/wfc/docs/rules/wfc401)');
+    expect(out).toContain('[`FP401`](https://rumankazi.github.io/flowpact/docs/rules/fp401)');
     expect(out).toContain('Matrix: `{ name: windows }`');
     expect(out).toContain('<details><summary>Why / fix</summary>');
   });
@@ -161,16 +161,16 @@ describe('renderMarkdown contracts and suppressions', () => {
     expect(out).toMatchSnapshot();
     expect(out).toContain('### Contracts');
     expect(out).toContain('| File | Status | Breaking |');
-    expect(out).toContain('| `.github/workflow-contracts/workflows/deploy.contract.yml` | changed |');
+    expect(out).toContain('| `.github/flowpact/contracts/workflows/deploy.contract.yml` | changed |');
     expect(out).not.toContain('release.contract.yml` | unchanged');
     expect(out).toMatch(/- \*\*input "region" was removed[^*]*\*\* \(breaking\)/);
-    expect(out).toContain('Run `wfc generate` and commit the result');
+    expect(out).toContain('Run `flowpact generate` and commit the result');
   });
 
   it('explains how to apply the regenerated contracts from the artifact', () => {
-    const withRun = renderMarkdown(r, { artifact: { name: 'wfc-contracts', runId: '42' } });
+    const withRun = renderMarkdown(r, { artifact: { name: 'flowpact-contracts', runId: '42' } });
     expect(withRun).toContain(
-      '```sh\ngh run download 42 -n wfc-contracts\ngit apply --index wfc-contracts.patch\n```',
+      '```sh\ngh run download 42 -n flowpact-contracts\ngit apply --index flowpact-contracts.patch\n```',
     );
     const noRun = renderMarkdown(r, { artifact: { name: 'contracts', patchFile: 'fix.patch' } });
     expect(noRun).toContain('download the `contracts` artifact from this run');
@@ -202,7 +202,7 @@ describe('renderMarkdown contracts and suppressions', () => {
 
 describe('markdown escaping of untrusted names', () => {
   it('does not let unbalanced backtick runs turn HTML, links or mentions live', async () => {
-    const { analyze, memoryFileSystem } = await import('@wfc/core');
+    const { analyze, memoryFileSystem } = await import('@flowpact/core');
     const evil = "x```<a href='https://evil.example'>Click</a>`[link](https://evil.example) @team";
     const r = analyze({
       root: '/v',

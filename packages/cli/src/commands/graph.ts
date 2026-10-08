@@ -1,5 +1,5 @@
-import { analyze } from '@wfc/core';
-import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@wfc/reporters';
+import { analyze } from '@flowpact/core';
+import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import { commonArgs, createContext, displayPath, EXIT, guard, printBanner, UsageError } from '../shared';
 

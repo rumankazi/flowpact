@@ -1,9 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderMarkdown > renders nested workflows grouped by severity, errors first 1`] = `
-"## wfc report
+"## flowpact report
 
-<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>flowpact v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **4 errors** · 7 warnings · 2 info
 
@@ -13,7 +13,7 @@ exports[`renderMarkdown > renders nested workflows grouped by severity, errors f
 
 ### ❌ Errors (4)
 
-**[\`WFC101\`](https://rumankazi.github.io/wfc/docs/rules/wfc101) missing-required-input** · \`.github/workflows/build.yml:29:11\`
+**[\`FP101\`](https://rumankazi.github.io/flowpact/docs/rules/fp101) missing-required-input** · \`.github/workflows/build.yml:29:11\`
 
 jobs.package calls .github/workflows/package.yml without required input "channel"
 
@@ -30,7 +30,7 @@ jobs.package calls .github/workflows/package.yml without required input "channel
 
 </details>
 
-**[\`WFC201\`](https://rumankazi.github.io/wfc/docs/rules/wfc201) missing-required-secret** · \`.github/workflows/build.yml:29:11\`
+**[\`FP201\`](https://rumankazi.github.io/flowpact/docs/rules/fp201) missing-required-secret** · \`.github/workflows/build.yml:29:11\`
 
 jobs.package calls .github/workflows/package.yml without required secret "signing-key"
 
@@ -47,7 +47,7 @@ jobs.package calls .github/workflows/package.yml without required secret "signin
 
 </details>
 
-**[\`WFC301\`](https://rumankazi.github.io/wfc/docs/rules/wfc301) undefined-output-ref** · \`.github/workflows/pipeline.yml:33:73\`
+**[\`FP301\`](https://rumankazi.github.io/flowpact/docs/rules/fp301) undefined-output-ref** · \`.github/workflows/pipeline.yml:33:73\`
 
 jobs.build has no output "image-digest"
 
@@ -63,7 +63,7 @@ jobs.build has no output "image-digest"
 
 </details>
 
-**[\`WFC302\`](https://rumankazi.github.io/wfc/docs/rules/wfc302) output-ref-without-needs** · \`.github/workflows/pipeline.yml:39:33\`
+**[\`FP302\`](https://rumankazi.github.io/flowpact/docs/rules/fp302) output-ref-without-needs** · \`.github/workflows/pipeline.yml:39:33\`
 
 jobs.notify reads needs.build but does not list "build" under needs
 
@@ -81,7 +81,7 @@ jobs.notify reads needs.build but does not list "build" under needs
 
 ### ⚠️ Warnings (7)
 
-**[\`WFC104\`](https://rumankazi.github.io/wfc/docs/rules/wfc104) unused-input** · \`.github/workflows/build.yml:11:7\`
+**[\`FP104\`](https://rumankazi.github.io/flowpact/docs/rules/fp104) unused-input** · \`.github/workflows/build.yml:11:7\`
 
 Input "verbose" of .github/workflows/build.yml is never read (yet 1 caller passes it)
 
@@ -97,7 +97,7 @@ Input "verbose" of .github/workflows/build.yml is never read (yet 1 caller passe
 
 </details>
 
-**[\`WFC303\`](https://rumankazi.github.io/wfc/docs/rules/wfc303) unused-output** · \`.github/workflows/build.yml:22:7\`
+**[\`FP303\`](https://rumankazi.github.io/flowpact/docs/rules/fp303) unused-output** · \`.github/workflows/build.yml:22:7\`
 
 Output "checksum" of jobs.compile is never read
 
@@ -109,7 +109,7 @@ Output "checksum" of jobs.compile is never read
 
 </details>
 
-**[\`WFC304\`](https://rumankazi.github.io/wfc/docs/rules/wfc304) step-output-never-written** · \`.github/workflows/build.yml:22:21\`
+**[\`FP304\`](https://rumankazi.github.io/flowpact/docs/rules/fp304) step-output-never-written** · \`.github/workflows/build.yml:22:21\`
 
 Step "sum" never writes output "sha" (it writes sha256) — did you mean "sha256"?
 
@@ -125,7 +125,7 @@ Step "sum" never writes output "sha" (it writes sha256) — did you mean "sha256
 
 </details>
 
-**[\`WFC203\`](https://rumankazi.github.io/wfc/docs/rules/wfc203) unused-secret** · \`.github/workflows/package.yml:17:7\`
+**[\`FP203\`](https://rumankazi.github.io/flowpact/docs/rules/fp203) unused-secret** · \`.github/workflows/package.yml:17:7\`
 
 Secret "signing-key" of .github/workflows/package.yml is never read
 
@@ -137,7 +137,7 @@ Secret "signing-key" of .github/workflows/package.yml is never read
 
 </details>
 
-**[\`WFC104\`](https://rumankazi.github.io/wfc/docs/rules/wfc104) unused-input** · \`.github/workflows/pipeline.yml:15:7\`
+**[\`FP104\`](https://rumankazi.github.io/flowpact/docs/rules/fp104) unused-input** · \`.github/workflows/pipeline.yml:15:7\`
 
 Input "legacy-flag" of .github/workflows/pipeline.yml is never read
 
@@ -149,7 +149,7 @@ Input "legacy-flag" of .github/workflows/pipeline.yml is never read
 
 </details>
 
-**[\`WFC107\`](https://rumankazi.github.io/wfc/docs/rules/wfc107) optional-forwarded-to-required** · \`.github/workflows/pipeline.yml:24:18\`
+**[\`FP107\`](https://rumankazi.github.io/flowpact/docs/rules/fp107) optional-forwarded-to-required** · \`.github/workflows/pipeline.yml:24:18\`
 
 Required input "notes" of .github/workflows/build.yml is fed from optional input "release-notes" without a default
 
@@ -166,7 +166,7 @@ Required input "notes" of .github/workflows/build.yml is fed from optional input
 
 </details>
 
-**[\`WFC501\`](https://rumankazi.github.io/wfc/docs/rules/wfc501) undefined-env-ref** · \`.github/workflows/publish.yml:34:36\`
+**[\`FP501\`](https://rumankazi.github.io/flowpact/docs/rules/fp501) undefined-env-ref** · \`.github/workflows/publish.yml:34:36\`
 
 env.TARGET_URL is not defined in this scope
 
@@ -180,7 +180,7 @@ env.TARGET_URL is not defined in this scope
 
 ### ℹ️ Info (2)
 
-**[\`WFC106\`](https://rumankazi.github.io/wfc/docs/rules/wfc106) passthrough-dropped** · \`.github/workflows/pipeline.yml:25:7\`
+**[\`FP106\`](https://rumankazi.github.io/flowpact/docs/rules/fp106) passthrough-dropped** · \`.github/workflows/pipeline.yml:25:7\`
 
 jobs.build passes "verbose" to .github/workflows/build.yml, which never reads it
 
@@ -196,7 +196,7 @@ jobs.build passes "verbose" to .github/workflows/build.yml, which never reads it
 
 </details>
 
-**[\`WFC204\`](https://rumankazi.github.io/wfc/docs/rules/wfc204) secrets-inherit** · \`.github/workflows/pipeline.yml:26:5\`
+**[\`FP204\`](https://rumankazi.github.io/flowpact/docs/rules/fp204) secrets-inherit** · \`.github/workflows/pipeline.yml:26:5\`
 
 jobs.build inherits all secrets; .github/workflows/build.yml and its callees read REGISTRY_TOKEN
 
@@ -216,9 +216,9 @@ secrets:
 `;
 
 exports[`renderMarkdown > renders the incident report 1`] = `
-"## wfc report
+"## flowpact report
 
-<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>flowpact v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **1 error**
 
@@ -228,7 +228,7 @@ exports[`renderMarkdown > renders the incident report 1`] = `
 
 ### ❌ Errors (1)
 
-**[\`WFC401\`](https://rumankazi.github.io/wfc/docs/rules/wfc401) empty-binding-for-matrix-combo** · \`.github/workflows/tests.yml:23:19\`
+**[\`FP401\`](https://rumankazi.github.io/flowpact/docs/rules/fp401) empty-binding-for-matrix-combo** · \`.github/workflows/tests.yml:23:19\`
 
 Input "config" for .github/workflows/run-suite.yml is empty in 1 of 3 matrix combinations — matrix.config is not defined there
 
@@ -251,9 +251,9 @@ Matrix: \`{ name: windows }\`
 `;
 
 exports[`renderMarkdown contracts and suppressions > summarizes contract drift with breaking changes 1`] = `
-"## wfc report
+"## flowpact report
 
-<sub>wfc v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
+<sub>flowpact v0.0.0-test · config schema v1 · contract schema v1 · report schema v1 · 7 ms</sub>
 
 ❌ **3 errors**
 
@@ -263,7 +263,7 @@ exports[`renderMarkdown contracts and suppressions > summarizes contract drift w
 
 ### ❌ Errors (3)
 
-**[\`WFC803\`](https://rumankazi.github.io/wfc/docs/rules/wfc803) breaking-interface-change** · \`.github/workflows/deploy.yml:3:3\`
+**[\`FP803\`](https://rumankazi.github.io/flowpact/docs/rules/fp803) breaking-interface-change** · \`.github/workflows/deploy.yml:3:3\`
 
 Breaking change to .github/workflows/deploy.yml: input "region" was removed — callers that pass it will fail
 
@@ -271,16 +271,16 @@ Breaking change to .github/workflows/deploy.yml: input "region" was removed — 
 
 **Why:** Callers written against the locked interface will fail (unknown or missing input) or silently read empty outputs. In large pipelines those callers may live in other repositories or rarely-run branches.
 
-**Fix:** Update every caller first (wfc lists the known consumers), then regenerate the contract. If the change is intended, \`wfc generate\` records it and the diff makes the break explicit in review.
+**Fix:** Update every caller first (flowpact lists the known consumers), then regenerate the contract. If the change is intended, \`flowpact generate\` records it and the diff makes the break explicit in review.
 
 **Related locations:**
 
-- \`.github/workflow-contracts/workflows/deploy.contract.yml:1:1\` — locked contract
+- \`.github/flowpact/contracts/workflows/deploy.contract.yml:1:1\` — locked contract
 - \`.github/workflows/release.yml:5:11\` — consumer: .github/workflows/release.yml › jobs.deploy
 
 </details>
 
-**[\`WFC803\`](https://rumankazi.github.io/wfc/docs/rules/wfc803) breaking-interface-change** · \`.github/workflows/deploy.yml:8:7\`
+**[\`FP803\`](https://rumankazi.github.io/flowpact/docs/rules/fp803) breaking-interface-change** · \`.github/workflows/deploy.yml:8:7\`
 
 Breaking change to .github/workflows/deploy.yml: input "token-scope" was added and must be passed — existing callers do not pass it
 
@@ -288,28 +288,28 @@ Breaking change to .github/workflows/deploy.yml: input "token-scope" was added a
 
 **Why:** Callers written against the locked interface will fail (unknown or missing input) or silently read empty outputs. In large pipelines those callers may live in other repositories or rarely-run branches.
 
-**Fix:** Update every caller first (wfc lists the known consumers), then regenerate the contract. If the change is intended, \`wfc generate\` records it and the diff makes the break explicit in review.
+**Fix:** Update every caller first (flowpact lists the known consumers), then regenerate the contract. If the change is intended, \`flowpact generate\` records it and the diff makes the break explicit in review.
 
 **Related locations:**
 
-- \`.github/workflow-contracts/workflows/deploy.contract.yml:1:1\` — locked contract
+- \`.github/flowpact/contracts/workflows/deploy.contract.yml:1:1\` — locked contract
 - \`.github/workflows/release.yml:5:11\` — consumer: .github/workflows/release.yml › jobs.deploy
 
 </details>
 
-**[\`WFC802\`](https://rumankazi.github.io/wfc/docs/rules/wfc802) contract-outdated** · \`.github/workflows/deploy.yml:11:7\`
+**[\`FP802\`](https://rumankazi.github.io/flowpact/docs/rules/fp802) contract-outdated** · \`.github/workflows/deploy.yml:11:7\`
 
-Contract .github/workflow-contracts/workflows/deploy.contract.yml is outdated: input "legacy" was added
+Contract .github/flowpact/contracts/workflows/deploy.contract.yml is outdated: input "legacy" was added
 
 <details><summary>Why / fix</summary>
 
 **Why:** The contract is the reviewed record of what flows in and out. When it drifts silently, the next reviewer compares against stale information.
 
-**Fix:** Run \`wfc generate\` and commit the updated contracts. In CI, the wfc action (check mode) attaches the regenerated contracts and a \`git apply\`-able patch to the run — see its job summary.
+**Fix:** Run \`flowpact generate\` and commit the updated contracts. In CI, the flowpact action (check mode) attaches the regenerated contracts and a \`git apply\`-able patch to the run — see its job summary.
 
 **Related locations:**
 
-- \`.github/workflow-contracts/workflows/deploy.contract.yml:1:1\` — locked contract
+- \`.github/flowpact/contracts/workflows/deploy.contract.yml:1:1\` — locked contract
 
 </details>
 
@@ -319,20 +319,20 @@ Contract .github/workflow-contracts/workflows/deploy.contract.yml is outdated: i
 
 | File | Status | Breaking |
 | --- | --- | ---: |
-| \`.github/workflow-contracts/workflows/deploy.contract.yml\` | changed | 2 |
+| \`.github/flowpact/contracts/workflows/deploy.contract.yml\` | changed | 2 |
 
-- \`.github/workflow-contracts/workflows/deploy.contract.yml\`
+- \`.github/flowpact/contracts/workflows/deploy.contract.yml\`
   - **input "region" was removed — callers that pass it will fail** (breaking)
   - **input "token-scope" was added and must be passed — existing callers do not pass it** (breaking)
   - input "legacy" was added
 
-Run \`wfc generate\` and commit the result to update the locked contracts.
+Run \`flowpact generate\` and commit the result to update the locked contracts.
 
 <details><summary>1 suppressed finding</summary>
 
 | Code | Location | Reason | Expires | Owner |
 | --- | --- | --- | --- | --- |
-| [\`WFC104\`](https://rumankazi.github.io/wfc/docs/rules/wfc104) | \`.github/workflows/deploy.yml:11:7\` | Kept for callers on v1 \\| removed in v3 | 2099-01-01 | &#64;platform |
+| [\`FP104\`](https://rumankazi.github.io/flowpact/docs/rules/fp104) | \`.github/workflows/deploy.yml:11:7\` | Kept for callers on v1 \\| removed in v3 | 2099-01-01 | &#64;platform |
 
 </details>
 "

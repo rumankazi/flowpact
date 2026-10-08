@@ -1,5 +1,5 @@
 /**
- * Renders documentation screenshots from real `wfc` runs against the fixture repositories, so the docs always show
+ * Renders documentation screenshots from real `flowpact` runs against the fixture repositories, so the docs always show
  * the current output. Requires a built CLI (`pnpm build`).
  */
 import { spawnSync } from 'node:child_process';
@@ -25,13 +25,13 @@ const shots: Shot[] = [
     name: 'lint-incident',
     fixture: 'incident-matrix',
     args: ['lint'],
-    title: 'wfc lint — the missing matrix variant',
+    title: 'flowpact lint — the missing matrix variant',
   },
   {
     name: 'lint-deep-nesting',
     fixture: 'deep-nesting',
     args: ['lint', '--hide-info'],
-    title: 'wfc lint — nested reusable workflows',
+    title: 'flowpact lint — nested reusable workflows',
     head: 70,
   },
   { name: 'lint-summary', fixture: 'deep-nesting', args: ['lint', '-q'], title: 'Summary card', head: -22 },
@@ -40,35 +40,35 @@ const shots: Shot[] = [
     name: 'trace-down',
     fixture: 'deep-nesting',
     args: ['trace', 'pipeline.yml:environment'],
-    title: 'wfc trace — where does a value go?',
+    title: 'flowpact trace — where does a value go?',
   },
   {
     name: 'trace-up',
     fixture: 'incident-matrix',
     args: ['trace', 'run-suite.yml:config', '--up'],
-    title: 'wfc trace --up — where does a value come from?',
+    title: 'flowpact trace --up — where does a value come from?',
   },
   {
     name: 'generate-dry-run',
     fixture: 'deep-nesting',
     args: ['generate', '--dry-run'],
-    title: 'wfc generate --dry-run — preview the contracts',
+    title: 'flowpact generate --dry-run — preview the contracts',
     head: 40,
   },
   {
     name: 'check-drift',
     fixture: 'contracts-drift',
     args: ['check', '--hide-info'],
-    title: 'wfc check — drift, breaking changes and overrides',
+    title: 'flowpact check — drift, breaking changes and overrides',
   },
-  { name: 'graph-tree', fixture: 'deep-nesting', args: ['graph'], title: 'wfc graph — who calls whom' },
-  { name: 'explain', fixture: 'clean', args: ['explain', 'WFC401'], title: 'wfc explain WFC401' },
-  { name: 'rules', fixture: 'clean', args: ['rules'], title: 'wfc rules', head: 24 },
+  { name: 'graph-tree', fixture: 'deep-nesting', args: ['graph'], title: 'flowpact graph — who calls whom' },
+  { name: 'explain', fixture: 'clean', args: ['explain', 'FP401'], title: 'flowpact explain FP401' },
+  { name: 'rules', fixture: 'clean', args: ['rules'], title: 'flowpact rules', head: 24 },
   {
     name: 'debug',
     fixture: 'incident-matrix',
-    args: ['lint', '--debug', '--only', 'WFC401'],
-    title: 'wfc lint --debug',
+    args: ['lint', '--debug', '--only', 'FP401'],
+    title: 'flowpact lint --debug',
     head: 30,
   },
 ];
@@ -82,7 +82,7 @@ for (const shot of shots) {
       FORCE_COLOR: '1',
       NO_COLOR: undefined,
       COLUMNS: '104',
-      WFC_DEBUG: undefined,
+      FLOWPACT_DEBUG: undefined,
       GITHUB_REPOSITORY: 'acme/app',
     },
     encoding: 'utf8',
@@ -95,7 +95,7 @@ for (const shot of shots) {
   if (shot.head && shot.head > 0 && lines.length > shot.head)
     text = [...lines.slice(0, shot.head), '\u001B[2m  …\u001B[0m'].join('\n');
   if (shot.head && shot.head < 0) text = lines.slice(shot.head).join('\n');
-  const prompt = `wfc ${shot.args.join(' ')}`;
+  const prompt = `flowpact ${shot.args.join(' ')}`;
   writeFileSync(join(OUT, `${shot.name}.svg`), ansiToSvg(text, { title: shot.title, prompt }));
   console.log(`${shot.name}.svg (exit ${res.status})`);
 }

@@ -1,6 +1,6 @@
 {
-  "$id": "https://rumankazi.github.io/wfc/schemas/config/v1.json",
-  "title": "wfc configuration",
+  "$id": "https://rumankazi.github.io/flowpact/schemas/config/v1.json",
+  "title": "flowpact configuration",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -21,7 +21,7 @@
     },
     "rules": {
       "default": {},
-      "description": "Severity per rule, keyed by code (WFC401) or name (empty-binding-for-matrix-combo).",
+      "description": "Severity per rule, keyed by code (FP401) or name (empty-binding-for-matrix-combo).",
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -43,14 +43,14 @@
       "properties": {
         "nestingDepth": {
           "default": 10,
-          "description": "Maximum workflows in one call chain, counting the top-level workflow (WFC602).",
+          "description": "Maximum workflows in one call chain, counting the top-level workflow (FP602).",
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
         },
         "maxInputs": {
           "default": 30,
-          "description": "Inputs on one workflow_call interface before WFC605 suggests grouping them.",
+          "description": "Inputs on one workflow_call interface before FP605 suggests grouping them.",
           "type": "integer",
           "exclusiveMinimum": 0,
           "maximum": 9007199254740991
@@ -76,7 +76,7 @@
           "rule": {
             "type": "string",
             "minLength": 1,
-            "description": "Rule code (WFC104) or name (unused-input) to suppress."
+            "description": "Rule code (FP104) or name (unused-input) to suppress."
           },
           "target": {
             "description": "Symbol the finding is about, e.g. `.github/workflows/ci.yml#inputs.legacy`. Supports `*` and `**`.",
@@ -92,7 +92,7 @@
             "description": "Why this finding is accepted. Required, at least 10 characters."
           },
           "expires": {
-            "description": "YYYY-MM-DD (UTC). After the end of this day the finding is reported again, together with WFC901.",
+            "description": "YYYY-MM-DD (UTC). After the end of this day the finding is reported again, together with FP901.",
             "type": "string",
             "format": "date",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
@@ -111,7 +111,7 @@
     },
     "matrixShapes": {
       "default": {},
-      "description": "Declared keys of runtime-computed matrices, keyed by `<workflow path>#<job id>`. Lets wfc verify `matrix.*` reads (WFC404) instead of reporting WFC403.",
+      "description": "Declared keys of runtime-computed matrices, keyed by `<workflow path>#<job id>`. Lets flowpact verify `matrix.*` reads (FP404) instead of reporting FP403.",
       "type": "object",
       "propertyNames": {
         "type": "string",

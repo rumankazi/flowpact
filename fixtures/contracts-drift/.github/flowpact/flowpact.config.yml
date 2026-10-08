@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://rumankazi.github.io/flowpact/schemas/config/v1.json
+version: 1
+
+overrides:
+  # Active: suppresses FP104 for this one input until the old dispatcher is retired.
+  - rule: unused-input
+    target: .github/workflows/deploy.yml#inputs.legacy-flag
+    reason: Still passed by the old release dispatcher; remove once it is retired (OPS-142)
+    owner: '@platform-team'
+    expires: 2099-12-31
+
+  # Unused: the output is read by release.yml, so there is nothing to suppress (FP902).
+  - rule: unused-output
+    target: .github/workflows/deploy.yml#outputs.url
+    reason: Read by the external status page, which flowpact cannot see
+    owner: '@platform-team'

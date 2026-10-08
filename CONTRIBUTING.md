@@ -60,9 +60,9 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 1. Every push to `main` updates a **release pull request** that bumps the version in every package, rebuilds the
    action bundle and adds the changelog entry from the commits since the last release.
 2. Merging it tags the release (`vX.Y.Z`) and creates the GitHub release.
-3. The release workflow then publishes `workflow-contracts` to npm with provenance through npm trusted publishing (no
+3. The release workflow then publishes `flowpact` to npm with provenance through npm trusted publishing (no
    token), moves the major tag (`v0`) used by
-   `uses: rumankazi/wfc@v0`, and smoke-tests the published package on Linux, macOS and Windows.
+   `uses: rumankazi/flowpact@v0`, and smoke-tests the published package on Linux, macOS and Windows.
 
 If publishing fails after the tag exists, run the **Release** workflow manually with that tag; versions already on
 npm are skipped.

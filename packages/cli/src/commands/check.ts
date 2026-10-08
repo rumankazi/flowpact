@@ -5,8 +5,7 @@ import { type ReportArgs, reportArgs, runReport } from './lint';
 export const checkCommand = defineCommand({
   meta: {
     name: 'check',
-    description:
-      'Lint and compare with the locked contracts in .github/workflow-contracts/ (drift, breaking changes)',
+    description: 'Lint and compare with the locked contracts in .github/flowpact/ (drift, breaking changes)',
   },
   args: {
     ...reportArgs,

@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyze, writeContracts } from '@wfc/core';
+import { analyze, writeContracts } from '@flowpact/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 
@@ -91,7 +91,7 @@ const ENV_KEYS = [
   'RUNNER_TEMP',
   'RUNNER_DEBUG',
   'ACTIONS_STEP_DEBUG',
-  'WFC_DEBUG',
+  'FLOWPACT_DEBUG',
 ];
 
 let saved: Record<string, string | undefined>;
@@ -100,7 +100,7 @@ let temp: string;
 beforeEach(() => {
   saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
   for (const k of ENV_KEYS) delete process.env[k];
-  temp = mkdtempSync(join(tmpdir(), 'wfc-action-'));
+  temp = mkdtempSync(join(tmpdir(), 'flowpact-action-'));
   process.env.RUNNER_TEMP = join(temp, 'runner-temp');
   Object.assign(state, {
     inputs: {},
@@ -142,7 +142,7 @@ function repoFrom(fixture: string, sub = ''): { workspace: string; root: string 
   return { workspace, root };
 }
 
-/** Writes the current contracts (what `wfc generate` does) so later edits show up as drift. */
+/** Writes the current contracts (what `flowpact generate` does) so later edits show up as drift. */
 function lockContracts(root: string): void {
   const result = analyze({ root, checkContracts: true });
   writeContracts(root, result.contracts!);
@@ -164,19 +164,19 @@ describe('lint mode', () => {
   it('fails on errors and annotates them where they are', async () => {
     const s = await action(join(FIXTURES, 'incident-matrix'));
     expect(s.infos[0]).toContain('config schema v1');
-    expect(s.infos[0]).toMatch(/^wfc v\d+\.\d+\.\d+/);
-    expect(s.failed).toEqual(['wfc found 1 error.']);
+    expect(s.infos[0]).toMatch(/^flowpact v\d+\.\d+\.\d+/);
+    expect(s.failed).toEqual(['flowpact found 1 error.']);
     const errors = s.annotations.filter((a) => a.level === 'error');
     expect(errors).toHaveLength(1);
     expect(errors[0]!.props).toEqual({
-      title: 'WFC401 empty-binding-for-matrix-combo',
+      title: 'FP401 empty-binding-for-matrix-combo',
       file: '.github/workflows/tests.yml',
       startLine: 23,
       endLine: 23,
       startColumn: 19,
       endColumn: 32,
     });
-    expect(errors[0]!.message).toContain('https://rumankazi.github.io/wfc/docs/rules/wfc401');
+    expect(errors[0]!.message).toContain('https://rumankazi.github.io/flowpact/docs/rules/fp401');
     expect(s.outputs).toMatchObject({
       errors: '1',
       warnings: '0',
@@ -187,7 +187,7 @@ describe('lint mode', () => {
       patch: '',
       'artifact-id': '',
     });
-    expect(s.groups).toContain('wfc lint: analyze');
+    expect(s.groups).toContain('flowpact lint: analyze');
     // Progress lines go to the log, not to annotations.
     expect(s.infos.some((l) => l.startsWith('discovered 3 workflow(s)'))).toBe(true);
     expect(s.debugs).toEqual([]);
@@ -227,7 +227,7 @@ describe('lint mode', () => {
 
   it('counts warnings with fail-on: warning', async () => {
     const s = await action(join(FIXTURES, 'deep-nesting'), { 'fail-on': 'warning' });
-    expect(s.failed).toEqual(['wfc found 4 errors and 7 warnings.']);
+    expect(s.failed).toEqual(['flowpact found 4 errors and 7 warnings.']);
   });
 
   it('skips annotations and the summary when disabled', async () => {
@@ -240,31 +240,31 @@ describe('lint mode', () => {
   it('writes the job summary with docs links and an optional call graph', async () => {
     const s = await action(join(FIXTURES, 'incident-matrix'), { 'summary-graph': 'true' });
     expect(s.summaryWrites).toBe(1);
-    expect(s.summary).toMatch(/^## wfc lint\n/);
-    expect(s.summary).toContain('[`WFC401`](https://rumankazi.github.io/wfc/docs/rules/wfc401)');
+    expect(s.summary).toMatch(/^## flowpact lint\n/);
+    expect(s.summary).toContain('[`FP401`](https://rumankazi.github.io/flowpact/docs/rules/fp401)');
     expect(s.summary).toContain('```mermaid');
   });
 
   it('writes report files relative to the workspace', async () => {
     const { workspace } = repoFrom('incident-matrix');
     const s = await action(workspace, {
-      'report-json': 'reports/wfc.json',
-      'report-sarif': 'reports/wfc.sarif',
-      'report-markdown': join(temp, 'abs', 'wfc.md'),
+      'report-json': 'reports/flowpact.json',
+      'report-sarif': 'reports/flowpact.sarif',
+      'report-markdown': join(temp, 'abs', 'flowpact.md'),
     });
-    const json = JSON.parse(readFileSync(join(workspace, 'reports/wfc.json'), 'utf8'));
+    const json = JSON.parse(readFileSync(join(workspace, 'reports/flowpact.json'), 'utf8'));
     expect(json.summary.errors).toBe(1);
-    const sarif = JSON.parse(readFileSync(join(workspace, 'reports/wfc.sarif'), 'utf8'));
+    const sarif = JSON.parse(readFileSync(join(workspace, 'reports/flowpact.sarif'), 'utf8'));
     expect(sarif.version).toBe('2.1.0');
-    expect(readFileSync(join(temp, 'abs', 'wfc.md'), 'utf8')).toContain('## wfc lint');
-    expect(s.outputs['report-json']).toBe(join(workspace, 'reports/wfc.json'));
-    expect(s.outputs['report-sarif']).toBe(join(workspace, 'reports/wfc.sarif'));
+    expect(readFileSync(join(temp, 'abs', 'flowpact.md'), 'utf8')).toContain('## flowpact lint');
+    expect(s.outputs['report-json']).toBe(join(workspace, 'reports/flowpact.json'));
+    expect(s.outputs['report-sarif']).toBe(join(workspace, 'reports/flowpact.sarif'));
   });
 
   it('makes SARIF locations relative to the workspace when working-directory is set', async () => {
     const { workspace } = repoFrom('incident-matrix', 'sub');
-    await action(workspace, { 'working-directory': 'sub', 'report-sarif': 'wfc.sarif' });
-    const sarif = JSON.parse(readFileSync(join(workspace, 'wfc.sarif'), 'utf8'));
+    await action(workspace, { 'working-directory': 'sub', 'report-sarif': 'flowpact.sarif' });
+    const sarif = JSON.parse(readFileSync(join(workspace, 'flowpact.sarif'), 'utf8'));
     const uris = sarif.runs[0].results.flatMap(
       (r: { locations: { physicalLocation: { artifactLocation: { uri: string } } }[] }) =>
         r.locations.map((l) => l.physicalLocation.artifactLocation.uri),
@@ -286,23 +286,25 @@ describe('check mode', () => {
     expect(s.outputs['artifact-id']).toBe('42');
     expect(s.failed).toHaveLength(1);
     expect(s.failed[0]).toContain('contracts drifted');
-    expect(s.failed[0]).toContain('wfc-contracts.patch');
+    expect(s.failed[0]).toContain('flowpact-contracts.patch');
 
     expect(s.uploads).toHaveLength(1);
     const upload = s.uploads[0]!;
-    expect(upload.name).toBe('wfc-contracts');
+    expect(upload.name).toBe('flowpact-contracts');
     expect(upload.options).toEqual({ retentionDays: 7 });
     const inArtifact = upload.files.map((f) => f.slice(upload.root.length + 1)).sort();
-    expect(inArtifact).toContain('wfc-contracts.patch');
-    expect(inArtifact).toContain('wfc-contracts/README.md');
-    expect(inArtifact).toContain('wfc-contracts/.github/workflow-contracts/workflows/build.contract.yml');
+    expect(inArtifact).toContain('flowpact-contracts.patch');
+    expect(inArtifact).toContain('flowpact-contracts/README.md');
+    expect(inArtifact).toContain(
+      'flowpact-contracts/.github/flowpact/contracts/workflows/build.contract.yml',
+    );
     for (const f of upload.files) expect(existsSync(f)).toBe(true);
-    expect(s.outputs.patch).toBe(join(upload.root, 'wfc-contracts.patch'));
+    expect(s.outputs.patch).toBe(join(upload.root, 'flowpact-contracts.patch'));
 
-    expect(s.summary).toContain('gh run download 987 -n wfc-contracts');
-    expect(s.summary).toContain('git apply --index wfc-contracts.patch');
-    expect(readFileSync(join(upload.root, 'wfc-contracts/README.md'), 'utf8')).toContain(
-      'git apply --index wfc-contracts.patch',
+    expect(s.summary).toContain('gh run download 987 -n flowpact-contracts');
+    expect(s.summary).toContain('git apply --index flowpact-contracts.patch');
+    expect(readFileSync(join(upload.root, 'flowpact-contracts/README.md'), 'utf8')).toContain(
+      'git apply --index flowpact-contracts.patch',
     );
 
     execFileSync('git', ['apply', s.outputs.patch!], { cwd: workspace });
@@ -317,11 +319,11 @@ describe('check mode', () => {
     addRequiredInput(root);
     const s = await action(workspace, { mode: 'check', 'working-directory': 'apps/ci' });
     const patch = s.uploads[0]!.patch;
-    expect(patch).toContain('diff --git a/apps/ci/.github/workflow-contracts/workflows/build.contract.yml');
+    expect(patch).toContain('diff --git a/apps/ci/.github/flowpact/contracts/workflows/build.contract.yml');
     execFileSync('git', ['apply', '--check', s.outputs.patch!], { cwd: workspace });
   });
 
-  it('keeps going when the upload fails and points at wfc generate instead', async () => {
+  it('keeps going when the upload fails and points at flowpact generate instead', async () => {
     const { workspace, root } = repoFrom('deep-nesting');
     lockContracts(root);
     addRequiredInput(root);
@@ -334,7 +336,7 @@ describe('check mode', () => {
     expect(s.outputs['artifact-id']).toBe('');
     expect(s.outputs.patch).not.toBe('');
     expect(s.summary).not.toContain('gh run download');
-    expect(s.failed[0]).toContain('run wfc generate');
+    expect(s.failed[0]).toContain('run flowpact generate');
   });
 
   it('does not upload when upload-contracts is false', async () => {
@@ -351,15 +353,15 @@ describe('check mode', () => {
 describe('logging and errors', () => {
   it('prints debug logs when the debug input is set', async () => {
     const s = await action(join(FIXTURES, 'incident-matrix'), { debug: 'true' });
-    expect(s.infos.some((l) => l.startsWith('debug: [wfc] config resolved'))).toBe(true);
+    expect(s.infos.some((l) => l.startsWith('debug: [flowpact] config resolved'))).toBe(true);
     expect(s.debugs).toEqual([]);
   });
 
   it('sends debug logs to core.debug when step debug logging is on', async () => {
     state.isDebug = true;
     const s = await action(join(FIXTURES, 'incident-matrix'));
-    expect(s.debugs.some((l) => l.startsWith('[wfc] config resolved'))).toBe(true);
-    expect(s.debugs.some((l) => l.startsWith('[wfc:rules] WFC401'))).toBe(true);
+    expect(s.debugs.some((l) => l.startsWith('[flowpact] config resolved'))).toBe(true);
+    expect(s.debugs.some((l) => l.startsWith('[flowpact:rules] FP401'))).toBe(true);
   });
 
   it('fails with the config problem and its issues', async () => {
@@ -420,7 +422,7 @@ describe('action.yml', () => {
   });
 
   it('has the same version as the engine', async () => {
-    const { VERSION } = await import('@wfc/core');
+    const { VERSION } = await import('@flowpact/core');
     const pkg = JSON.parse(readFileSync(join(REPO, 'packages/action/package.json'), 'utf8'));
     expect(pkg.version).toBe(VERSION);
   });
@@ -449,8 +451,8 @@ describe('review fixes', () => {
 
   it('does not run plugins on untrusted events unless allowed', async () => {
     const { workspace, root } = repoFrom('clean');
-    mkdirSync(join(root, '.github/workflow-contracts'), { recursive: true });
-    writeFileSync(join(root, '.github/workflow-contracts/wfc.config.yml'), 'plugins: [./evil.mjs]\n');
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'plugins: [./evil.mjs]\n');
     writeFileSync(join(root, 'evil.mjs'), 'globalThis.__wfcPluginRan = true;\nexport default [];\n');
     process.env.GITHUB_EVENT_NAME = 'pull_request_target';
     const s = await action(workspace);
@@ -461,9 +463,9 @@ describe('review fixes', () => {
 
   it('warns about config entries for skipped plugin rules and names the input that disabled them', async () => {
     const { workspace, root } = repoFrom('clean');
-    mkdirSync(join(root, '.github/workflow-contracts'), { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
     writeFileSync(
-      join(root, '.github/workflow-contracts/wfc.config.yml'),
+      join(root, '.github/flowpact/flowpact.config.yml'),
       'plugins: [./p.mjs]\nrules:\n  acme-no-echo: error\n',
     );
     process.env.GITHUB_EVENT_NAME = 'pull_request';
@@ -478,14 +480,14 @@ describe('review fixes', () => {
     const { workspace, root } = repoFrom('deep-nesting', 'svc');
     lockContracts(root);
     addRequiredInput(root);
-    process.env.GITHUB_ACTION = 'wfc-svc';
+    process.env.GITHUB_ACTION = 'flowpact-svc';
     const s = await action(workspace, { mode: 'check', 'working-directory': 'svc' });
-    expect(s.uploads[0]!.name).toBe('wfc-contracts-svc');
-    expect(s.uploads[0]!.root).toContain('wfc-contracts-artifact-wfc-svc-svc');
+    expect(s.uploads[0]!.name).toBe('flowpact-contracts-svc');
+    expect(s.uploads[0]!.root).toContain('flowpact-contracts-artifact-flowpact-svc-svc');
   });
 
   it('shortens the job summary to stay within GitHub’s limit', async () => {
-    const { analyze: run2, memoryFileSystem } = await import('@wfc/core');
+    const { analyze: run2, memoryFileSystem } = await import('@flowpact/core');
     const files: Record<string, string> = {};
     for (let i = 0; i < 200; i++) {
       const inputs = Array.from({ length: 30 }, (_, j) => `      i${j}: { type: string }`).join('\n');
@@ -497,7 +499,7 @@ describe('review fixes', () => {
       fs: memoryFileSystem(files),
       validateSchema: false,
       repository: 'a/b',
-      config: (await import('@wfc/core')).parseConfig({
+      config: (await import('@flowpact/core')).parseConfig({
         overrides: [{ rule: 'unused-input', target: '**', reason: 'accepted while migrating (JIRA-1)' }],
       }),
     });

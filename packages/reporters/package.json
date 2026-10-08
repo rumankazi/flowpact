@@ -1,8 +1,8 @@
 {
-  "name": "@wfc/reporters",
+  "name": "@flowpact/reporters",
   "version": "0.1.1",
   "private": true,
-  "description": "Output formatters for wfc analysis results (pretty terminal, JSON).",
+  "description": "Output formatters for flowpact analysis results (pretty terminal, JSON).",
   "type": "module",
   "exports": {
     ".": {
@@ -16,7 +16,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@wfc/core": "workspace:*",
+    "@flowpact/core": "workspace:*",
     "picocolors": "^1.1.1",
     "string-width": "^8.3.0"
   },

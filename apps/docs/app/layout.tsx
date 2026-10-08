@@ -3,7 +3,7 @@ import { Provider } from '@/components/provider';
 import './global.css';
 
 export const metadata: Metadata = {
-  title: { template: '%s · wfc', default: 'wfc — workflow contracts for GitHub Actions' },
+  title: { template: '%s · flowpact', default: 'flowpact — workflow contracts for GitHub Actions' },
   description: 'Lint, trace and lock the data flow between your GitHub Actions workflows.',
 };
 

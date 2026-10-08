@@ -39,7 +39,7 @@ jobs:
           BOT: ${{ steps.app.outputs.app-slug }}[bot]
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @wfc/action build
+          pnpm --filter @flowpact/action build
           if [ -n "$(git status --porcelain packages/action/dist)" ]; then
             git config user.name "$BOT"
             git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"

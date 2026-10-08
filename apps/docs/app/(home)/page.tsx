@@ -16,7 +16,7 @@ const features = [
   },
   {
     title: 'Trace anything',
-    body: '`wfc trace pipeline.yml:config` shows where a value goes — or, with --up, where it comes from.',
+    body: '`flowpact trace pipeline.yml:config` shows where a value goes — or, with --up, where it comes from.',
   },
 ];
 
@@ -25,7 +25,7 @@ export default function HomePage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-16">
       <section className="flex flex-col items-center gap-6 text-center">
         <span className="rounded-full border border-fd-border px-3 py-1 font-mono text-xs text-fd-muted-foreground">
-          wfc · workflow contracts for GitHub Actions
+          flowpact · workflow contracts for GitHub Actions
         </span>
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
           Know exactly what flows between your workflows.
@@ -45,13 +45,11 @@ export default function HomePage() {
             Browse rules
           </Link>
         </div>
-        <code className="rounded-lg bg-fd-muted px-4 py-2 font-mono text-sm">
-          npx workflow-contracts lint
-        </code>
+        <code className="rounded-lg bg-fd-muted px-4 py-2 font-mono text-sm">npx flowpact lint</code>
       </section>
       <Screenshot
         name="lint-incident"
-        alt="wfc lint output showing WFC401 for a matrix combination without a config value"
+        alt="flowpact lint output showing FP401 for a matrix combination without a config value"
       />
       <section className="grid gap-4 sm:grid-cols-2">
         {features.map((f) => (

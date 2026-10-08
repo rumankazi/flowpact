@@ -4,10 +4,10 @@ description: The rule API and code format — how built-in rules are defined and
 ---
 
 Every rule — built-in or not — is a single definition. That definition is the source for the runtime message, the
-why/fix text and docs URL printed with each finding, and (for built-in rules) `wfc explain` and the generated rule pages
+why/fix text and docs URL printed with each finding, and (for built-in rules) `flowpact explain` and the generated rule pages
 on this site.
 
-```js title="ci/wfc-rules.mjs"
+```js title="ci/flowpact-rules.mjs"
 /** Jobs that deploy to production must depend on the approval job. */
 const prodNeedsApproval = {
   code: 'ACME601',
@@ -55,7 +55,7 @@ Codes have the form `<PREFIX><category digit><two digits>`:
 | `5` | expressions & env | | |
 
 The registry enforces the format and that the digit matches the declared category, rejects duplicate codes and names,
-reserves the `WFC` prefix for built-in rules, and requires third-party rules to bring their own `docsUrl`.
+reserves the `FP` prefix for built-in rules, and requires third-party rules to bring their own `docsUrl`.
 
 ## What a rule can use
 
@@ -66,15 +66,15 @@ reserves the `WFC` prefix for built-in rules, and requires third-party rules to 
 - `usagesOf(symbol)` — every place a symbol is read, with the location of the reference and where the value flows next;
 - `ctx.matrix(unit, job)` — the expanded matrix (combinations, keys, exactness);
 - `ctx.config` — the resolved configuration;
-- `ctx.contracts` — the contract comparison (only in `wfc check`).
+- `ctx.contracts` — the contract comparison (only in `flowpact check`).
 
 ## Loading plugins
 
 List the module under `plugins:` in the [config](/docs/configuration#plugins):
 
-```yaml title=".github/workflow-contracts/wfc.config.yml"
+```yaml title=".github/flowpact/flowpact.config.yml"
 plugins:
-  - ./ci/wfc-rules.mjs
+  - ./ci/flowpact-rules.mjs
 
 rules:
   prod-deploy-needs-approval: warning   # plugin rules are configured like built-in ones
@@ -83,10 +83,10 @@ rules:
 - Paths are relative to the repository root; the module is loaded with Node's `import()`, so it must be JavaScript
   (`.mjs`, or `.js` in an ESM package).
 - It default-exports a rule or an array of rules, or exports them as `rules`.
-- `wfc lint`, `wfc check` and the [GitHub Action](/docs/action) run plugin rules next to the built-in ones, so they
+- `flowpact lint`, `flowpact check` and the [GitHub Action](/docs/action) run plugin rules next to the built-in ones, so they
   can be configured under `rules:`, accepted with [overrides](/docs/configuration#overrides) and selected with
   `--only`.
-- A plugin that is missing, fails to load, exports no rules, or registers an invalid rule (wrong code format, `WFC`
+- A plugin that is missing, fails to load, exports no rules, or registers an invalid rule (wrong code format, `FP`
   prefix, no `docsUrl`, duplicate code or name) stops the run with exit code `2`.
 
 Each finding links to the rule's `docsUrl`, so point it at your own documentation.

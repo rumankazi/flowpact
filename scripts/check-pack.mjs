@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fails unless `npm pack` for the CLI contains exactly the files users need and declares no runtime dependencies
-// (everything is bundled, so installing wfc downloads nothing else). Run from packages/cli.
+// (everything is bundled, so installing flowpact downloads nothing else). Run from packages/cli.
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 

@@ -60,7 +60,7 @@
   ],
   "packages": {
     ".": {
-      "package-name": "wfc",
+      "package-name": "flowpact",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {

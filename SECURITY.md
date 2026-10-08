@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-wfc is before 1.0: only the latest release (`workflow-contracts` on npm, `rumankazi/wfc@v0` for the GitHub Action)
+flowpact is before 1.0: only the latest release (`flowpact` on npm, `rumankazi/flowpact@v0` for the GitHub Action)
 receives fixes.
 
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately through
-[GitHub's private vulnerability reporting](https://github.com/rumankazi/wfc/security/advisories/new), not in a public
-issue. Include the version, how wfc was run (CLI, GitHub Action, plugins) and, if possible, a minimal repository or
+[GitHub's private vulnerability reporting](https://github.com/rumankazi/flowpact/security/advisories/new), not in a public
+issue. Include the version, how flowpact was run (CLI, GitHub Action, plugins) and, if possible, a minimal repository or
 workflow that reproduces it.
 
 You can expect an acknowledgement within 3 working days and an assessment within 10. Fixes are released as soon as
@@ -18,11 +18,11 @@ otherwise.
 
 ## Scope
 
-wfc reads untrusted input: the workflow, action and contract files of the repository it analyzes. Relevant reports
+flowpact reads untrusted input: the workflow, action and contract files of the repository it analyzes. Relevant reports
 include anything that lets that input:
 
 - read or write files outside the repository, or inside `.git` (for example through symlinks);
-- inject terminal escape sequences, GitHub workflow commands (`::…::`) or Markdown/HTML into wfc's output, annotations
+- inject terminal escape sequences, GitHub workflow commands (`::…::`) or Markdown/HTML into flowpact's output, annotations
   or job summary;
 - exhaust memory or CPU disproportionately (for example YAML alias expansion or matrix size);
 - execute code. Plugins listed in the config are JavaScript and run by design; the GitHub Action skips them on
@@ -34,5 +34,5 @@ Releases are published from GitHub Actions only:
 
 - the npm package has npm provenance (`npm audit signatures`);
 - each GitHub release carries the npm tarball with a Sigstore bundle (`.sigstore.json`) and its in-toto provenance
-  (`.intoto.jsonl`): `gh attestation verify workflow-contracts-<version>.tgz --repo rumankazi/wfc`;
+  (`.intoto.jsonl`): `gh attestation verify flowpact-<version>.tgz --repo rumankazi/flowpact`;
 - release tags (`v*`) can only be created or moved by the release automation and maintainers.

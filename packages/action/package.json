@@ -1,8 +1,8 @@
 {
-  "name": "@wfc/action",
+  "name": "@flowpact/action",
   "version": "0.1.1",
   "private": true,
-  "description": "GitHub Action for wfc: annotations, job summary, reports and contract drift artifacts.",
+  "description": "GitHub Action for flowpact: annotations, job summary, reports and contract drift artifacts.",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@wfc/core": "workspace:*",
-    "@wfc/reporters": "workspace:*",
+    "@flowpact/core": "workspace:*",
+    "@flowpact/reporters": "workspace:*",
     "tsup": "^8.5.1",
     "yaml": "^2.9.1"
   },

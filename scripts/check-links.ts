@@ -4,10 +4,10 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { createRegistry, DOCS_BASE_URL } from '@wfc/core';
+import { createRegistry, DOCS_BASE_URL } from '@flowpact/core';
 
 const OUT = join(import.meta.dirname, '../apps/docs/out');
-const BASE = new URL(DOCS_BASE_URL).pathname.replace(/\/$/, ''); // e.g. /wfc
+const BASE = new URL(DOCS_BASE_URL).pathname.replace(/\/$/, ''); // e.g. /flowpact
 
 function* walk(dir: string): Generator<string> {
   for (const e of readdirSync(dir)) {

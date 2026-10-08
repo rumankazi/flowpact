@@ -169,18 +169,18 @@ importers:
       '@biomejs/biome':
         specifier: ^2.5.15
         version: 2.5.15
+      '@flowpact/core':
+        specifier: workspace:*
+        version: link:packages/core
+      '@flowpact/reporters':
+        specifier: workspace:*
+        version: link:packages/reporters
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.1
       '@vitest/coverage-v8':
         specifier: ^5.0.3
         version: 5.0.3(vitest@5.0.3)
-      '@wfc/core':
-        specifier: workspace:*
-        version: link:packages/core
-      '@wfc/reporters':
-        specifier: workspace:*
-        version: link:packages/reporters
       fast-check:
         specifier: ^4.10.2
         version: 4.10.2
@@ -258,10 +258,10 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
     devDependencies:
-      '@wfc/core':
+      '@flowpact/core':
         specifier: workspace:*
         version: link:../core
-      '@wfc/reporters':
+      '@flowpact/reporters':
         specifier: workspace:*
         version: link:../reporters
       tsup:
@@ -273,10 +273,10 @@ importers:
 
   packages/cli:
     devDependencies:
-      '@wfc/core':
+      '@flowpact/core':
         specifier: workspace:*
         version: link:../core
-      '@wfc/reporters':
+      '@flowpact/reporters':
         specifier: workspace:*
         version: link:../reporters
       citty:
@@ -316,7 +316,7 @@ importers:
 
   packages/reporters:
     dependencies:
-      '@wfc/core':
+      '@flowpact/core':
         specifier: workspace:*
         version: link:../core
       picocolors:

@@ -67,7 +67,7 @@ jobs:
           BOT: ${{ steps.app.outputs.app-slug }}[bot]
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter @wfc/action build
+          pnpm --filter @flowpact/action build
           if [ -n "$(git status --porcelain packages/action/dist)" ]; then
             git config user.name "$BOT"
             git config user.email "$(gh api "/users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
@@ -135,14 +135,14 @@ jobs:
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          if npm view "workflow-contracts@$VERSION" version >/dev/null 2>&1; then
-            echo "workflow-contracts@$VERSION is already on npm; skipping the publish."
+          if npm view "flowpact@$VERSION" version >/dev/null 2>&1; then
+            echo "flowpact@$VERSION is already on npm; skipping the publish."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.published.outputs.skip != 'true'
         run: |
           pnpm install --frozen-lockfile
-          pnpm --filter workflow-contracts build
+          pnpm --filter flowpact build
       - name: npm 11.5.1 or later (trusted publishing)
         if: steps.published.outputs.skip != 'true'
         # Node.js 24 ships a recent npm; fail clearly instead of installing an unpinned npm.
@@ -155,10 +155,13 @@ jobs:
       - name: npm publish (trusted publishing, with provenance)
         if: steps.published.outputs.skip != 'true'
         working-directory: packages/cli
-        # No token: npm exchanges this job's OIDC identity for a short-lived publish token. The package's trusted
-        # publisher on npmjs.com names this repository, release.yml and the npm environment.
+        # npm exchanges this job's OIDC identity for a short-lived publish token; the package's trusted publisher on
+        # npmjs.com names this repository, release.yml and the npm environment. A trusted publisher can only be added
+        # once the package exists, so the first publish of a new package name falls back to an NPM_TOKEN secret, which
+        # is deleted afterwards (unset, the variable is empty and unused).
         env:
           PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "$PRERELEASE" = true ]; then
             npm publish --provenance --access public --tag next
@@ -227,14 +230,14 @@ jobs:
           cd "$RUNNER_TEMP"
           # The registry can take a moment to serve a new version everywhere.
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            npm pack "workflow-contracts@$VERSION" --silent && break
+            npm pack "flowpact@$VERSION" --silent && break
             echo "not available yet (attempt $attempt); retrying in 30s"
             sleep 30
           done
-          # The exact published tarball, linked as users' `wfc` command.
-          mkdir -p wfc-package
-          tar -xzf "workflow-contracts-$VERSION.tgz" -C wfc-package
-          cd wfc-package/package
+          # The exact published tarball, linked as users' `flowpact` command.
+          mkdir -p flowpact-package
+          tar -xzf "flowpact-$VERSION.tgz" -C flowpact-package
+          cd flowpact-package/package
           npm link --ignore-scripts --no-audit --no-fund
       - run: node scripts/smoke.mjs --version "$VERSION"
         # Tags from before the smoke test existed (v0.1.0) have nothing to run.
@@ -245,7 +248,7 @@ jobs:
 
   release-assets:
     # Signed release assets: the published npm tarball with a Sigstore bundle and its in-toto provenance, so a release
-    # can be verified without the registry (`gh attestation verify <tgz> --repo rumankazi/wfc`).
+    # can be verified without the registry (`gh attestation verify <tgz> --repo rumankazi/flowpact`).
     name: Attach the signed package to the release
     needs: [resolve, npm]
     if: ${{ !cancelled() && needs.npm.result == 'success' }}
@@ -260,13 +263,13 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            npm pack "workflow-contracts@$VERSION" --silent && break
+            npm pack "flowpact@$VERSION" --silent && break
             echo "not available yet (attempt $attempt); retrying in 30s"
             sleep 30
           done
           # It must be byte for byte what the registry serves.
-          expected=$(npm view "workflow-contracts@$VERSION" dist.integrity)
-          actual="sha512-$(openssl dgst -sha512 -binary "workflow-contracts-$VERSION.tgz" | base64 -w0)"
+          expected=$(npm view "flowpact@$VERSION" dist.integrity)
+          actual="sha512-$(openssl dgst -sha512 -binary "flowpact-$VERSION.tgz" | base64 -w0)"
           if [ "$expected" != "$actual" ]; then
             echo "::error::tarball integrity $actual does not match the registry ($expected)"
             exit 1
@@ -274,7 +277,7 @@ jobs:
       - id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: workflow-contracts-${{ needs.resolve.outputs.version }}.tgz
+          subject-path: flowpact-${{ needs.resolve.outputs.version }}.tgz
       - name: Upload the tarball, signature bundle and provenance
         env:
           GH_TOKEN: ${{ github.token }}
@@ -282,7 +285,7 @@ jobs:
           VERSION: ${{ needs.resolve.outputs.version }}
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
-          tgz="workflow-contracts-$VERSION.tgz"
+          tgz="flowpact-$VERSION.tgz"
           cp "$BUNDLE" "$tgz.sigstore.json"
           # The signed in-toto statement (DSSE envelope), one per line.
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$tgz.intoto.jsonl"

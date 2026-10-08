@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
  * suite's beforeAll could replace the file while another suite executes it.
  */
 export default function setup(): void {
-  execFileSync('pnpm', ['--filter', 'workflow-contracts', 'build'], {
+  execFileSync('pnpm', ['--filter', 'flowpact', 'build'], {
     cwd: fileURLToPath(new URL('../../', import.meta.url)),
     stdio: 'ignore',
   });

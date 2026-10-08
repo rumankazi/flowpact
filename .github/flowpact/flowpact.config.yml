@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://rumankazi.github.io/flowpact/schemas/config/v1.json
+version: 1
+
+overrides:
+  - rule: unused-output
+    file: action.yml
+    reason: Public action outputs are read by workflows in other repositories; the dogfood job here only lints.
+    owner: '@rumankazi'

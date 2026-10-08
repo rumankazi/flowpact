@@ -6,7 +6,7 @@ import {
   type Loc,
   type Severity,
   type SuppressedFinding,
-} from '@wfc/core';
+} from '@flowpact/core';
 
 const SARIF_SCHEMA = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -96,7 +96,7 @@ export function renderSarif(result: AnalysisResult): string {
           })),
         }
       : {}),
-    partialFingerprints: { 'wfc/v1': f.fingerprint },
+    partialFingerprints: { 'flowpact/v1': f.fingerprint },
     ...('override' in f
       ? { suppressions: [{ kind: 'external', status: 'accepted', justification: f.override.reason }] }
       : {}),

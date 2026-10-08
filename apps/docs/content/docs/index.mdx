@@ -1,6 +1,6 @@
 ---
 title: Introduction
-description: wfc finds what gets lost between GitHub Actions workflows — missing inputs, dead outputs, inherited secrets and matrix legs that silently run with empty values.
+description: flowpact finds what gets lost between GitHub Actions workflows — missing inputs, dead outputs, inherited secrets and matrix legs that silently run with empty values.
 ---
 
 Large CI setups grow into a tree: one `pipeline.yml` with dozens (or hundreds) of `workflow_call` inputs fans out to
@@ -14,18 +14,18 @@ values down and hands outputs back up. Eventually nobody can answer:
 GitHub does not help: a missing matrix key, an undeclared secret or an optional input without a default all evaluate to
 an **empty string** — no error, no warning, a green run.
 
-<Screenshot name="lint-incident" alt="wfc lint reporting WFC401: input config is empty for the windows matrix combination" caption="The real incident that motivated wfc: one matrix entry had no config, so that test variant never ran." />
+<Screenshot name="lint-incident" alt="flowpact lint reporting FP401: input config is empty for the windows matrix combination" caption="The real incident that motivated flowpact: one matrix entry had no config, so that test variant never ran." />
 
-## What wfc does
+## What flowpact does
 
-wfc parses your workflows and local actions into a **data-flow graph** — every input, secret, env var, matrix key and
+flowpact parses your workflows and local actions into a **data-flow graph** — every input, secret, env var, matrix key and
 output, where it is defined and where it is read, across every level of nesting — and runs rules over it.
 
 <Cards>
-  <Card title="Lint" href="/docs/cli#wfc-lint">45 rules with stable codes, exact locations, the call chain, why it matters, how to fix it and a docs link.</Card>
-  <Card title="Contracts" href="/docs/contracts">A generated lockfile per workflow and action. <code>wfc check</code> fails on drift and marks breaking interface changes.</Card>
-  <Card title="Trace and graph" href="/docs/cli#wfc-trace">Follow any input, secret or output down to where it is used or up to where it comes from; draw the call graph.</Card>
-  <Card title="Explain" href="/docs/rules">Every code has a page: <code>wfc explain WFC401</code> prints the same in the terminal.</Card>
+  <Card title="Lint" href="/docs/cli#flowpact-lint">46 rules with stable codes, exact locations, the call chain, why it matters, how to fix it and a docs link.</Card>
+  <Card title="Contracts" href="/docs/contracts">A generated lockfile per workflow and action. <code>flowpact check</code> fails on drift and marks breaking interface changes.</Card>
+  <Card title="Trace and graph" href="/docs/cli#flowpact-trace">Follow any input, secret or output down to where it is used or up to where it comes from; draw the call graph.</Card>
+  <Card title="Explain" href="/docs/rules">Every code has a page: <code>flowpact explain FP401</code> prints the same in the terminal.</Card>
   <Card title="GitHub Action" href="/docs/action">Job summary, pull request annotations and regenerated contracts as a downloadable patch.</Card>
   <Card title="Configure" href="/docs/configuration">Severities, overrides with a reason and an expiry date, runtime matrix shapes and plugin rules.</Card>
 </Cards>
@@ -33,9 +33,9 @@ output, where it is defined and where it is read, across every level of nesting 
 ## Quick start
 
 ```sh
-npx workflow-contracts lint       # find problems
-npx workflow-contracts generate   # lock the interfaces in .github/workflow-contracts/
-npx workflow-contracts check      # lint + fail when the workflows no longer match the contracts
+npx flowpact lint       # find problems
+npx flowpact generate   # lock the interfaces in .github/flowpact/
+npx flowpact check      # lint + fail when the workflows no longer match the contracts
 ```
 
 Run it at the root of a repository. See [Getting started](/docs/getting-started) for installation options and how to

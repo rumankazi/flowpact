@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
-import { contractPatch, nodeFileSystem, planContracts, writeContracts } from '@wfc/core';
-import { renderContractPlan, renderPatch } from '@wfc/reporters';
+import { contractPatch, nodeFileSystem, planContracts, writeContracts } from '@flowpact/core';
+import { renderContractPlan, renderPatch } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import { runAnalysis } from '../analysis';
 import {
@@ -18,7 +18,7 @@ export const generateCommand = defineCommand({
   meta: {
     name: 'generate',
     description:
-      'Write (or preview) the contracts for every workflow and local action into .github/workflow-contracts/',
+      'Write (or preview) the contracts for every workflow and local action into .github/flowpact/',
   },
   args: {
     ...commonArgs,
@@ -66,7 +66,9 @@ export const generateCommand = defineCommand({
       ctx.logger.info(`wrote ${written.length} contract file(s)`, { files: written });
       if (plan.skipped.length) {
         // Their locked contracts were kept; regenerating from a broken file would erase the interface.
-        ctx.stderr(`Not regenerated (YAML syntax errors — run \`wfc lint\`): ${plan.skipped.join(', ')}`);
+        ctx.stderr(
+          `Not regenerated (YAML syntax errors — run \`flowpact lint\`): ${plan.skipped.join(', ')}`,
+        );
         return EXIT.findings;
       }
       return EXIT.ok;
