@@ -4,6 +4,13 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.6.0](https://github.com/rumankazi/flowpact/compare/v0.5.0...v0.6.0) (2026-10-08)
+
+
+### Features
+
+* **vscode:** add the VS Code extension ([#39](https://github.com/rumankazi/flowpact/issues/39)) ([e80a59a](https://github.com/rumankazi/flowpact/commit/e80a59ad1e9b7c2b1ce204b34e9372e97b29fe9f))
+
 ## [0.5.0](https://github.com/rumankazi/flowpact/compare/v0.4.0...v0.5.0) (2026-10-08)
 
 

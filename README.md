@@ -31,7 +31,7 @@ In CI, use the action:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: rumankazi/flowpact@v0.5
+- uses: rumankazi/flowpact@v0.6
   with:
     mode: check
 ```
