@@ -40,13 +40,13 @@ jobs:
 
       # The release pull request changes the version, which is compiled into the committed action bundle.
       - if: steps.rp.outputs.prs_created == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ fromJSON(steps.rp.outputs.pr).headBranchName }}
       - if: steps.rp.outputs.prs_created == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - if: steps.rp.outputs.prs_created == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: pnpm
@@ -108,11 +108,11 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.tag }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: pnpm
@@ -142,12 +142,19 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm --filter workflow-contracts build
-      - name: npm publish (with provenance)
+      - name: npm 11.5.1 or later (trusted publishing)
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          if ! node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && (b > 5 || (b === 5 && c >= 1))) ? 0 : 1)' "$(npm --version)"; then
+            npm install --global npm@11
+          fi
+          npm --version
+      - name: npm publish (trusted publishing, with provenance)
         if: steps.published.outputs.skip != 'true'
         working-directory: packages/cli
+        # No token: npm exchanges this job's OIDC identity for a short-lived publish token. The package's trusted
+        # publisher on npmjs.com names this repository, release.yml and the npm environment.
         env:
-          # Used until npm trusted publishing is configured for this workflow; with it, npm authenticates via OIDC.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
         run: |
           if [ "$PRERELEASE" = true ]; then
@@ -164,7 +171,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Point the major tag (e.g. v0) at the release
         env:
           TAG: ${{ needs.resolve.outputs.tag }}
@@ -186,10 +193,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.tag }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - name: Install from the registry

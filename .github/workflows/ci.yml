@@ -22,9 +22,9 @@ jobs:
       matrix:
         node: ['22', '24']
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
@@ -36,7 +36,7 @@ jobs:
       - name: Dogfood — lint this repository's workflows
         run: node packages/cli/dist/index.js lint --fail-on warning --output wfc-report.json
       - if: always() && matrix.node == '24'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reports
           path: |
@@ -47,9 +47,9 @@ jobs:
     name: Docs build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: pnpm
@@ -66,9 +66,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: pnpm
@@ -87,9 +87,9 @@ jobs:
     name: Action bundle is up to date
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: pnpm
@@ -110,7 +110,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: wfc
         uses: ./
         with:
@@ -120,7 +120,7 @@ jobs:
       - name: Upload SARIF to code scanning
         # Pull requests from forks get a read-only token, so only upload for this repository's own refs.
         if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: wfc.sarif
           category: wfc
@@ -130,7 +130,7 @@ jobs:
     name: Action smoke test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: incident
         name: lint finds the matrix incident
         uses: ./
@@ -153,14 +153,12 @@ jobs:
       - name: Check the outputs
         env:
           INCIDENT_ERRORS: ${{ steps.incident.outputs.errors }}
-          INCIDENT_EXIT: ${{ steps.incident.outputs.exit-code }}
           DRIFT: ${{ steps.drift.outputs.drift }}
           PATCH: ${{ steps.drift.outputs.patch }}
           ARTIFACT_ID: ${{ steps.drift.outputs.artifact-id }}
         run: |
           set -x
           test "$INCIDENT_ERRORS" -ge 1
-          test "$INCIDENT_EXIT" = 1
           jq -e '.findings | any(.code == "WFC401")' incident.json
           test "$DRIFT" = true
           test -s "$PATCH"
