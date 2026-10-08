@@ -85,6 +85,11 @@
         },
         {
           "type": "json",
+          "path": "packages/language-server/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
           "path": "apps/docs/package.json",
           "jsonpath": "$.version"
         },

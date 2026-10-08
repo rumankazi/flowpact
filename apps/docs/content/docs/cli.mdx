@@ -13,6 +13,7 @@ description: Every flowpact command, flag, output format and environment variabl
 | [`flowpact trace`](#flowpact-trace) | Follow a value down to where it is used, or up to where it comes from. |
 | [`flowpact explain`](#flowpact-explain) | Print the docs for a rule. |
 | [`flowpact rules`](#flowpact-rules) | List the rules and their effective severities. |
+| [`flowpact lsp`](#flowpact-lsp) | Start the language server for editors. |
 
 The analysis commands (`lint`, `check`, `impact`, `generate`, `trace`) start by printing the tool version and the
 version of every schema they read or write (to stderr, so JSON on stdout stays clean):
@@ -234,6 +235,39 @@ flowpact explain empty-binding-for-matrix-combo
 Lists every built-in rule with its effective severity (after your config). `--format json` for tooling.
 
 <Screenshot name="rules" alt="flowpact rules listing codes, severities and summaries" />
+
+## `flowpact lsp`
+
+Starts the language server, which speaks the Language Server Protocol over stdin/stdout (`--node-ipc` and
+`--socket <port>` are also accepted). Editors start it themselves; you do not run it by hand. It provides:
+
+- **Diagnostics as you type:** the findings of `flowpact lint` for the whole repository, updated on every edit
+  (including unsaved ones). They include `flowpact check`'s contract findings when `.github/flowpact/contracts/` exists.
+- **Hover:** how an input, secret, output, env variable or matrix key is declared, where its value comes from and
+  where it flows.
+- **Go to definition** across workflow calls and local actions, **find references** and **highlights**.
+
+The server treats every directory with a `.github` folder as a repository, so monorepos and nested repositories
+work without configuration. It reads these settings from the client's `initializationOptions` (and
+`workspace/didChangeConfiguration`, under `flowpact`):
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| `plugins` | `false` | Load the [plugins](/docs/custom-rules) the config lists. They run JavaScript from the repository; enable this only for trusted workspaces. |
+| `contracts` | `auto` | Compare with the committed contracts: `auto` (when `.github/flowpact/contracts/` exists), `on` or `off`. |
+| `hiddenRules` | `[]` | Rule codes not to show, e.g. `FP503` when another extension already validates the schema. |
+| `logLevel` | `info` | `error`, `warn`, `info`, `debug` or `trace`, written to the editor's log. |
+
+In Neovim 0.11 and later, with flowpact installed:
+
+```lua
+vim.lsp.config('flowpact', {
+  cmd = { 'flowpact', 'lsp' },
+  filetypes = { 'yaml' },
+  root_markers = { '.github' },
+})
+vim.lsp.enable('flowpact')
+```
 
 ## Debug mode and logging
 
