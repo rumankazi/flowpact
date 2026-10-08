@@ -146,11 +146,12 @@ Writes the contract for every workflow and local action, and deletes contracts w
 exists.
 
 ```sh
-flowpact generate [--dry-run] [--patch <file>] [--out <dir>]
+flowpact generate [paths…] [--dry-run] [--patch <file>] [--out <dir>]
 ```
 
 | Option | Description |
 | --- | --- |
+| `[paths…]` | Workflow or action files or directories: write only their contracts, and the contracts that list them as a consumer (what `flowpact check` with the same paths compares). Other contracts, orphaned ones included, are left alone. |
 | `--dry-run` | Print the table of changes and a colored unified diff; write nothing. |
 | `--patch <file>` | Write the changes as a `git apply`-able patch instead of applying them. |
 | `--out <dir>` | Write all contracts (changed or not) under `<dir>`, keeping their relative paths, instead of the repository. Nothing is deleted. |

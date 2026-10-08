@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
 import {
   contractPatch,
   exitCodeFor,
@@ -19,10 +17,12 @@ import {
 import { type ArgsDef, defineCommand } from 'citty';
 import { runAnalysis } from '../analysis';
 import {
+  checkTargets,
   commonArgs,
   createContext,
   displayPath,
   guard,
+  pathArgs,
   printBanner,
   UsageError,
   writeOutput,
@@ -186,12 +186,7 @@ export async function runReport(
 ): Promise<number> {
   const ctx = createContext(args, rawArgs);
   printBanner(ctx, `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}`);
-  // Paths are relative to --root; a path that only exists relative to the working directory is taken from there.
-  const paths = args._.filter((p) => p !== command).map((p) =>
-    isAbsolute(p) || existsSync(resolve(ctx.root, p)) || !existsSync(resolve(process.cwd(), p))
-      ? p
-      : resolve(process.cwd(), p),
-  );
+  const paths = pathArgs(args._, command, ctx.root);
   const only = args.only
     ? args.only
         .split(',')
@@ -215,17 +210,7 @@ export async function runReport(
     ...(impact && 'options' in impact ? { impact: impact.options } : {}),
   });
   if (impact && 'notes' in impact) for (const note of impact.notes) ctx.stderr(`impact: ${note}`);
-  const missing = result.project.missingTargets ?? [];
-  if (missing.length) {
-    throw new UsageError(
-      `Path${missing.length > 1 ? 's' : ''} not found under ${displayPath(ctx.root)}: ${missing.join(', ')}`,
-    );
-  }
-  if (paths.length && result.project.targets.size === 0 && !result.project.wholeRepository) {
-    throw new UsageError(
-      `None of the paths is a workflow (.github/workflows/*.yml) or an action (action.yml): ${(result.project.ignoredTargets ?? paths).join(', ')}`,
-    );
-  }
+  checkTargets(result.project, paths, ctx.root);
   if (result.summary.workflows === 0 && result.summary.actions === 0 && command !== 'impact') {
     throw new UsageError(
       `No workflows found under ${displayPath(ctx.root)}/.github/workflows. Use --root to point at a repository.`,

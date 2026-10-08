@@ -1,5 +1,5 @@
-import { bannerText, neutralizeWorkflowCommands, VERSION } from '@flowpact/core';
-import { defineCommand, runCommand, runMain } from 'citty';
+import { bannerText, DOCS_BASE_URL, neutralizeWorkflowCommands, VERSION } from '@flowpact/core';
+import { type ArgsDef, type CommandDef, defineCommand, renderUsage, runCommand, runMain } from 'citty';
 import pc from 'picocolors';
 import { checkCommand } from './commands/check';
 import { explainCommand } from './commands/explain';
@@ -49,6 +49,21 @@ const main = defineCommand({
   },
 });
 
+/** citty's usage text, then where the docs are; without color codes when the output is not a terminal. */
+async function showUsage<T extends ArgsDef>(
+  cmd: CommandDef<T>,
+  parent: CommandDef<T> | undefined,
+  color: boolean,
+): Promise<void> {
+  const usage = (await renderUsage(cmd, parent)).trimEnd();
+  const meta = await (typeof cmd.meta === 'function' ? cmd.meta() : cmd.meta);
+  const docs = parent
+    ? `Docs: ${DOCS_BASE_URL}/docs/cli#flowpact-${meta?.name ?? ''}`
+    : `Docs: ${DOCS_BASE_URL}/docs\nCLI reference: ${DOCS_BASE_URL}/docs/cli`;
+  const text = `${usage}\n\n${docs}\n`;
+  process.stdout.write(color ? text : text.replace(/\u001B\[[\d;]*m/g, ''));
+}
+
 /** citty's argument errors (unknown command, bad enum value, missing positional). */
 const ARG_ERRORS = new Set(['EARG', 'E_UNKNOWN_COMMAND', 'E_NO_COMMAND']);
 
@@ -56,7 +71,11 @@ async function run(): Promise<void> {
   const rawArgs = process.argv.slice(2);
   // Help (and no arguments at all) is rendered by citty, including per-command usage.
   if (rawArgs.length === 0 || rawArgs.some((a) => a === '--help' || a === '-h')) {
-    await runMain(main, { rawArgs: rawArgs.length ? rawArgs : ['--help'] });
+    const color = colorEnabled(!rawArgs.includes('--no-color'));
+    await runMain(main, {
+      rawArgs: rawArgs.length ? rawArgs : ['--help'],
+      showUsage: (cmd, parent) => showUsage(cmd, parent, color),
+    });
     return;
   }
   try {

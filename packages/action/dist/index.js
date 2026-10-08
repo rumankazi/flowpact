@@ -132338,6 +132338,11 @@ function entryConsumers(e) {
   }
   return [...out];
 }
+function contractsInScope(index2) {
+  const { targets } = index2.project;
+  const targeted = (unit) => targets.has(index2.unit(unit)?.file ?? unit);
+  return (e) => e.unit !== void 0 && targeted(e.unit) || entryConsumers(e).some(targeted);
+}
 function scopePlan(plan, keep) {
   const entries2 = plan.entries.filter(keep);
   const counts = { create: 0, update: 0, delete: 0, unchanged: 0 };
@@ -135273,8 +135278,7 @@ function analyze(opts) {
   }
   const only = opts.only?.map((o) => registry2.get(o).code);
   const ruleLog = logger7.child("rules");
-  const targeted = (unit) => project.targets.has(index2.unit(unit)?.file ?? unit);
-  const contractInScope = (e) => e.unit !== void 0 && targeted(e.unit) || entryConsumers(e).some(targeted);
+  const contractInScope = contractsInScope(index2);
   let contracts;
   if (opts.checkContracts) {
     contracts = logger7.time(
