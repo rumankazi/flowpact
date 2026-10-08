@@ -63,7 +63,7 @@ The summary card at the end:
 | `pretty` | The terminal: code frames, call chains, matrix combinations and a summary card. |
 | `json` | Tooling. Follows [`/schemas/report/v1.json`](/schemas/report/v1.json) (below). |
 | `markdown` | Job summaries and pull request comments: counts, findings grouped by severity with docs links, and contract changes in `flowpact check`. Inside GitHub Actions, locations link to the file at the commit being checked. |
-| `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) for GitHub code scanning and other SARIF viewers. Findings accepted by overrides are included as suppressed results. |
+| `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) for GitHub code scanning and other SARIF viewers. Findings accepted by overrides are left out (code scanning ignores SARIF suppressions); the JSON report lists them under `suppressed`. |
 
 ```sh
 flowpact lint -o flowpact-report.json           # JSON file + pretty output in the terminal

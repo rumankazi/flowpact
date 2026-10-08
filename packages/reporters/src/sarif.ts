@@ -39,10 +39,21 @@ const physicalLocation = (loc: Loc) => ({
   region: region(loc),
 });
 
-/** SARIF 2.1.0 for GitHub code scanning and other SARIF viewers. Suppressed findings carry a `suppressions` entry. */
-export function renderSarif(result: AnalysisResult): string {
+export interface SarifOptions {
+  /**
+   * Also list findings accepted by overrides, as results with a `suppressions` entry. Off by default: GitHub code
+   * scanning ignores `suppressions` and would open an alert for every accepted finding.
+   */
+  includeSuppressed?: boolean;
+}
+
+/** SARIF 2.1.0 for GitHub code scanning and other SARIF viewers. */
+export function renderSarif(result: AnalysisResult, opts: SarifOptions = {}): string {
   const registry = createRegistry();
-  const all: (Finding | SuppressedFinding)[] = [...result.findings, ...result.suppressed];
+  const all: (Finding | SuppressedFinding)[] = [
+    ...result.findings,
+    ...(opts.includeSuppressed ? result.suppressed : []),
+  ];
   const firstFinding = new Map<string, Finding>();
   for (const f of all) if (!firstFinding.has(f.code)) firstFinding.set(f.code, f);
 

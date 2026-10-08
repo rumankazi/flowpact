@@ -90,7 +90,7 @@ describe('renderSarif', () => {
     expect(res.properties.symbol).toEqual(expect.any(String));
   });
 
-  it('includes suppressed findings with an external suppression', () => {
+  it('leaves accepted findings out (code scanning ignores suppressions), or lists them as suppressed on request', () => {
     const r = analyze({
       root: '/virtual/repo',
       fs: memoryFileSystem({
@@ -105,7 +105,8 @@ describe('renderSarif', () => {
       }),
     });
     expect(r.suppressed).toHaveLength(1);
-    const run = parse(r).runs[0];
+    expect(parse(r).runs[0].results.filter((x: Sarif) => x.ruleId === 'FP104')).toEqual([]);
+    const run = JSON.parse(renderSarif(r, { includeSuppressed: true })).runs[0];
     const suppressed = run.results.filter((x: Sarif) => x.suppressions);
     expect(suppressed).toHaveLength(1);
     expect(suppressed[0]).toMatchObject({
