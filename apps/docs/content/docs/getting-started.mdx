@@ -7,25 +7,51 @@ description: Install wfc, run your first lint and read the output.
 
 wfc needs Node.js 22 or newer. The npm package is `workflow-contracts`; the command is `wfc`.
 
-<Tabs items={["npx", "pnpm", "npm"]}>
-<Tab value="npx">
+<Tabs items={["Global", "Project (npm)", "Project (pnpm)", "One-off", "mise"]}>
+<Tab value="Global">
+Install once and use `wfc` anywhere:
+
 ```sh
-npx workflow-contracts lint
+npm install --global workflow-contracts
+wfc lint
 ```
 </Tab>
-<Tab value="pnpm">
+<Tab value="Project (npm)">
+Pin the version for everyone working on the repository (and its CI):
+
+```sh
+npm install --save-dev workflow-contracts
+npx --no wfc lint
+```
+
+`--no` makes npx use the installed `wfc` and never download anything (see the note below).
+</Tab>
+<Tab value="Project (pnpm)">
 ```sh
 pnpm add -D workflow-contracts
 pnpm wfc lint
 ```
 </Tab>
-<Tab value="npm">
+<Tab value="One-off">
 ```sh
-npm install --save-dev workflow-contracts
-npx wfc lint
+npx workflow-contracts@0 lint
+```
+</Tab>
+<Tab value="mise">
+```sh
+mise use --global npm:workflow-contracts
+wfc lint
 ```
 </Tab>
 </Tabs>
+
+<Callout type="warn" title="Use the package name with npx">
+The npm package is `workflow-contracts`. A different, unrelated package is called `wfc`, so `npx wfc` in a directory
+without wfc installed would download and run that package instead. Use `npx workflow-contracts …`, or
+`npx --no wfc …` where wfc is installed.
+</Callout>
+
+In GitHub Actions, use the [action](/docs/action) instead: it needs neither Node.js nor an install.
 
 ## First run
 

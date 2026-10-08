@@ -15,6 +15,15 @@ npx workflow-contracts generate                     # lock the interfaces in .gi
 npx workflow-contracts check                        # lint + compare with the locked contracts
 ```
 
+## Install
+
+```sh
+npm install --global workflow-contracts   # then: wfc lint
+npm install --save-dev workflow-contracts # per project: npx --no wfc lint
+```
+
+Use the package name with npx (`npx workflow-contracts …`): an unrelated npm package is called `wfc`.
+
 Requires Node.js 22 or newer. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` usage or
 configuration error, `3` internal error.
 
