@@ -1,11 +1,11 @@
 // Renders the editor screenshots in the docs (apps/docs/public/screenshots/editor-*.png) from a real VS Code with the
 // packaged extension installed, like scripts/gen-screenshots.ts does for the CLI. Run `pnpm build` first, then
-// `pnpm --filter vscode-flowpact screenshots`. Windows open on screen while it runs. FLOWPACT_VSIX reuses a packaged
-// extension; VSCODE_VERSION picks the version (default: stable).
+// `pnpm --filter vscode-flowpact screenshots`. Windows open on screen while it runs. macOS and Linux only.
+// FLOWPACT_VSIX reuses a packaged extension; VSCODE_VERSION picks the version (default: stable).
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath } from '@vscode/test-electron';
 import { _electron as electron } from 'playwright-core';
@@ -15,14 +15,21 @@ const pkg = join(here, '..');
 const repo = join(pkg, '../..');
 const out = join(repo, 'apps/docs/public/screenshots');
 const mod = process.platform === 'darwin' ? 'Meta' : 'Control';
+if (process.platform === 'win32') {
+  console.error('screenshots.mjs runs on macOS and Linux only');
+  process.exit(1);
+}
+// pnpm runs this in packages/vscode; a relative FLOWPACT_VSIX is meant from where it was typed.
+const given =
+  process.env.FLOWPACT_VSIX && resolve(process.env.INIT_CWD ?? process.cwd(), process.env.FLOWPACT_VSIX);
 
 // The fixtures are copied into a fresh home directory, so paths in the editor read ~/<fixture>/…
 const home = mkdtempSync(join(tmpdir(), 'flowpact-screenshots-'));
 const env = { ...process.env, HOME: home };
-// Set when this runs from a terminal inside VS Code; it would start VS Code as plain Node.
+// Set when this runs from a terminal inside VS Code: ELECTRON_RUN_AS_NODE would start VS Code as plain Node, and the
+// VSCODE_* variables point its CLI at the outer window (VSCODE_CWD also changes how it resolves paths).
 delete env.ELECTRON_RUN_AS_NODE;
-for (const fixture of ['deep-nesting', 'incident-matrix'])
-  cpSync(join(repo, 'fixtures', fixture), join(home, fixture), { recursive: true });
+for (const key of Object.keys(env)) if (key.startsWith('VSCODE_')) delete env[key];
 
 const settings = {
   'workbench.colorTheme': 'Default Dark Modern',
@@ -66,22 +73,13 @@ const run = (cmd, args, opts = {}) => {
   if (res.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed:\n${res.stdout}${res.stderr}`);
 };
 
-const vsix = process.env.FLOWPACT_VSIX || join(home, 'flowpact.vsix');
-if (!process.env.FLOWPACT_VSIX)
-  run(join(pkg, 'node_modules/.bin/vsce'), ['package', '--no-dependencies', '-o', vsix], { cwd: pkg });
-const exe = await downloadAndUnzipVSCode({ version: process.env.VSCODE_VERSION || 'stable' });
 const extensions = join(home, '.extensions');
-const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(exe);
-const install = [
-  '--install-extension',
-  vsix,
-  `--user-data-dir=${profile()}`,
-  `--extensions-dir=${extensions}`,
-];
-run(cli, [...cliArgs, ...install], { env });
+/** Set before the first launch. */
+let exe;
 
 const quickInput = '.quick-input-widget:not([style*="display: none"]) input';
 
+/** Starts VS Code on a copy of the fixture; the window is closed again if it does not come up. */
 async function launch(fixture, size, extra) {
   const app = await electron.launch({
     executablePath: exe,
@@ -96,13 +94,18 @@ async function launch(fixture, size, extra) {
       '--new-window',
     ],
   });
-  const win = await app.firstWindow();
-  await app.evaluate(
-    ({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0].setBounds({ x: 40, y: 40, ...s }),
-    size,
-  );
-  await win.waitForSelector('.monaco-workbench', { timeout: 60_000 });
-  return { app, win };
+  try {
+    const win = await app.firstWindow();
+    await app.evaluate(
+      ({ BrowserWindow }, s) => BrowserWindow.getAllWindows()[0].setBounds({ x: 40, y: 40, ...s }),
+      size,
+    );
+    await win.waitForSelector('.monaco-workbench', { timeout: 60_000 });
+    return { app, win };
+  } catch (err) {
+    await app.close().catch(() => undefined);
+    throw err;
+  }
 }
 
 async function command(win, name) {
@@ -193,6 +196,21 @@ const shots = [
 ];
 
 try {
+  for (const fixture of ['deep-nesting', 'incident-matrix'])
+    cpSync(join(repo, 'fixtures', fixture), join(home, fixture), { recursive: true });
+  const vsix = given || join(home, 'flowpact.vsix');
+  if (!given)
+    run(join(pkg, 'node_modules/.bin/vsce'), ['package', '--no-dependencies', '-o', vsix], { cwd: pkg });
+  exe = await downloadAndUnzipVSCode({ version: process.env.VSCODE_VERSION || 'stable' });
+  const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(exe);
+  const install = [
+    '--install-extension',
+    vsix,
+    `--user-data-dir=${profile()}`,
+    `--extensions-dir=${extensions}`,
+  ];
+  run(cli, [...cliArgs, ...install], { env });
+
   for (const shot of shots) {
     const { app, win } = await launch(shot.fixture, shot.size, shot.settings);
     try {
@@ -204,5 +222,9 @@ try {
     }
   }
 } finally {
-  rmSync(home, { recursive: true, force: true });
+  try {
+    rmSync(home, { recursive: true, force: true, maxRetries: 5 });
+  } catch (err) {
+    console.error(`could not remove ${home}: ${String(err)}`);
+  }
 }

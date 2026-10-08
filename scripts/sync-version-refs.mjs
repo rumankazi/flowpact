@@ -33,23 +33,41 @@ export function currentVersion() {
   return JSON.parse(readFileSync(join(ROOT, '.release-please-manifest.json'), 'utf8'))['.'];
 }
 
+/** A release version, prereleases included (`1.0.0-rc.1`). */
+const VERSION = String.raw`\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?`;
+
 /** `text` with every version reference moved to `version`'s release line. */
 export function syncRefs(text, version) {
   const [major, minor] = version.split('.').map(Number);
   const line = major >= 1 ? `${major}` : `0.${minor}`;
-  return (
-    text
-      .replace(/rumankazi\/flowpact@v\d+\.\d+\.\d+(?![\w.-])/g, `rumankazi/flowpact@v${version}`)
-      .replace(/rumankazi\/flowpact@v\d+(?:\.\d+)?(?![\w.-])/g, `rumankazi/flowpact@v${line}`)
-      .replace(/(?<![\w/@.-])flowpact@\d+(?:\.\d+)?(?![\w.-])/g, `flowpact@${line}`)
-      .replace(/(flowpact {1,2}v)\d+\.\d+\.\d+(?= {1,2}(?:· )?config schema)/g, `$1${version}`)
-      .replace(/("tool": "flowpact", "version": ")\d+\.\d+\.\d+"/g, `$1${version}"`)
-      // The banner in a terminal screenshot: one <tspan> per word, sized to its text.
-      .replace(
-        /(>flowpact<\/tspan><tspan x="[\d.]+" textLength=")[\d.]+("[^>]*>)v\d+\.\d+\.\d+(?=<\/tspan>)/g,
-        (_, before, attrs) => `${before}${((version.length + 1) * CHAR_WIDTH).toFixed(1)}${attrs}v${version}`,
-      )
-  );
+  return text
+    .replace(
+      new RegExp(String.raw`rumankazi/flowpact@v${VERSION}(?![\w.-])`, 'g'),
+      `rumankazi/flowpact@v${version}`,
+    )
+    .replace(/rumankazi\/flowpact@v\d+(?:\.\d+)?(?![\w.-])/g, `rumankazi/flowpact@v${line}`)
+    .replace(/(?<![\w/@.-])flowpact@\d+(?:\.\d+)?(?![\w.-])/g, `flowpact@${line}`)
+    .replace(new RegExp(`(flowpact {1,2}v)${VERSION}(?= {1,2}(?:· )?config schema)`, 'g'), `$1${version}`)
+    .replace(new RegExp(`("tool": "flowpact", "version": ")${VERSION}"`, 'g'), `$1${version}"`)
+    .replace(/<text y="[\d.]+">.*?<\/text>/g, (svgLine) => syncSvgBanner(svgLine, version));
+}
+
+/**
+ * The banner line of a terminal screenshot (scripts/ansi-svg.ts): one <tspan> per word at its column, so a version of
+ * another length also moves the words after it.
+ */
+function syncSvgBanner(svgLine, version) {
+  const banner = new RegExp(
+    String.raw`(>flowpact</tspan><tspan x="[\d.]+" textLength=")[\d.]+("[^>]*>)v(${VERSION})(</tspan>)`,
+  ).exec(svgLine);
+  if (!banner) return svgLine;
+  const [whole, before, attrs, old, close] = banner;
+  const shift = (version.length - old.length) * CHAR_WIDTH;
+  const width = ((version.length + 1) * CHAR_WIDTH).toFixed(1);
+  const rest = svgLine
+    .slice(banner.index + whole.length)
+    .replace(/ x="([\d.]+)"/g, (_, x) => ` x="${(Number(x) + shift).toFixed(1)}"`);
+  return `${svgLine.slice(0, banner.index)}${before}${width}${attrs}v${version}${close}${rest}`;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -95,7 +95,10 @@ for (const shot of shots) {
     .split(ROOT)
     .join('/home/runner/work/flowpact/flowpact')
     .replace(/\d+(\.\d+)? ?ms\b/g, (m) => (m.includes('.') ? '0.42 ms' : '12 ms'))
-    .replace(/("ms":)\d+(\.\d+)?/g, (_, key, frac) => `${key}${frac ? '0.42' : '12'}`);
+    // Debug log timings: the analysis total like the summary's, every stage the same small value.
+    .replace(/^.*"ms":.*$/gm, (line) =>
+      line.replace(/("ms":)\d+(?:\.\d+)?/g, `$1${line.includes('analysis finished') ? '12' : '0.42'}`),
+    );
   const lines = text.split('\n');
   if (shot.head && shot.head > 0 && lines.length > shot.head)
     text = [...lines.slice(0, shot.head), '\u001B[2m  …\u001B[0m'].join('\n');
