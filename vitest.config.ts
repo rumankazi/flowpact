@@ -23,7 +23,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**'],
-      exclude: ['packages/cli/src/index.ts'],
+      // The extension's entry points run only inside VS Code; the e2e smoke test (packages/vscode/e2e) covers them.
+      exclude: [
+        'packages/cli/src/index.ts',
+        'packages/vscode/src/extension.ts',
+        'packages/vscode/src/server.ts',
+      ],
       reporter: ['text-summary', 'html', 'json-summary'],
       thresholds: {
         lines: 80,

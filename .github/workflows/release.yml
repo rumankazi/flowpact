@@ -124,7 +124,7 @@ jobs:
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
-          for pkg in packages/core packages/reporters packages/cli packages/action packages/language-server; do
+          for pkg in packages/core packages/reporters packages/cli packages/action packages/language-server packages/vscode; do
             actual=$(node -p "require('./$pkg/package.json').version")
             if [ "$actual" != "$VERSION" ]; then
               echo "::error file=$pkg/package.json::version $actual does not match the release $VERSION"

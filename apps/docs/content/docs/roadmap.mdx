@@ -24,16 +24,13 @@ description: What is shipped and what comes next — an editor extension with a 
   require, including the check names consumers' branch protection depends on (`FP810`–`FP814`).
 - Config file, contracts and reports with published JSON Schemas.
 
-## Next: VS Code extension and language server
+## In progress: editors
 
-flowpact already knows, for every expression in every workflow, which symbol it refers to and where that symbol is
-defined. A language server makes that available while editing, in VS Code and any other editor that speaks LSP:
+The [language server](/docs/editors) (`flowpact lsp`) brings the analysis into the editor: diagnostics as you type
+across files, hover traces through every level of nesting, go to definition across workflow calls, and references.
+Still to come:
 
-- **Diagnostics as you type** — the same findings as `flowpact lint` / `flowpact check`, across files, without a terminal.
-- **Hover traces** — hover an input, secret or output to see where its value comes from and where it goes, through
-  every level of nesting and per matrix combination.
-- **Go to definition across workflow calls** — from `with: config:` to the callee's input, from
-  `needs.build.outputs.url` to the step that writes it, from a contract entry to the workflow.
+- **The VS Code extension on the Marketplace and Open VSX.** It works today when built from the repository.
 - **Quick fixes** — add a missing input, remove an unused one, add the missing matrix key, regenerate contracts, or
   **add an override** with a reason prompt.
 

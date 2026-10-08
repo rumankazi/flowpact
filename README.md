@@ -89,9 +89,10 @@ fails when they are out of date.
 ## Status
 
 Shipped: the engine, 50 rules, contracts (`flowpact generate` / `flowpact check`), overrides with reason and expiry, plugins,
-the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`) and the GitHub Action. Next: a VS Code extension and
-language server (diagnostics, hover traces, go to definition across workflow calls, quick fixes), then
-cross-repository resolution — see the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap).
+the CLI (pretty, JSON, Markdown and SARIF output; `flowpact graph`), the GitHub Action and a
+[language server](https://rumankazi.github.io/flowpact/docs/editors) (diagnostics as you type, hover traces, go to
+definition across workflow calls). Next: the VS Code extension on the Marketplace, quick fixes, then cross-repository
+resolution — see the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap).
 
 ## License
 
