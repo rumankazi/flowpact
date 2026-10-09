@@ -102,6 +102,12 @@ describe('version references', () => {
     ).toBe(
       ' flowpact  v0.4.0  config schema v1\n<sub>flowpact v0.4.0 · config schema v1</sub>\n"tool": "flowpact", "version": "0.4.0"',
     );
+    // A terminal screenshot's banner: the version's width changes, and the words after it move with it.
+    const banner = (v: string, w: string, x: string) =>
+      `<text y="67"><tspan x="28.4" textLength="67.2" fill="#3b4252">flowpact</tspan><tspan x="112.4" textLength="${w}" lengthAdjust="spacingAndGlyphs" fill="#d8dee9">${v}</tspan><tspan x="${x}" textLength="50.4">config</tspan></text>`;
+    expect(syncRefs(banner('v0.3.2', '50.4', '179.6'), '0.10.0')).toBe(banner('v0.10.0', '58.8', '188.0'));
+    expect(syncRefs(banner('v1.0.0-rc.1', '92.4', '221.6'), '1.0.0')).toBe(banner('v1.0.0', '50.4', '179.6'));
+    expect(syncRefs('uses: rumankazi/flowpact@v1.0.0-rc.1', '1.0.0')).toBe('uses: rumankazi/flowpact@v1.0.0');
     expect(syncRefs(text, '1.2.0')).toBe(
       'uses: rumankazi/flowpact@v1\nuses: rumankazi/flowpact@v1.2.0\nnpx flowpact@1 lint\n`flowpact` on npm, flowpact@ v0',
     );

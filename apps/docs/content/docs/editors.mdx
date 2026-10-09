@@ -14,6 +14,8 @@ flowpact ships a language server, so the analysis runs while you edit instead of
   `needs.build.outputs.url` to the reusable workflow's output, from `steps.x.outputs.y` to the action's output.
 - **Find references** and **highlights** across files.
 
+<Screenshot name="editor-diagnostics" format="png" alt="VS Code showing FP401 on matrix.config in tests.yml: the windows matrix entry has no config, with the call chain and flowpact's hover card" caption="A finding as you type: the windows matrix entry passes an empty config to run-suite.yml." />
+
 The server treats every directory with a `.github` folder as a repository, so monorepos and nested repositories work
 without configuration: the workspace folders are analyzed when the editor starts, and a repository nested inside one
 once you open one of its files. Your [config](/docs/configuration) (severities, overrides, ignores) applies as in the
@@ -32,6 +34,8 @@ Hovering an input, secret, output, env variable, matrix key, job or `uses:` valu
 Other extensions add their own sections below it; GitHub's GitHub Actions extension, for example, describes the
 key's syntax.
 
+<Screenshot name="editor-hover" format="png" alt="flowpact hover card on inputs.environment in build.yml: a required string input, from pipeline.yml's input, to package.yml's input" caption="The input comes from pipeline.yml and goes on to package.yml." />
+
 ## VS Code
 
 Install **flowpact** from the
@@ -43,12 +47,16 @@ built on VS Code:
 code --install-extension flowpact.vscode-flowpact
 ```
 
-It bundles the language server, so nothing else needs to be installed, and works in VS Code 1.101 and later.
+It bundles the language server, so nothing else needs to be installed, and works in VS Code 1.101 and later. The
+server starts when the workspace has workflows or an `action.yml`, at a folder's root or nested deeper, or when you open
+one; other workspaces only load the extension.
 
 It complements GitHub's [GitHub Actions](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions)
 extension, which completes and validates workflow syntax file by file: flowpact adds what crosses files (the data flow
 through reusable workflows and local actions, go to definition and references across them), and by default hides the
 four rules both would report (`flowpact.overlappingRules`).
+
+<Screenshot name="editor-references" format="png" alt="VS Code peek references on the config input of run-suite.yml: its declaration, two reads and the caller in tests.yml that passes it" caption="Peek References on an input: where it is read, and the caller that passes it." />
 
 ### Settings
 
@@ -62,6 +70,9 @@ four rules both would report (`flowpact.overlappingRules`).
 
 **Logs:** the **flowpact** output channel (**flowpact: Show Output**). Its log level (**Developer: Set Log Level…**) is
 also the server's: set it to Debug to see every stage of the analysis, or to Trace for the protocol messages too.
+VS Code's own extension host log can say `Not activating extension 'flowpact.vscode-flowpact': Timed out while
+searching…` in a large workspace even though flowpact runs: it then starts after VS Code's startup instead. The output
+channel and the language status item show its real state.
 
 **Commands:** **flowpact: Restart Language Server** — also needed after you edit a plugin, since a loaded plugin stays
 loaded — and **flowpact: Show Output**.
