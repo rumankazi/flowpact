@@ -45,6 +45,11 @@ flowpact lint
 
 In GitHub Actions, use the [action](/docs/action) instead: it needs neither Node.js nor an install.
 
+In VS Code, install the extension from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact), or from
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact) in VSCodium, Cursor, Windsurf and other editors built
+on VS Code. It bundles the language server, so it needs neither Node.js nor the npm package.
+
 ## First run
 
 <Steps>
@@ -102,6 +107,15 @@ flowpact lint --hide-info                    # list errors and warnings only
 
 <Steps>
 <Step>
+### See findings as you type
+
+Install the extension from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact) or
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact). It reports the same findings while you edit,
+unsaved changes included, and shows on hover where a value comes from and where it goes. Other editors: see
+[editors](/docs/editors).
+</Step>
+<Step>
 ### Lock the interfaces
 
 ```sh
@@ -111,7 +125,8 @@ flowpact check           # lint + compare with the committed contracts
 ```
 
 [Contracts](/docs/contracts) make every change to an input, secret, output or call visible in review, and `flowpact check`
-fails on breaking changes.
+fails on breaking changes. If other repositories use your workflows or actions, [impact mode](/docs/impact-mode) also
+fails a pull request whose title declares less than the minor or major release its changes need.
 </Step>
 <Step>
 ### Run it in CI

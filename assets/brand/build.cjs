@@ -165,7 +165,7 @@ const textW = (font, s, size) => font.getAdvanceWidth(s, size);
 function socialPreview() {
   const W = 1280, H = 640, lockW = 720;
   const k = lockW / WM_W, lockH = WM_H * k;
-  const tag = 'workflow contracts for GitHub Actions', tagSize = 38;
+  const tag = 'data-flow linter for GitHub Actions', tagSize = 38;
   const tagW = textW(regular, tag, tagSize);
   const space = 72;                           // lockup box (incl. descender) -> tagline cap line
   const blockH = lockH + space + tagSize * 0.71;
