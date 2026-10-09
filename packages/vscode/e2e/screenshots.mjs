@@ -92,6 +92,10 @@ async function launch(fixture, size, extra) {
       '--skip-release-notes',
       '--disable-workspace-trust',
       '--new-window',
+      // A stand-in for the system keychain (macOS) and secret store (Linux): with HOME moved, VS Code would look for a
+      // login keychain there, and macOS asks for it in a dialog that blocks the window.
+      '--use-mock-keychain',
+      '--password-store=basic',
     ],
   });
   try {
@@ -103,9 +107,17 @@ async function launch(fixture, size, extra) {
     await win.waitForSelector('.monaco-workbench', { timeout: 60_000 });
     return { app, win };
   } catch (err) {
-    await app.close().catch(() => undefined);
+    await close(app);
     throw err;
   }
+}
+
+/** Closes VS Code, and kills it if it does not quit within 10 seconds. */
+async function close(app) {
+  const vscode = app.process();
+  const quit = app.close().catch(() => undefined);
+  await Promise.race([quit, new Promise((resolve) => setTimeout(resolve, 10_000))]);
+  if (vscode.exitCode === null && vscode.signalCode === null) vscode.kill('SIGKILL');
 }
 
 async function command(win, name) {
@@ -117,10 +129,11 @@ async function command(win, name) {
   await win.waitForTimeout(400);
 }
 
-async function open(win, file) {
+/** Opens a file by its absolute path, which Quick Open resolves without the file search (it can stall at startup). */
+async function open(win, fixture, file) {
   await win.keyboard.press(`${mod}+P`);
   await win.waitForSelector(quickInput);
-  await win.keyboard.type(file);
+  await win.keyboard.type(join(home, fixture, file));
   await win.waitForTimeout(700);
   await win.keyboard.press('Enter');
   await win.waitForTimeout(800);
@@ -140,8 +153,8 @@ async function cursorAt(win, fixture, file, needle, offset) {
 }
 
 /** Opens a file with findings and waits until the server has published them, then tidies the window. */
-async function ready(win, file) {
-  await open(win, file);
+async function ready(win, fixture, file) {
+  await open(win, fixture, file);
   await win.waitForSelector('.squiggly-error, .squiggly-warning, .squiggly-info', { timeout: 60_000 });
   await win.waitForTimeout(800);
   await command(win, 'Notifications: Clear All Notifications');
@@ -161,7 +174,7 @@ const shots = [
     size: { width: 820, height: 480 },
     async take(win) {
       const file = '.github/workflows/build.yml';
-      await ready(win, file);
+      await ready(win, this.fixture, file);
       await cursorAt(win, this.fixture, file, 'inputs.environment', 6);
       await hover(win);
     },
@@ -174,7 +187,7 @@ const shots = [
     settings: { 'editor.hover.above': false },
     async take(win) {
       const file = '.github/workflows/tests.yml';
-      await ready(win, file);
+      await ready(win, this.fixture, file);
       await cursorAt(win, this.fixture, file, 'matrix.config', 5);
       await hover(win);
     },
@@ -184,9 +197,9 @@ const shots = [
     fixture: 'incident-matrix',
     size: { width: 820, height: 600 },
     async take(win) {
-      await ready(win, '.github/workflows/tests.yml');
+      await ready(win, this.fixture, '.github/workflows/tests.yml');
       const file = '.github/workflows/run-suite.yml';
-      await open(win, file);
+      await open(win, this.fixture, file);
       await cursorAt(win, this.fixture, file, '      config:', 7);
       await command(win, 'Peek References');
       await win.waitForSelector('.peekview-widget', { timeout: 15_000 });
@@ -218,7 +231,7 @@ try {
       await win.screenshot({ path: join(out, `${shot.name}.png`) });
       console.log(`wrote ${shot.name}.png`);
     } finally {
-      await app.close();
+      await close(app);
     }
   }
 } finally {
