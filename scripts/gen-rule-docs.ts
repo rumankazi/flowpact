@@ -46,6 +46,18 @@ export function rulePage(rule: RuleDefinition): string {
     mdx(rule.docs.fix),
     '',
   ];
+  const generated =
+    rule.generatedFiles === 'skip'
+      ? 'Not reported in [generated files](/docs/configuration#generated-files), which are not edited by hand.'
+      : undefined;
+  if (rule.docs.scope || generated) {
+    lines.push(
+      '## Scope',
+      '',
+      [rule.docs.scope && mdx(rule.docs.scope), generated].filter(Boolean).join(' '),
+      '',
+    );
+  }
   if (rule.docs.examples) {
     lines.push(
       '## Example',

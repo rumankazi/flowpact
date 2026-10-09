@@ -324,6 +324,39 @@ describe('navigation', () => {
     expect(refs).toHaveLength(2);
   });
 
+  it('lists a read of a whole outputs object among the references of each output', async () => {
+    const W = '.github/workflows/whole.yml';
+    const text = [
+      'on: push',
+      'jobs:',
+      '  build:',
+      '    runs-on: ubuntu-latest',
+      '    outputs:',
+      '      digest: x',
+      '    steps: [{ run: echo }]',
+      '  use:',
+      '    needs: build',
+      '    runs-on: ubuntu-latest',
+      '    steps:',
+      "      - run: echo '${{ toJSON(needs.build.outputs) }}'",
+      '',
+    ].join('\n');
+    const dir = repo({ [W]: text });
+    const client = await start(dir);
+    await client.open(dir, W, text);
+    const refs = (await client.conn.sendRequest('textDocument/references', {
+      textDocument: { uri: uri(dir, W) },
+      position: position(text, 'digest:'),
+      context: { includeDeclaration: false },
+    })) as { uri: string; range: { start: unknown } }[];
+    expect(refs).toEqual([
+      expect.objectContaining({
+        uri: uri(dir, W),
+        range: expect.objectContaining({ start: position(text, 'needs.build') }),
+      }),
+    ]);
+  });
+
   it('highlights a symbol within the file', async () => {
     const { dir, client } = await ready();
     const highlights = await client.conn.sendRequest('textDocument/documentHighlight', {

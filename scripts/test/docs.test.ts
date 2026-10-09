@@ -47,6 +47,19 @@ describe('rule docs', () => {
   });
 });
 
+describe('generated files', () => {
+  it('the configuration page lists every rule that skips generated files', () => {
+    const page = readFileSync(join(RULES_DIR, '..', 'configuration.mdx'), 'utf8');
+    const section = page.slice(page.indexOf('## Generated files'), page.indexOf('## Plugins'));
+    const listed = [...section.matchAll(/^\| \[`(FP\d{3})`\]/gm)].map((m) => m[1]);
+    const skipping = registry
+      .all()
+      .filter((r) => r.generatedFiles === 'skip')
+      .map((r) => r.code);
+    expect(listed).toEqual(skipping);
+  });
+});
+
 describe('rule counts in prose', () => {
   it('match the registry everywhere they are stated', () => {
     const n = createRegistry().all().length;

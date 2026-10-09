@@ -111,6 +111,21 @@ describe('renderMarkdown', () => {
     if (warnings !== -1) expect(warnings).toBeGreaterThan(errors);
   });
 
+  it('notes how many findings it left out in generated files', () => {
+    const r = analyze({
+      root: '/virtual/repo',
+      fs: memoryFileSystem({
+        [`${WF}/triage.lock.yml`]:
+          'on: push\njobs:\n  j:\n    runs-on: x\n    outputs:\n      a: x\n    steps: [{ run: echo }]\n',
+      }),
+      validateSchema: false,
+    });
+    expect(renderMarkdown(normalize(r))).toContain(
+      '<sub>1 finding about the internals of [generated files](https://rumankazi.github.io/flowpact/docs/configuration#generated-files) is not reported.</sub>',
+    );
+    expect(renderMarkdown(fixture('clean'))).not.toContain('generated files');
+  });
+
   it('reports a clean run', () => {
     const out = renderMarkdown(fixture('clean'), { title: 'Workflow contracts' });
     expect(out).toContain('## Workflow contracts');
