@@ -127123,6 +127123,112 @@ function evalCall(e, resolve5) {
       return { known: false, taint };
   }
 }
+function isConstant(e) {
+  if (e instanceof Literal) return true;
+  if (e instanceof Grouping) return isConstant(e.group);
+  if (e instanceof Unary) return isConstant(e.expr);
+  if (e instanceof Binary) return isConstant(e.left) && isConstant(e.right);
+  if (e instanceof Logical) return e.args.every(isConstant);
+  if (e instanceof FunctionCall) {
+    const name = e.functionName.lexeme.toLowerCase();
+    return !["success", "failure", "cancelled", "always", "hashfiles"].includes(name) && e.args.every(isConstant);
+  }
+  return false;
+}
+var TEST_FUNCTIONS = /* @__PURE__ */ new Set(["contains", "startswith", "endswith"]);
+var VALUE_FUNCTIONS = /* @__PURE__ */ new Set(["format", "join", "tojson"]);
+function conditionUses(expr, whole = true) {
+  const out = /* @__PURE__ */ new Map();
+  if (!expr.ast) return out;
+  const source = expr.source;
+  const visit3 = (e, use) => {
+    if (e instanceof Grouping) {
+      visit3(e.group, use);
+      return;
+    }
+    if (e instanceof ContextAccess || e instanceof IndexAccess) {
+      let cur = e;
+      while (cur instanceof IndexAccess) {
+        if (!(cur.index instanceof Literal) && !(cur.index instanceof Star)) visit3(cur.index, "value");
+        cur = cur.expr;
+      }
+      if (cur instanceof ContextAccess) {
+        const t = cur.name;
+        out.set(offsetOf(source, t.range.start.line, t.range.start.column), use);
+      } else visit3(cur, "value");
+      return;
+    }
+    if (e instanceof Unary) {
+      visit3(e.expr, "truthiness");
+      return;
+    }
+    if (e instanceof Logical) {
+      const isAnd = e.operator.type === TokenType.AND;
+      for (const [i, arg] of e.args.entries()) {
+        const fallback2 = !isAnd && i < e.args.length - 1 && use !== "truthiness";
+        visit3(arg, fallback2 ? "fallback" : use);
+      }
+      return;
+    }
+    if (e instanceof Binary) {
+      const [l, r] = [isConstant(e.left), isConstant(e.right)];
+      visit3(e.left, r ? "compared" : "value");
+      visit3(e.right, l ? "compared" : "value");
+      return;
+    }
+    if (e instanceof FunctionCall) {
+      const name = e.functionName.lexeme.toLowerCase();
+      if (TEST_FUNCTIONS.has(name)) {
+        for (const [i, arg] of e.args.entries()) {
+          const other = e.args.some((a, j) => j !== i && isConstant(a));
+          visit3(arg, other ? "compared" : "value");
+        }
+        return;
+      }
+      const passes = VALUE_FUNCTIONS.has(name) && use === "compared";
+      for (const arg of e.args) visit3(arg, passes ? "compared" : "value");
+    }
+  };
+  visit3(expr.ast, whole ? "truthiness" : "value");
+  return out;
+}
+function fallbacksOf(expr) {
+  const out = /* @__PURE__ */ new Map();
+  if (!expr.ast) return out;
+  const unwrap = (e) => e instanceof Grouping ? unwrap(e.group) : e;
+  const isOr = (e) => e instanceof Logical && e.operator.type === TokenType.OR;
+  const operands = (e) => {
+    const u = unwrap(e);
+    return isOr(u) ? u.args.flatMap(operands) : [u];
+  };
+  const refStart = (e) => {
+    let cur = e;
+    while (cur instanceof IndexAccess) cur = cur.expr;
+    if (!(cur instanceof ContextAccess)) return void 0;
+    const t = cur.name;
+    return offsetOf(expr.source, t.range.start.line, t.range.start.column);
+  };
+  const visit3 = (e) => {
+    const u = unwrap(e);
+    if (isOr(u)) {
+      const ops = operands(u);
+      for (const [i, op] of ops.entries()) {
+        const start = i < ops.length - 1 ? refStart(op) : void 0;
+        if (start !== void 0) out.set(start, u);
+        visit3(op);
+      }
+    } else if (u instanceof IndexAccess) {
+      visit3(u.expr);
+      if (!(u.index instanceof Literal) && !(u.index instanceof Star)) visit3(u.index);
+    } else if (u instanceof Unary) visit3(u.expr);
+    else if (u instanceof Binary) {
+      visit3(u.left);
+      visit3(u.right);
+    } else if (u instanceof Logical || u instanceof FunctionCall) for (const arg of u.args) visit3(arg);
+  };
+  visit3(expr.ast);
+  return out;
+}
 function definitelyFalsy(e, resolve5) {
   if (e instanceof Grouping) return definitelyFalsy(e.group, resolve5);
   if (e instanceof Logical) {
@@ -130460,6 +130566,15 @@ function parseAction(entryFile, contextOrTrace) {
 var import_yaml4 = __toESM(require_dist5(), 1);
 
 // ../core/src/rules/util.ts
+function isWholeExpression(site) {
+  if (site.segments.length !== 1) return false;
+  const templated = findTemplateSegments(site.text);
+  return templated.length === 0 || templated.length === 1 && site.text.trim() === site.text.slice(templated[0].start, templated[0].end);
+}
+function useInCondition(site, ref) {
+  const seg = site.segments.find((s) => s.refs.includes(ref));
+  return seg ? conditionUses(seg.expr, isWholeExpression(site)).get(ref.start) : void 0;
+}
 function* refsOf(unit) {
   for (const site of unit.sites)
     for (const seg of site.segments) for (const ref of seg.refs) yield { site, ref };
@@ -134723,6 +134838,19 @@ if: inputs.legacy-flag`
     }
   }
 });
+function callersOf(index2, unit) {
+  if (unit.kind === "workflow")
+    return index2.callersOf(unit.path).map((c) => ({
+      with: c.job.with,
+      loc: c.job.uses?.loc ?? c.job.loc,
+      label: `${c.caller.path} \u203A jobs.${c.job.id}`
+    }));
+  return index2.usersOf(unit.path).map((u) => ({
+    with: u.step.with,
+    loc: u.step.uses?.loc ?? u.step.loc,
+    label: `${u.unit.path} \u203A ${u.job ? `jobs.${u.job.id} \u203A ` : ""}step ${u.step.id ?? `#${u.step.index + 1}`}`
+  }));
+}
 var optionalInputInCondition = defineRule({
   code: "FP105",
   name: "optional-input-no-default-in-condition",
@@ -134730,52 +134858,77 @@ var optionalInputInCondition = defineRule({
   defaultSeverity: "warning",
   generatedFiles: "skip",
   docs: {
-    summary: "An optional input without a default decides an `if:` condition.",
-    why: 'When a caller omits an optional input that has no default, GitHub substitutes an empty string. Conditions then take the "false" branch silently, so jobs or steps are skipped and the run is still green.',
-    fix: "Give the input an explicit `default`, make it `required: true`, or compare explicitly (`inputs.x != ''`).",
+    summary: "An optional input without a default decides an `if:` condition by its truthiness.",
+    why: 'When a caller omits an optional input that has no default, GitHub substitutes an empty string. A condition such as `if: inputs.x` then takes the "false" branch silently, so jobs or steps are skipped and the run is still green.',
+    fix: "Give the input an explicit `default`, make it `required: true`, or compare explicitly (`inputs.x != ''`, `inputs.x == 'yes'`). Not reported: comparisons with a constant, `contains()`-style tests, fallbacks (`inputs.x || 'default'`), and inputs every local caller passes \u2014 unless the workflow can be dispatched or the unit is published (by default the root `action.yml` and reusable workflows whose file name does not start with `_`; see `impact.publish`), since callers in other repositories can still omit them.",
     examples: {
       bad: `inputs:
   variant: { type: string, required: false }
 ...
-if: inputs.variant == 'gpu'`,
+if: inputs.variant`,
       good: `inputs:
-  variant: { type: string, required: false, default: cpu }`
+  variant: { type: string, required: false }
+...
+if: inputs.variant != ''`
     }
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
+      const callers = callersOf(ctx.index, unit);
+      const published = isPublished(unit, ctx.config.impact);
+      const callersDecide = callers.length > 0 && !(unit.kind === "workflow" && unit.dispatch) && !published;
+      const flagged = [];
+      const passedBySite = /* @__PURE__ */ new Map();
       for (const input3 of Object.values(declaredInputs(unit))) {
         if (input3.required || input3.hasDefault || input3.type === "boolean" || input3.type === "number")
           continue;
-        const name = input3.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const explicit = new RegExp(
-          `inputs\\.${name}\\s*[!=]=\\s*(''|null)|(''|null)\\s*[!=]=\\s*inputs\\.${name}(?![\\w-])`,
-          "i"
+        const inConditions = ctx.index.usagesOf(sym.input(unit.path, input3.name)).filter((u) => u.site.isCondition).map((u) => ({ u, use: useInCondition(u.site, u.ref) }));
+        const handledSites = new Set(
+          inConditions.filter((x) => x.use === "compared" || x.use === "fallback").map((x) => x.u.site.id)
         );
-        const usages = ctx.index.usagesOf(sym.input(unit.path, input3.name)).filter((u) => u.site.isCondition && !explicit.test(u.site.text));
+        const usages = inConditions.filter((x) => (x.use === "truthiness" || x.use === "value") && !handledSites.has(x.u.site.id)).map((x) => x.u);
         if (usages.length === 0) continue;
-        const callers = unit.kind === "workflow" ? ctx.index.callersOf(unit.path) : [];
-        const omitting = callers.filter((c) => !lookup(c.job.with, input3.name));
-        if (callers.length > 0 && omitting.length === 0 && unit.kind === "workflow" && !unit.dispatch)
+        const omitting = callers.filter((c) => !lookup(c.with, input3.name));
+        if (callersDecide && omitting.length === 0) {
+          for (const usage of usages) addName(passedBySite, usage.site.id, input3.name);
           continue;
-        for (const u of usages) {
-          ctx.report({
-            message: `Condition reads optional input ${quote(input3.name)}, which has no default and is '' when omitted`,
-            loc: u.ref.loc,
-            symbol: sym.input(unit.path, input3.name),
-            related: [
-              { loc: input3.loc, message: "declared optional without a default" },
-              ...omitting.slice(0, 3).map((c) => ({
-                loc: c.job.uses?.loc ?? c.job.loc,
-                message: `${c.caller.path} \u203A jobs.${c.job.id} omits it`
-              }))
-            ]
-          });
         }
+        for (const usage of usages) flagged.push({ input: input3, usage, omitting });
+      }
+      const flaggedBySite = /* @__PURE__ */ new Map();
+      for (const { input: input3, usage } of flagged) addName(flaggedBySite, usage.site.id, input3.name);
+      for (const { input: input3, usage, omitting } of flagged) {
+        const others = (flaggedBySite.get(usage.site.id) ?? []).filter((n) => n !== input3.name);
+        const passed = passedBySite.get(usage.site.id) ?? [];
+        const notes = [
+          ...others.length ? [
+            `so ${others.length > 1 ? "are" : "is"} ${others.map(quote).join(", ")}, read by the same condition`
+          ] : [],
+          ...passed.length ? [
+            `${passed.map(quote).join(", ")}, also read by this condition, ${passed.length > 1 ? "are" : "is"} passed by every caller`
+          ] : []
+        ];
+        ctx.report({
+          message: `Condition reads optional input ${quote(input3.name)}, which has no default and is '' when omitted` + (notes.length ? ` (${notes.join("; ")})` : ""),
+          loc: usage.ref.loc,
+          symbol: sym.input(unit.path, input3.name),
+          related: [
+            {
+              loc: input3.loc,
+              message: published && callers.length > 0 && omitting.length === 0 ? "declared optional without a default; every caller here passes it, but this unit is published (see `impact.publish`), so callers in other repositories can omit it" : "declared optional without a default"
+            },
+            ...omitting.slice(0, 3).map((c) => ({ loc: c.loc, message: `${c.label} omits it` }))
+          ]
+        });
       }
     }
   }
 });
+function addName(bySite, site, name) {
+  const names = bySite.get(site) ?? [];
+  if (!names.includes(name)) names.push(name);
+  bySite.set(site, names);
+}
 var passthroughDropped = defineRule({
   code: "FP106",
   name: "passthrough-dropped",
@@ -134907,6 +135060,47 @@ var inputRules = [
 
 // ../core/src/rules/matrix.ts
 var hasMatrixRef = (site) => site.segments.some((s) => s.refs.some((r) => r.context === "matrix"));
+var readsKey = (seg, key) => seg.expr.refs.some((r) => r.context === "matrix" && r.path[0]?.toLowerCase() === key.toLowerCase());
+var TEST_OPEN = /(?:^|[;&|({])\s*(?:(?:if|elif|while|until|then|do|else|!)\s+)*(\[\[|\[|test)(?=\s)/g;
+function inShellTest(before, after) {
+  const open3 = [...before.matchAll(TEST_OPEN)].at(-1);
+  if (!open3) return false;
+  const rest = before.slice(open3.index + open3[0].length);
+  if (open3[1] === "test") return !/[;&|]/.test(rest);
+  if (open3[1] === "[[") return !rest.includes("]]") && /\s\]\](?:[\s;&|)]|$)/.test(after);
+  return !/\s\](?:\s|$)/.test(rest) && /\s\](?:[\s;&|)]|$)/.test(after);
+}
+function shellTestSegments(script, segments = findTemplateSegments(script)) {
+  const out = /* @__PURE__ */ new Set();
+  for (const [i, seg] of segments.entries()) {
+    const quote2 = script[seg.start - 1];
+    if (quote2 !== '"' && quote2 !== "'" || script[seg.end] !== quote2) continue;
+    const lineStart = script.lastIndexOf("\n", seg.start - 1) + 1;
+    const nl = script.indexOf("\n", seg.end);
+    const before = script.slice(lineStart, seg.start - 1);
+    const after = script.slice(seg.end + 1, nl < 0 ? script.length : nl);
+    const operand = /(?:^|[\s(!])-[a-zA-Z]\s+$/.test(before) || /^\s+(?:==?|!=)\s/.test(after) || /\s(?:==?|!=)\s+$/.test(before);
+    if (operand && inShellTest(before, after)) out.add(i);
+  }
+  return out;
+}
+function unhandledReads(site, key) {
+  const all = { text: site.text, tested: /* @__PURE__ */ new Set() };
+  if (site.field !== "step.run") return all;
+  const segments = findTemplateSegments(site.text);
+  const tested = new Set(
+    [...shellTestSegments(site.text, segments)].filter((i) => readsKey(segments[i], key))
+  );
+  if (tested.size === 0) return all;
+  if (tested.size === segments.filter((s) => readsKey(s, key)).length) return void 0;
+  let text3 = "";
+  let at = 0;
+  for (const i of [...tested].sort((a, b) => a - b)) {
+    text3 += site.text.slice(at, segments[i].start);
+    at = segments[i].end;
+  }
+  return { text: text3 + site.text.slice(at), tested };
+}
 function skippedIn(guard, combo) {
   const seg = guard.segments[0];
   if (guard.segments.length !== 1 || !seg?.expr.ast) return false;
@@ -134916,7 +135110,7 @@ function guardsOf(job, site) {
   const step = site.step !== void 0 ? job.steps[site.step] : void 0;
   return [step?.ifSite].filter((g) => g !== void 0 && g !== site);
 }
-function affectedCombos(site, exp, predicate, guards = [], onlyKey) {
+function affectedCombos(site, exp, predicate, guards = [], onlyKey, text3 = site.text) {
   const known2 = new Set(exp.keys.map((k) => k.toLowerCase()));
   if (onlyKey !== void 0) {
     for (const k of [...known2]) if (k !== onlyKey.toLowerCase()) known2.delete(k);
@@ -134925,7 +135119,7 @@ function affectedCombos(site, exp, predicate, guards = [], onlyKey) {
   const perKey = /* @__PURE__ */ new Map();
   for (const combo of exp.combos) {
     if (guards.some((g) => skippedIn(g, combo))) continue;
-    const v = evaluateTemplate(site.text, matrixResolver(combo));
+    const v = evaluateTemplate(text3, matrixResolver(combo));
     const missing = v.taint.filter((t) => known2.has(t.key.toLowerCase()));
     if (missing.length === 0 || !predicate(v)) continue;
     combos.push(combo);
@@ -134933,9 +135127,10 @@ function affectedCombos(site, exp, predicate, guards = [], onlyKey) {
   }
   return { combos, keys: [...perKey.keys()], perKey };
 }
-function firstMatrixRefLoc(site, keys) {
+function firstMatrixRefLoc(site, keys, skip = /* @__PURE__ */ new Set()) {
   const lower = keys.map((k) => k.toLowerCase());
-  for (const seg of site.segments) {
+  for (const [i, seg] of site.segments.entries()) {
+    if (skip.has(i)) continue;
     for (const r of seg.refs)
       if (r.context === "matrix" && lower.includes((r.path[0] ?? "").toLowerCase())) return r.loc;
   }
@@ -134980,6 +135175,26 @@ function* matrixJobs(ctx) {
     }
   }
 }
+function emptyInputImpact(index2, callee, input3) {
+  if (!callee || !input3 || input3.required) return { severity: "error", related: [], note: "" };
+  const value = input3.default;
+  if (value !== void 0 && value !== null && value !== "") {
+    const shown = typeof value === "string" ? quote(value) : JSON.stringify(value);
+    return { severity: "warning", related: [], note: `, which replaces the input's default ${shown}` };
+  }
+  const condition = index2.usagesOf(sym.input(callee.path, input3.name)).find((u) => u.site.isCondition && useInCondition(u.site, u.ref) !== "fallback");
+  if (!condition) return void 0;
+  return {
+    severity: "error",
+    related: [
+      {
+        loc: condition.ref.loc,
+        message: `this condition reads ${quote(input3.name)}, so the legs with an empty value take the other branch`
+      }
+    ],
+    note: ""
+  };
+}
 var emptyBindingForMatrixCombo = defineRule({
   code: "FP401",
   name: "empty-binding-for-matrix-combo",
@@ -134988,7 +135203,7 @@ var emptyBindingForMatrixCombo = defineRule({
   docs: {
     summary: "An input passed under `with:` is empty for some matrix combinations because a matrix key is missing there.",
     why: "GitHub evaluates a missing matrix key to an empty string \u2014 no error, no warning. The affected matrix leg runs with an empty input, so the callee may skip its real work (e.g. a test configuration) while the run stays green.",
-    fix: "Define the key in every combination (add it to the `include` entry or a matrix dimension), or add an explicit fallback: `${{ matrix.key || 'default' }}`.",
+    fix: "Define the key in every combination (add it to the `include` entry or a matrix dimension), or add an explicit fallback: `${{ matrix.key || 'default' }}`. Reported as an error when the input is required (or the callee is not in the repository) or when its default is empty (none, or `default: ''`) and an `if:` in the callee reads it, and as a warning when the empty value replaces a non-empty `default`. Not reported for other optional inputs (an empty default that no condition reads, or reads only through a fallback such as `inputs.x || 'all'`): the callee handles the empty value like an omitted input.",
     examples: {
       bad: `strategy:
   matrix:
@@ -134996,7 +135211,7 @@ var emptyBindingForMatrixCombo = defineRule({
       - name: linux
         config: ci-linux.json
       - name: windows        # no "config" \u2192 empty input
-uses: ./.github/workflows/run-tests.yml
+uses: ./.github/workflows/run-tests.yml   # declares config: { required: true }
 with:
   config: \${{ matrix.config }}`,
       good: `    include:
@@ -135017,7 +135232,8 @@ with:
           targets.push({
             binding: b,
             target: callee?.path ?? job.uses.raw,
-            ...input3 ? { inputLoc: input3.loc, symbol: sym.input(callee.path, input3.name) } : {}
+            ...callee ? { callee } : {},
+            ...input3 ? { input: input3, symbol: sym.input(callee.path, input3.name) } : {}
           });
         }
       }
@@ -135029,28 +135245,33 @@ with:
             binding: b,
             target: action5?.path ?? step.uses?.raw ?? `step #${step.index + 1}`,
             step,
-            ...input3 ? { inputLoc: input3.loc, symbol: sym.input(action5.path, input3.name) } : {}
+            ...action5 ? { callee: action5 } : {},
+            ...input3 ? { input: input3, symbol: sym.input(action5.path, input3.name) } : {}
           });
         }
       }
       for (const t of targets) {
         const site = t.binding.site;
         if (!site || !hasMatrixRef(site)) continue;
+        const impact = emptyInputImpact(ctx.index, t.callee, t.input);
+        if (!impact) continue;
         const { combos, keys, perKey } = affectedCombos(site, exp, isEmptyValue, guardsOf(job, site));
         if (combos.length === 0) continue;
         const keyList = keys.map((k) => `matrix.${k}`).join(", ");
         const cause = keys.length === 1 ? `matrix.${keys[0]} is not defined there` : `not defined there: ${keys.map((k) => `matrix.${k} (${perKey.get(k)})`).join(", ")}`;
         ctx.report({
-          message: `Input ${quote(t.binding.name)} for ${t.target} is empty in ${combos.length} of ${exp.combos.length} matrix combinations \u2014 ${cause}`,
+          message: `Input ${quote(t.binding.name)} for ${t.target} is empty in ${combos.length} of ${exp.combos.length} matrix combinations \u2014 ${cause}${impact.note}`,
           loc: firstMatrixRefLoc(site, keys),
           combos: combos.map((c) => comboLabel(c, exp.keys)),
           symbol: t.symbol ?? `${wf.path}#jobs.${job.id}.with.${t.binding.name}`,
           related: [
             ...chainRelated(chainTo(ctx.index, wf.path)),
             ...comboRelated(job, combos, keys),
-            ...t.inputLoc ? [{ loc: t.inputLoc, message: `receives the empty value: input ${quote(t.binding.name)}` }] : []
+            ...t.input ? [{ loc: t.input.loc, message: `receives the empty value: input ${quote(t.binding.name)}` }] : [],
+            ...impact.related
           ],
-          fix: `Set ${keys.map((k) => `\`${k}\``).join(", ")} in every combination, or use a fallback: \`\${{ ${keyList.split(", ")[0]} || '<default>' }}\`.`
+          fix: `Set ${keys.map((k) => `\`${k}\``).join(", ")} in every combination, or use a fallback: \`\${{ ${keyList.split(", ")[0]} || '<default>' }}\`.`,
+          severity: impact.severity
         });
       }
     }
@@ -135066,7 +135287,7 @@ var matrixKeyMissingInCombo = defineRule({
   docs: {
     summary: "An expression reads a matrix key that is only defined in some combinations.",
     why: "In combinations without the key the value is an empty string. Scripts, env vars and runner labels built from it silently degrade (e.g. `--config=` with no value).",
-    fix: "Define the key for every combination, or add a fallback (`${{ matrix.key || 'default' }}`). Not reported: conditions (`if:`) and `continue-on-error`, comparisons and negations (`matrix.key != ''`, `!matrix.key`), `matrix.key && ...` guards, and combinations where the job or step is skipped by its own `if:`."
+    fix: "Define the key for every combination, or add a fallback (`${{ matrix.key || 'default' }}`). Not reported: conditions (`if:`) and `continue-on-error`, comparisons and negations (`matrix.key != ''`, `!matrix.key`), `matrix.key && ...` guards, quoted shell tests in `run:` scripts (`[[ -z \"${{ matrix.key }}\" ]]`, `[ \"${{ matrix.key }}\" = on ]`), and combinations where the job or step is skipped by its own `if:`."
   },
   check(ctx) {
     for (const { wf, job, exp } of matrixJobs(ctx)) {
@@ -135082,14 +135303,16 @@ var matrixKeyMissingInCombo = defineRule({
             if (r.context === "matrix" && r.path[0] && !read.has(r.path[0].toLowerCase()))
               read.set(r.path[0].toLowerCase(), r.path[0]);
         for (const key of read.values()) {
+          const unhandled = unhandledReads(site, key);
+          if (!unhandled) continue;
           const guards = guardsOf(job, site);
-          const { combos } = affectedCombos(site, exp, predicate, guards, key);
+          const { combos } = affectedCombos(site, exp, predicate, guards, key, unhandled.text);
           if (combos.length === 0) continue;
           const all = WITH_FIELDS.has(site.field) ? affectedCombos(site, exp, () => true, guards, key).combos.length : combos.length;
           const rest = all - combos.length;
           ctx.report({
             message: `matrix.${key} is undefined in ${all} of ${exp.combos.length} combinations of jobs.${job.id}${rest ? `; in ${rest} of them the whole input is empty (FP401)` : ""}`,
-            loc: firstMatrixRefLoc(site, [key]),
+            loc: firstMatrixRefLoc(site, [key], unhandled.tested),
             combos: combos.map((c) => comboLabel(c, exp.keys)),
             symbol: sym.matrix(wf.path, job.id, key),
             related: comboRelated(job, combos, [key])
@@ -135135,8 +135358,8 @@ var undefinedMatrixKey = defineRule({
   defaultSeverity: "error",
   docs: {
     summary: "An expression reads a matrix key that no combination defines (or the job has no matrix).",
-    why: "The value is always empty \u2014 almost certainly a typo or a key that was renamed in the matrix.",
-    fix: "Fix the key name, or add it to the matrix."
+    why: "The value is always empty \u2014 almost certainly a typo or a key that was renamed in the matrix. A comparison or test on it always gives the same answer, and a condition on it never changes. Only a read with a fallback that is not empty (`matrix.key || 'default'`) is info, since the fallback always applies, unless the key is close to one the matrix defines.",
+    fix: "Fix the key name, add it to the matrix, or drop the read if the fallback is what you want."
   },
   check(ctx) {
     for (const wf of ctx.index.project.workflows.values()) {
@@ -135147,22 +135370,67 @@ var undefinedMatrixKey = defineRule({
         const exp = job.matrix ? ctx.matrix(wf, job) : void 0;
         if (exp && !exp.declared && (exp.dynamic || job.matrix?.includeDynamic)) continue;
         const keys = new Set((exp?.keys ?? []).map((k) => k.toLowerCase()));
+        const reads = /* @__PURE__ */ new Map();
         for (const seg of site.segments) {
           for (const r of seg.refs) {
             const k = r.path[0];
             if (r.context !== "matrix" || !k || k === "*" || k === "?" || keys.has(k.toLowerCase())) continue;
-            ctx.report({
-              message: job.matrix ? `matrix.${k} is not defined in any combination of jobs.${job.id} (keys: ${exp.keys.join(", ") || "none"})` : `jobs.${job.id} has no matrix, so matrix.${k} is always empty`,
-              loc: r.loc,
-              symbol: sym.matrix(wf.path, job.id, k),
-              ...job.matrix ? { related: [{ loc: job.matrix.loc, message: "matrix defined here" }] } : {}
-            });
+            reads.set(k.toLowerCase(), [...reads.get(k.toLowerCase()) ?? [], r]);
           }
+        }
+        for (const refs of reads.values()) {
+          const k = refs[0].path[0];
+          const where2 = job.matrix ? `matrix.${k} is not defined in any combination of jobs.${job.id} (keys: ${exp.keys.join(", ") || "none"})` : `jobs.${job.id} has no matrix, so matrix.${k} is always empty`;
+          const related2 = job.matrix ? [{ loc: job.matrix.loc, message: "matrix defined here" }] : [];
+          if (onlyFallbacks(site, k, job, exp)) {
+            ctx.report({
+              message: `${where2}; the fallback always applies`,
+              loc: refs[0].loc,
+              symbol: sym.matrix(wf.path, job.id, k),
+              related: related2,
+              severity: "info"
+            });
+            continue;
+          }
+          for (const r of refs)
+            ctx.report({ message: where2, loc: r.loc, symbol: sym.matrix(wf.path, job.id, k), related: related2 });
         }
       }
     }
   }
 });
+function combosOf(exp) {
+  if (exp && exp.combos.length > 0 && exp.combos.length <= GITHUB_MATRIX_LIMIT) return exp.combos;
+  const values = Object.fromEntries((exp?.keys ?? []).map((k) => [k, { known: false }]));
+  return [{ values, origin: "product", includes: [] }];
+}
+var unknownKey = (resolve5, key) => (ref) => ref.context === "matrix" && ref.path[0]?.toLowerCase() === key ? UNKNOWN : resolve5(ref);
+function onlyFallbacks(site, key, job, exp) {
+  if (exp && didYouMean(key, exp.keys)) return false;
+  const lower = key.toLowerCase();
+  const guards = guardsOf(job, site);
+  const combos = combosOf(exp).filter((c) => !guards.some((g) => skippedIn(g, c)));
+  if (site.isCondition && isWholeExpression(site)) {
+    const ast = site.segments[0].expr.ast;
+    if (!ast) return false;
+    const neverTrue = combos.every((c) => {
+      const resolve5 = matrixResolver(c);
+      return definitelyFalsy(ast, resolve5) && !definitelyFalsy(ast, unknownKey(resolve5, lower));
+    });
+    if (neverTrue) return false;
+  }
+  for (const seg of site.segments) {
+    const reads = seg.refs.filter((r) => r.context === "matrix" && r.path[0]?.toLowerCase() === lower);
+    if (reads.length === 0) continue;
+    const fallbacks = fallbacksOf(seg.expr);
+    for (const r of reads) {
+      const fallback2 = fallbacks.get(r.start);
+      if (!fallback2) return false;
+      if (combos.some((c) => isEmptyValue(evaluate(fallback2, matrixResolver(c))))) return false;
+    }
+  }
+  return true;
+}
 var unusedMatrixShape = defineRule({
   code: "FP405",
   name: "unused-matrix-shape",
@@ -135811,22 +136079,26 @@ var undeclaredSecretRef = defineRule({
   docs: {
     summary: "A reusable workflow reads a secret it does not declare, and some caller does not use `secrets: inherit`.",
     why: "Inside a called workflow only declared (or inherited) secrets exist. Reading anything else yields an empty string, so authentication steps fail late or, worse, fall back to anonymous access.",
-    fix: "Declare the secret under `on.workflow_call.secrets` and pass it from every caller, or use `secrets: inherit`."
+    fix: "Declare the secret under `on.workflow_call.secrets` and pass it from every caller, or use `secrets: inherit`. Callers whose `with:` values make the reading job's or step's `if:` false (e.g. an omitted input in `if: contains(inputs.registries, 'docker.io')`) are not counted: the read never runs for them."
   },
   check(ctx) {
     for (const wf of ctx.index.project.workflows.values()) {
       if (!wf.call) continue;
       const strictCallers = ctx.index.callersOf(wf.path).filter((c) => !c.job.secretsInherit);
       if (strictCallers.length === 0) continue;
-      for (const { ref } of refsOf(wf)) {
+      const resolvers = new Map(strictCallers.map((c) => [c, callerInputsResolver(wf, c)]));
+      for (const { site, ref } of refsOf(wf)) {
         const name = ref.path[0];
         if (ref.context !== "secrets" || !name || name === "*" || name === "?") continue;
         if (BUILTIN_SECRETS.has(name.toLowerCase()) || lookup(wf.call.secrets, name)) continue;
+        const guards = guardsOf2(wf, site);
+        const reached = strictCallers.filter((c) => !guards.some((g) => isFalse(g, resolvers.get(c))));
+        if (reached.length === 0) continue;
         ctx.report({
-          message: `${wf.path} reads secrets.${name}, which is not declared \u2014 it is empty when called from ${strictCallers.length} caller${strictCallers.length > 1 ? "s" : ""} without \`secrets: inherit\``,
+          message: `${wf.path} reads secrets.${name}, which is not declared \u2014 it is empty when called from ${reached.length} caller${reached.length > 1 ? "s" : ""} without \`secrets: inherit\``,
           loc: ref.loc,
           symbol: sym.secret(wf.path, name),
-          related: strictCallers.slice(0, 3).map((c) => ({
+          related: reached.slice(0, 3).map((c) => ({
             loc: c.job.uses?.loc ?? c.job.loc,
             message: `${c.caller.path} \u203A jobs.${c.job.id} passes explicit secrets`
           }))
@@ -135835,6 +136107,30 @@ var undeclaredSecretRef = defineRule({
     }
   }
 });
+function callerInputsResolver(callee, call) {
+  return ({ context: context5, path: path4 }) => {
+    if (context5 !== "inputs") return void 0;
+    if (path4.length !== 1 || !path4[0]) return UNKNOWN;
+    const decl = lookup(callee.call?.inputs ?? {}, path4[0]);
+    if (!decl) return UNKNOWN;
+    const b = lookup(call.job.with, decl.name);
+    if (b) return b.site ? evaluateTemplate(b.site.text, () => void 0) : known(b.value);
+    if (decl.hasDefault) {
+      const d = decl.default ?? null;
+      return typeof d === "string" && d.includes("${{") ? UNKNOWN : known(d);
+    }
+    return known(decl.type === "boolean" ? false : decl.type === "number" ? 0 : "");
+  };
+}
+function guardsOf2(wf, site) {
+  const job = site.job !== void 0 ? wf.jobs[site.job] : void 0;
+  const step = job && site.step !== void 0 ? job.steps[site.step] : void 0;
+  return [job?.ifSite, step?.ifSite].filter((g) => g !== void 0 && g !== site);
+}
+function isFalse(guard, resolve5) {
+  const ast = isWholeExpression(guard) ? guard.segments[0].expr.ast : void 0;
+  return ast !== void 0 && definitelyFalsy(ast, resolve5);
+}
 var secretRules = [
   missingRequiredSecret,
   unknownSecret,
@@ -136594,11 +136890,12 @@ function analyze(opts) {
   };
 }
 function toFinding(rule, severity, input3, registry2) {
-  const lowered = input3.severity && SEVERITY_ORDER[input3.severity] > SEVERITY_ORDER[severity];
+  const requested = input3.severity;
+  const effective = requested !== void 0 && Object.hasOwn(SEVERITY_ORDER, requested) && SEVERITY_ORDER[requested] > SEVERITY_ORDER[severity] ? requested : severity;
   return {
     code: rule.code,
     name: rule.name,
-    severity: lowered ? input3.severity : severity,
+    severity: effective,
     category: rule.category,
     message: escapeControl(input3.message),
     loc: input3.loc,

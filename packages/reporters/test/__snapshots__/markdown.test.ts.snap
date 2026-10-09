@@ -245,6 +245,7 @@ Matrix: \`{ name: windows }\`
 - \`.github/workflows/pipeline.yml:9:11\` — jobs.tests calls .github/workflows/tests.yml
 - \`.github/workflows/tests.yml:18:13\` — this include entry has no \`config\`
 - \`.github/workflows/run-suite.yml:11:7\` — receives the empty value: input "config"
+- \`.github/workflows/run-suite.yml:17:9\` — this condition reads "config", so the legs with an empty value take the other branch
 
 </details>
 "

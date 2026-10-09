@@ -11,11 +11,11 @@ description: "An expression reads a matrix key that no combination defines (or t
 
 ## Why it matters
 
-The value is always empty — almost certainly a typo or a key that was renamed in the matrix.
+The value is always empty — almost certainly a typo or a key that was renamed in the matrix. A comparison or test on it always gives the same answer, and a condition on it never changes. Only a read with a fallback that is not empty (`matrix.key || 'default'`) is info, since the fallback always applies, unless the key is close to one the matrix defines.
 
 ## How to fix
 
-Fix the key name, or add it to the matrix.
+Fix the key name, add it to the matrix, or drop the read if the fallback is what you want.
 
 ## Configure
 
