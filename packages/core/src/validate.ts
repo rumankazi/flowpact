@@ -8,15 +8,20 @@ import {
   TemplateValidationErrors,
 } from '@actions/workflow-parser/templates/template-context';
 import { isAlias, isMap, isScalar, isSeq, LineCounter, parseDocument } from 'yaml';
-import { CONTEXT_FUNCTIONS, KNOWN_CONTEXTS } from './expressions';
-import type { Diagnostic, UnitDecl } from './ir';
+import { CONTEXT_FUNCTIONS, KNOWN_CONTEXTS, UNTERMINATED_EXPRESSION } from './expressions';
+import { type Diagnostic, siteAt, type UnitDecl } from './ir';
 import type { Logger } from './logger';
 import { didYouMean } from './rules/util';
 import { mappingsAt, SCHEMA_ROOT, schemaFor, workflowSchema } from './schema';
 import type { Loc } from './source';
 
-/** Syntax problems are reported by FP502 with better positions; drop the parser's duplicates. */
-const SYNTAX_NOISE = [/Unexpected symbol/i, /Unexpected end of expression/i, /Unclosed expression/i];
+/**
+ * The parser's errors for an invalid `${{ }}`: those of the expression lexer and parser (@actions/expressions, which
+ * FP502 parses with too), and the template reader's for a `${{` without `}}`.
+ */
+const EXPRESSION_ERROR =
+  /^(?:Unexpected symbol|Unexpected end of expression|Unrecognized named-value|Unrecognized function|Too few parameters supplied|Too many parameters supplied|Even number of parameters supplied|Exceeded max expression (?:depth|length)|ErrorExceededMaxLength|The expression is not closed)\b/;
+const UNCLOSED = /^The expression is not closed\b/;
 
 /** Action metadata that GitHub's schema requires but the runner does not need for local actions. */
 const LOCAL_ACTION_NOISE = /Required property is missing: (name|description)\b/i;
@@ -44,15 +49,32 @@ const EVENT_FILTERS = [
 
 /**
  * "Unrecognized named-value: 'env'" for a context flowpact knows means the context is not available in that field
- * (GitHub's context-availability rules); for an unknown name it is a typo already reported by FP502.
+ * (GitHub's context-availability rules), and likewise for a function only some fields allow. For an unknown name it
+ * is a typo, which FP502 reports.
  */
-function classify(message: string): 'drop' | 'context' | 'schema' {
-  if (SYNTAX_NOISE.some((re) => re.test(message))) return 'drop';
+function isContextError(message: string): boolean {
   const named = /Unrecognized named-value: '([^']+)'/i.exec(message);
-  if (named) return CONTEXT_NAMES.has(named[1]!.toLowerCase()) ? 'context' : 'drop';
+  if (named) return CONTEXT_NAMES.has(named[1]!.toLowerCase());
   const fn = /Unrecognized function: '([^']+)'/i.exec(message);
-  if (fn) return FUNCTION_NAMES.has(fn[1]!.toLowerCase()) ? 'context' : 'drop';
-  return 'schema';
+  return fn ? FUNCTION_NAMES.has(fn[1]!.toLowerCase()) : false;
+}
+
+/**
+ * Whether this parser error is about an expression FP502 checks, which reports it once, with the expression and the
+ * position of the error in it. The parser checks each `${{ }}` of a scalar with the expression parser FP502 uses:
+ * - in a single-line scalar both read the same text, so the parser's error is FP502's;
+ * - in a multi-line scalar the parser reads the source as written, with quotes still doubled and escapes not decoded,
+ *   where FP502 reads the value GitHub evaluates. Its errors there repeat FP502's or are wrong.
+ * Errors in a scalar FP502 does not check, such as a mapping key, stay, and so do contexts and functions the field
+ * does not allow (FP505), which FP502 accepts anywhere.
+ */
+function reportedByFP502(unit: UnitDecl, d: Diagnostic): boolean {
+  if (d.kind === 'context' || !d.at || !EXPRESSION_ERROR.test(d.message)) return false;
+  const site = siteAt(unit.sites, d.at);
+  if (!site) return false;
+  if (site.loc.endLine > site.loc.line) return true;
+  const message = UNCLOSED.test(d.message) ? UNTERMINATED_EXPRESSION : d.message;
+  return site.segments.some((seg) => seg.expr.error?.message === message);
 }
 
 interface ParserError {
@@ -84,7 +106,6 @@ export function validateSchema(unit: UnitDecl, logger: Logger): Diagnostic[] {
         : parseAction(file, new NoOperationTraceWriter());
     const errors = result.context.errors.getErrors() as ParserError[];
     const diagnostics = errors
-      .filter((e) => classify(e.message) !== 'drop')
       .filter((e) => !(unit.kind === 'action' && LOCAL_ACTION_NOISE.test(e.message)))
       .map((e): Diagnostic => {
         const r = e.range;
@@ -94,7 +115,7 @@ export function validateSchema(unit: UnitDecl, logger: Logger): Diagnostic[] {
           .replace(/\.\s*Located at position \d+ within expression:.*$/s, '');
         return {
           message,
-          ...(classify(e.message) === 'context' ? { kind: 'context' as const } : {}),
+          ...(isContextError(message) ? { kind: 'context' as const } : {}),
           ...(at ? { at: { line: Number(at[1]), column: Number(at[2]) } } : {}),
           loc: r
             ? {
@@ -106,7 +127,8 @@ export function validateSchema(unit: UnitDecl, logger: Logger): Diagnostic[] {
               }
             : { file: unit.file, line: 1, column: 1, endLine: 1, endColumn: 1 },
         };
-      });
+      })
+      .filter((d) => !reportedByFP502(unit, d));
     return explain(unit, diagnostics);
   } catch (err) {
     logger.debug(`schema validation skipped for ${unit.file}`, { reason: (err as Error).message });

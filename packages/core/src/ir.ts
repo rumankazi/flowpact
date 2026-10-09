@@ -255,6 +255,14 @@ export function lookup<T>(rec: Record<string, T>, key: string): T | undefined {
   return undefined;
 }
 
+/**
+ * The site of the scalar GitHub's parser reports a problem in, by the start of the scalar it gives in the message
+ * (`Diagnostic.at`): the parser's range is off for multi-line scalars.
+ */
+export function siteAt(sites: ExprSite[], at: { line: number; column: number }): ExprSite | undefined {
+  return sites.find((s) => s.loc.line === at.line && Math.abs(s.loc.column - at.column) <= 1);
+}
+
 export function hasKey(rec: Record<string, unknown>, key: string): boolean {
   return lookup(rec, key) !== undefined;
 }

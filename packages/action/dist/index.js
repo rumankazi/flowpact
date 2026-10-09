@@ -126734,6 +126734,7 @@ var KNOWN_CONTEXTS = [
   "needs",
   "inputs"
 ];
+var UNTERMINATED_EXPRESSION = "Unterminated expression: missing closing '}}'";
 function findTemplateSegments(text3) {
   const segments = [];
   let i = 0;
@@ -126767,7 +126768,7 @@ function findTemplateSegments(text3) {
         expr: {
           source: inner.trim(),
           refs: [],
-          error: { message: "Unterminated expression: missing closing '}}'", offset: 0 }
+          error: { message: UNTERMINATED_EXPRESSION, offset: 0 }
         }
       });
       break;
@@ -130565,6 +130566,17 @@ function parseAction(entryFile, contextOrTrace) {
 // ../core/src/validate.ts
 var import_yaml4 = __toESM(require_dist5(), 1);
 
+// ../core/src/ir.ts
+function lookup(rec, key) {
+  if (key in rec) return rec[key];
+  const lower = key.toLowerCase();
+  for (const k of Object.keys(rec)) if (k.toLowerCase() === lower) return rec[k];
+  return void 0;
+}
+function siteAt(sites, at) {
+  return sites.find((s) => s.loc.line === at.line && Math.abs(s.loc.column - at.column) <= 1);
+}
+
 // ../core/src/rules/util.ts
 function isWholeExpression(site) {
   if (site.segments.length !== 1) return false;
@@ -130730,7 +130742,8 @@ function mappingsAt(schema3, root, path4) {
 }
 
 // ../core/src/validate.ts
-var SYNTAX_NOISE = [/Unexpected symbol/i, /Unexpected end of expression/i, /Unclosed expression/i];
+var EXPRESSION_ERROR = /^(?:Unexpected symbol|Unexpected end of expression|Unrecognized named-value|Unrecognized function|Too few parameters supplied|Too many parameters supplied|Even number of parameters supplied|Exceeded max expression (?:depth|length)|ErrorExceededMaxLength|The expression is not closed)\b/;
+var UNCLOSED = /^The expression is not closed\b/;
 var LOCAL_ACTION_NOISE = /Required property is missing: (name|description)\b/i;
 var CONTEXT_NAMES = new Set(KNOWN_CONTEXTS);
 var FUNCTION_NAMES = new Set(CONTEXT_FUNCTIONS.map((f) => f.name.toLowerCase()));
@@ -130745,13 +130758,19 @@ var EVENT_FILTERS = [
   "types",
   "workflows"
 ];
-function classify2(message) {
-  if (SYNTAX_NOISE.some((re) => re.test(message))) return "drop";
+function isContextError(message) {
   const named = /Unrecognized named-value: '([^']+)'/i.exec(message);
-  if (named) return CONTEXT_NAMES.has(named[1].toLowerCase()) ? "context" : "drop";
+  if (named) return CONTEXT_NAMES.has(named[1].toLowerCase());
   const fn = /Unrecognized function: '([^']+)'/i.exec(message);
-  if (fn) return FUNCTION_NAMES.has(fn[1].toLowerCase()) ? "context" : "drop";
-  return "schema";
+  return fn ? FUNCTION_NAMES.has(fn[1].toLowerCase()) : false;
+}
+function reportedByFP502(unit, d) {
+  if (d.kind === "context" || !d.at || !EXPRESSION_ERROR.test(d.message)) return false;
+  const site = siteAt(unit.sites, d.at);
+  if (!site) return false;
+  if (site.loc.endLine > site.loc.line) return true;
+  const message = UNCLOSED.test(d.message) ? UNTERMINATED_EXPRESSION : d.message;
+  return site.segments.some((seg) => seg.expr.error?.message === message);
 }
 function workflowContext() {
   const context5 = new TemplateContext(
@@ -130767,13 +130786,13 @@ function validateSchema(unit, logger7) {
     const file2 = { name: unit.file, content: unit.source.text };
     const result = unit.kind === "workflow" ? parseWorkflow(file2, workflowContext()) : parseAction(file2, new NoOperationTraceWriter());
     const errors = result.context.errors.getErrors();
-    const diagnostics = errors.filter((e) => classify2(e.message) !== "drop").filter((e) => !(unit.kind === "action" && LOCAL_ACTION_NOISE.test(e.message))).map((e) => {
+    const diagnostics = errors.filter((e) => !(unit.kind === "action" && LOCAL_ACTION_NOISE.test(e.message))).map((e) => {
       const r = e.range;
       const at = /\(Line: (\d+), Col: (\d+)\)/.exec(e.message);
       const message = e.message.replace(/^[^:]*\.ya?ml(?: \(Line: \d+, Col: \d+\))?:\s*/, "").replace(/\.\s*Located at position \d+ within expression:.*$/s, "");
       return {
         message,
-        ...classify2(e.message) === "context" ? { kind: "context" } : {},
+        ...isContextError(message) ? { kind: "context" } : {},
         ...at ? { at: { line: Number(at[1]), column: Number(at[2]) } } : {},
         loc: r ? {
           file: unit.file,
@@ -130783,7 +130802,7 @@ function validateSchema(unit, logger7) {
           endColumn: r.end.column
         } : { file: unit.file, line: 1, column: 1, endLine: 1, endColumn: 1 }
       };
-    });
+    }).filter((d) => !reportedByFP502(unit, d));
     return explain(unit, diagnostics);
   } catch (err) {
     logger7.debug(`schema validation skipped for ${unit.file}`, { reason: err.message });
@@ -132388,14 +132407,6 @@ function splitLines(text3) {
 
 // ../core/src/contracts.ts
 var import_yaml6 = __toESM(require_dist5(), 1);
-
-// ../core/src/ir.ts
-function lookup(rec, key) {
-  if (key in rec) return rec[key];
-  const lower = key.toLowerCase();
-  for (const k of Object.keys(rec)) if (k.toLowerCase() === lower) return rec[k];
-  return void 0;
-}
 
 // ../core/src/graph.ts
 var sym = {
@@ -134476,7 +134487,7 @@ var CONDITION_TABLES = {
 };
 function refLocFor(sites, e, name) {
   if (!e.at || !name) return void 0;
-  const site = sites.find((s) => s.loc.line === e.at.line && Math.abs(s.loc.column - e.at.column) <= 1);
+  const site = siteAt(sites, e.at);
   for (const seg of site?.segments ?? [])
     for (const r of seg.refs) if (r.context === name.toLowerCase()) return r.loc;
   return site?.loc;
