@@ -1,7 +1,8 @@
 // Renders the editor screenshots in the docs (apps/docs/public/screenshots/editor-*.png) from a real VS Code with the
 // packaged extension installed, like scripts/gen-screenshots.ts does for the CLI. Run `pnpm build` first, then
 // `pnpm --filter vscode-flowpact screenshots`. Windows open on screen while it runs. macOS and Linux only.
-// FLOWPACT_VSIX reuses a packaged extension; VSCODE_VERSION picks the version (default: stable).
+// FLOWPACT_VSIX reuses a packaged extension; VSCODE_VERSION picks the version (default: stable). Pass shot names
+// (e.g. `-- editor-hover`) to render only those.
 import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -167,6 +168,25 @@ async function hover(win) {
   await win.waitForTimeout(600);
 }
 
+/**
+ * Lets the hover grow to its content, as when a user enlarges it: VS Code opens a hover at most 250 pixels tall and
+ * scrolls the rest.
+ */
+async function growHover(win) {
+  await win.evaluate(() => {
+    const hover = document.querySelector('.monaco-resizable-hover');
+    if (!hover) throw new Error('no hover to grow');
+    for (const node of [
+      hover,
+      ...hover.querySelectorAll('.monaco-hover, .monaco-scrollable-element, .monaco-hover-content'),
+    ]) {
+      node.style.maxHeight = 'none';
+      node.style.height = 'auto';
+    }
+  });
+  await win.waitForTimeout(300);
+}
+
 const shots = [
   {
     name: 'editor-hover',
@@ -182,7 +202,7 @@ const shots = [
   {
     name: 'editor-diagnostics',
     fixture: 'incident-matrix',
-    size: { width: 820, height: 640 },
+    size: { width: 820, height: 880 },
     // Below the line, so the matrix the finding is about stays visible.
     settings: { 'editor.hover.above': false },
     async take(win) {
@@ -190,6 +210,7 @@ const shots = [
       await ready(win, this.fixture, file);
       await cursorAt(win, this.fixture, file, 'matrix.config', 5);
       await hover(win);
+      await growHover(win);
     },
   },
   {
@@ -224,7 +245,8 @@ try {
   ];
   run(cli, [...cliArgs, ...install], { env });
 
-  for (const shot of shots) {
+  const only = process.argv.slice(2);
+  for (const shot of shots.filter((s) => only.length === 0 || only.includes(s.name))) {
     const { app, win } = await launch(shot.fixture, shot.size, shot.settings);
     try {
       await shot.take(win);
