@@ -3,9 +3,11 @@
  * code esbuild put into it, read from the build's metafile. It writes two files next to the bundle:
  * - `THIRD_PARTY_LICENSES.txt`: each package with its version, license and license text;
  * - `sbom.cdx.json`: a CycloneDX 1.5 SBOM of the same packages.
- * Both are deterministic (sorted, no timestamps), so the committed action bundle stays reproducible. Builds that share
+ * Both are deterministic (sorted, no timestamps, a serial number derived from the contents), so the committed action
+ * bundle stays reproducible. Builds that share
  * an output directory (the VS Code extension's client and server) are merged into one pair of files.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 
@@ -110,6 +112,20 @@ function notices(opts: BundleLicensesOptions, packages: BundledPackage[]): strin
   return `${parts.join('\n\n')}\n`;
 }
 
+/**
+ * The SBOM's `serialNumber`: a name-based (version 5 style) UUID of what it lists, so the same bundle always gets the
+ * same one. CycloneDX tools, among them `actions/attest`, expect one.
+ */
+function serialNumber(opts: BundleLicensesOptions, packages: BundledPackage[]): string {
+  const hash = createHash('sha1')
+    .update([`${opts.name}@${opts.version}`, ...packages.map((p) => purl(p.name, p.version))].join('\n'))
+    .digest();
+  hash[6] = (hash[6]! & 0x0f) | 0x50;
+  hash[8] = (hash[8]! & 0x3f) | 0x80;
+  const hex = hash.subarray(0, 16).toString('hex');
+  return `urn:uuid:${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function sbom(opts: BundleLicensesOptions, packages: BundledPackage[]): string {
   // An SPDX identifier, an SPDX expression, or (like "MIT/X11") a name; nothing when the package declares none.
   const licenses = (license: string) =>
@@ -124,6 +140,7 @@ function sbom(opts: BundleLicensesOptions, packages: BundledPackage[]): string {
     {
       bomFormat: 'CycloneDX',
       specVersion: '1.5',
+      serialNumber: serialNumber(opts, packages),
       version: 1,
       metadata: {
         component: {

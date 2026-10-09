@@ -1,4 +1,4 @@
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { guard } from '../shared';
 import { type ReportArgs, reportArgs, runReport } from './lint';
 
@@ -15,5 +15,6 @@ export const checkCommand = defineCommand({
       valueHint: 'file',
     },
   },
-  run: ({ args, rawArgs }) => guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'check')),
+  run: ({ args, rawArgs, cmd }) =>
+    guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'check', cmd.args as ArgsDef)),
 });

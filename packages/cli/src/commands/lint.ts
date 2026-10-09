@@ -208,8 +208,9 @@ export async function runReport(
   args: ReportArgs,
   rawArgs: string[],
   command: 'lint' | 'check' | 'impact',
+  def: ArgsDef,
 ): Promise<number> {
-  const ctx = createContext(args, rawArgs);
+  const ctx = createContext(args, rawArgs, def);
   printBanner(
     ctx,
     `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}${ctx.loaded.base ? ` · base ${ctx.loaded.base.file}` : ''}`,
@@ -222,7 +223,7 @@ export async function runReport(
         .filter(Boolean)
     : undefined;
   // Before the analysis, so a bad -o fails fast.
-  const outputs = repeatedFlag(rawArgs, 'output', 'o');
+  const outputs = repeatedFlag(rawArgs, def, 'output').filter(Boolean);
   if (!outputs.length && args.output) outputs.push(args.output);
   const files = outputs.map(parseOutput);
   const wantImpact = command === 'impact' || Boolean(args.impact);
@@ -281,5 +282,6 @@ export const lintCommand = defineCommand({
     description: 'Analyze workflows and local actions: inputs, secrets, outputs, matrices and call structure',
   },
   args: reportArgs,
-  run: ({ args, rawArgs }) => guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'lint')),
+  run: ({ args, rawArgs, cmd }) =>
+    guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'lint', cmd.args as ArgsDef)),
 });

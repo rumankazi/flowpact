@@ -8,7 +8,7 @@ import {
   writeContracts,
 } from '@flowpact/core';
 import { renderContractPlan, renderPatch } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { runAnalysis } from '../analysis';
 import {
   checkTargets,
@@ -54,9 +54,9 @@ export const generateCommand = defineCommand({
       valueHint: 'dir',
     },
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       printBanner(ctx, `root ${displayPath(ctx.root)}`);
       const paths = pathArgs(args._, 'generate', ctx.root);
       const result = await runAnalysis(ctx, { paths, only: [], validateSchema: false });

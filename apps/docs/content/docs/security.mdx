@@ -17,9 +17,19 @@ see the [security policy](https://github.com/rumankazi/flowpact/security/policy)
 - **The GitHub Action** additionally writes annotations, the job summary and its outputs, and, in `mode: check` when
   contracts drifted, uploads the regenerated contracts as a workflow artifact (`upload-contracts`).
 
-flowpact treats the analyzed files as untrusted input: it never writes through a symlink or outside the repository,
-escapes control characters in every finding, and caps matrix expansion (the YAML parser limits alias expansion). Reports of a
-way around any of this are in scope of the [security policy](https://github.com/rumankazi/flowpact/security/policy).
+flowpact treats the analyzed files as untrusted input:
+
+- it never writes contracts, reports or patches through a symlink in the repository (or, in GitHub Actions, the
+  workspace), which a pull request could commit; it writes outside the repository only to paths you pass, such as
+  `-o markdown:"$GITHUB_STEP_SUMMARY"`;
+- it escapes control characters in every finding, and keeps its output from being read as
+  [workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands) (`::…`
+  at the start of a line, `##[…]` anywhere), except the annotations it prints on purpose with `--format github`;
+- it reads the value of a flag only as that flag: `--title "$PR_TITLE"` cannot add a `--plugin` or an `-o`;
+- it caps matrix expansion (the YAML parser limits alias expansion).
+
+Reports of a way around any of this are in scope of the
+[security policy](https://github.com/rumankazi/flowpact/security/policy).
 
 ## Network and telemetry
 

@@ -18,7 +18,7 @@ import type {
   Severity,
   SeveritySetting,
 } from './rules/types';
-import { didYouMean } from './rules/util';
+import { didYouMean, typoDistance } from './rules/util';
 import { compareLoc, type Loc, SourceFile } from './source';
 import { escapeControl } from './text';
 import { type ToolMeta, toolMeta } from './version';
@@ -108,9 +108,26 @@ export interface AnalysisResult {
 }
 
 /**
+ * The loaded rule an unknown key is a typo of: a code one edit from a loaded code (`FP10l`, `PF401`), or a name at most
+ * two edits from a loaded name (`unused-inptu`). Another prefix (`AC201` beside `FP201`) or a longer name
+ * (`secrets-inherit-banned` beside `secrets-inherit`) is the rule of a plugin, not a typo.
+ */
+function typoOf(registry: RuleRegistry, key: string): string | undefined {
+  const code = /^[a-z][a-z0-9]{1,9}?\d{3}$/i.test(key);
+  const k = code ? key.toUpperCase() : key.toLowerCase().replace(/_/g, '-');
+  let best: { rule: string; d: number } | undefined;
+  for (const r of registry.all()) {
+    const rule = code ? r.code : r.name;
+    const d = typoDistance(k, rule);
+    if (d <= (code ? 1 : 2) && (!best || d < best.d)) best = { rule, d };
+  }
+  return best?.rule;
+}
+
+/**
  * Sorts config references to unknown rules. A name may belong to the rule of a plugin that this run does not load (the
  * repository's plugins skipped, or organization rules that only a wrapper loads) and is tolerated — unless it uses the
- * built-in `FP` prefix or is a near miss of a loaded rule, which makes it a typo.
+ * built-in `FP` prefix or is a typo of a loaded rule.
  */
 function triageUnknown(
   registry: RuleRegistry,
@@ -118,12 +135,9 @@ function triageUnknown(
   path: string,
   out: { hard: string[]; tolerated: string[] },
 ) {
-  const guess = didYouMean(
-    key,
-    registry.all().flatMap((r) => [r.code, r.name]),
-  );
-  const issue = `${path}: unknown rule${guess ? ` (did you mean ${guess}?)` : ` "${key}"`}`;
-  if (!guess && !/^FP\d/i.test(key)) out.tolerated.push(issue);
+  const typo = typoOf(registry, key);
+  const issue = `${path}: unknown rule${typo ? ` (did you mean ${typo}?)` : ` "${key}"`}`;
+  if (!typo && !/^FP\d/i.test(key)) out.tolerated.push(issue);
   else out.hard.push(issue);
 }
 

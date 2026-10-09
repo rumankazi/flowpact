@@ -1,6 +1,6 @@
 import { didYouMean, resolveSeverities } from '@flowpact/core';
 import { renderExplain } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, UsageError } from '../shared';
 
@@ -18,9 +18,9 @@ export const explainCommand = defineCommand({
     ...commonArgs,
     ...pluginArgs,
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       const registry = await loadRegistry(ctx);
       const rule = registry.get(args.code);
       if (!rule) {

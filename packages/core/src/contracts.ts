@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { existsSync, lstatSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { formatPatch, structuredPatch } from 'diff';
 import { parse as parseYaml, stringify } from 'yaml';
 import { z } from 'zod';
@@ -666,6 +666,27 @@ function isSymlink(abs: string): boolean {
     return lstatSync(abs).isSymbolicLink();
   } catch {
     return false;
+  }
+}
+
+/**
+ * Refuses to write a file (a report, a patch) at a path inside one of `trees` (the repository, the CI workspace) that
+ * is a symlink, or leads outside that tree through one: a pull request can commit those. Paths outside the trees, such
+ * as `$GITHUB_STEP_SUMMARY`, are written as given.
+ */
+export function assertSafeWritePath(abs: string, trees: string[]): void {
+  const target = resolve(abs);
+  for (const tree of trees) {
+    const roots = [resolve(tree)];
+    try {
+      roots.push(realpathSync(tree));
+    } catch {}
+    const inside = roots.some((r) => {
+      const rel = relative(r, target);
+      return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+    });
+    if (inside && (isSymlink(target) || !insideRepository(tree, target)))
+      throw new UnsafePathError(`Not writing ${abs}: it is a symlink, or links outside ${tree}`);
   }
 }
 

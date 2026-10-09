@@ -1,6 +1,6 @@
 import { analyze } from '@flowpact/core';
 import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { commonArgs, createContext, displayPath, EXIT, guard, printBanner, UsageError } from '../shared';
 
 export const graphCommand = defineCommand({
@@ -17,9 +17,9 @@ export const graphCommand = defineCommand({
       description: 'tree (terminal), mermaid (Markdown diagrams), dot (Graphviz) or json',
     },
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(() => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       printBanner(ctx, `root ${displayPath(ctx.root)}`);
       const result = analyze({
         root: ctx.root,

@@ -47,8 +47,9 @@ plugins:
   - ./ci/flowpact-rules.mjs
 ```
 
-The config is validated strictly: unknown keys, unknown rule codes or names, and invalid values are reported with
-their path (exit code `2`); misspelled rule codes and names get a suggestion.
+The config is validated strictly: unknown keys and invalid values are reported with their path (exit code `2`). A rule
+code or name that starts with `FP` or is a typo of a loaded rule is an error too, with a suggestion; other unknown rule
+names are [ignored with a warning](#rules-that-are-not-loaded), since they may belong to a plugin that is not loaded.
 
 ## Editor autocomplete
 
@@ -80,7 +81,7 @@ overrides:
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `rule` | yes | Rule code or name. An unknown rule is a config error. |
+| `rule` | yes | Rule code or name. See [Rules that are not loaded](#rules-that-are-not-loaded) for names no loaded rule has. |
 | `target` | `target` or `file` | The finding's symbol id. `*` matches within a path segment, `**` across segments, e.g. `.github/workflows/*.yml#inputs.legacy-*`. |
 | `file` | `target` or `file` | The file the finding is reported in: a path, a path prefix or a glob. |
 | `reason` | yes | Why the finding is accepted (at least 10 characters). |

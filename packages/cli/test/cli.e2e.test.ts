@@ -392,6 +392,38 @@ describe('plugins in rules / explain', () => {
   });
 });
 
+describe('untrusted values', () => {
+  it('never reads the value of another flag, such as a pull request title, as --plugin or -o', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-title-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    const marker = join(root, 'pwned');
+    writeFileSync(
+      join(root, 'evil.mjs'),
+      `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(marker)}, 'ran');\nexport default [];\n`,
+    );
+    for (const title of [`--plugin=${join(root, 'evil.mjs')}`, `-o=${marker}`, `--output=${marker}`]) {
+      const r = await flowpact(['lint', '--root', root, '--no-plugins', '--title', title, '-q']);
+      expect({ title, exit: r.exitCode, marker: existsSync(marker) }).toEqual({
+        title,
+        exit: 0,
+        marker: false,
+      });
+    }
+  });
+
+  it('refuses to write a report through a symlink in the repository', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-symlink-report-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    const outside = join(mkdtempSync(join(tmpdir(), 'flowpact-outside-')), 'target.txt');
+    writeFileSync(outside, 'keep');
+    symlinkSync(outside, join(root, 'flowpact.sarif'));
+    const r = await flowpact(['lint', '--root', root, '-o', join(root, 'flowpact.sarif')]);
+    expect(r.exitCode).toBe(2);
+    expect(r.stderr).toContain('is a symlink, or links outside');
+    expect(readFileSync(outside, 'utf8')).toBe('keep');
+  });
+});
+
 describe('base config', () => {
   it('puts the repository config on top of --base-config', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'flowpact-base-'));

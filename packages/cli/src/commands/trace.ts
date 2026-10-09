@@ -1,6 +1,6 @@
 import { resolveSymbols, type TraceDirection, trace } from '@flowpact/core';
 import { renderTrace } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import pc from 'picocolors';
 import { runAnalysis } from '../analysis';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
@@ -23,9 +23,9 @@ export const traceCommand = defineCommand({
     depth: { type: 'string', default: '12', description: 'Maximum depth', valueHint: 'n' },
     format: { type: 'enum', options: ['pretty', 'json'], default: 'pretty', description: 'Output format' },
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       printBanner(ctx);
       const depth = Number(args.depth);
       if (!Number.isInteger(depth) || depth < 1)

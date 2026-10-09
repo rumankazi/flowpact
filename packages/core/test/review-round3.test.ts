@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   analyze,
+  assertSafeWritePath,
   ConfigError,
   loadConfig,
   memoryFileSystem,
@@ -83,6 +84,29 @@ describe('untrusted names in output (#9)', () => {
       '\u001b[2m:\u200b:set-output name=a::b',
     );
     expect(neutralizeWorkflowCommands('a :: b')).toBe('a :: b');
+    // The runner's legacy parser finds `##[` anywhere in a line, and trims U+0085 like whitespace.
+    expect(neutralizeWorkflowCommands('Input "a##[set-output name=x]1" is unused')).toBe(
+      'Input "a##\u200b[set-output name=x]1" is unused',
+    );
+    expect(neutralizeWorkflowCommands('\u0085::add-mask::x')).toBe('\u0085:\u200b:add-mask::x');
+  });
+});
+
+describe('report paths', () => {
+  it('refuses to write through a symlink inside the repository, and writes elsewhere as given', () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-write-'));
+    const outside = mkdtempSync(join(tmpdir(), 'flowpact-write-out-'));
+    writeFileSync(join(outside, 'target.txt'), 'keep');
+    symlinkSync(join(outside, 'target.txt'), join(root, 'report.sarif'));
+    symlinkSync(outside, join(root, 'out'));
+    mkdirSync(join(root, 'reports'));
+    symlinkSync(join(root, 'reports'), join(root, 'inner'));
+    expect(() => assertSafeWritePath(join(root, 'report.sarif'), [root])).toThrow(UnsafePathError);
+    expect(() => assertSafeWritePath(join(root, 'out/new.json'), [root])).toThrow(UnsafePathError);
+    // A symlinked directory that stays inside the repository, a plain file, and paths outside it are fine.
+    expect(() => assertSafeWritePath(join(root, 'inner/new.json'), [root])).not.toThrow();
+    expect(() => assertSafeWritePath(join(root, 'flowpact.json'), [root])).not.toThrow();
+    expect(() => assertSafeWritePath(join(outside, 'target.txt'), [root])).not.toThrow();
   });
 });
 
@@ -194,6 +218,30 @@ describe('config edge cases (#3, #11, #14)', () => {
       'rules.acme-no-echo: unknown rule "acme-no-echo"',
       'overrides.0.rule: unknown rule "ACME601"',
     ]);
+  });
+
+  it('tells organization rules from typos of loaded rules', () => {
+    const issues = (config: Record<string, unknown>) => {
+      try {
+        run(config);
+      } catch (err) {
+        return (err as ConfigError).issues;
+      }
+      return [];
+    };
+    // Another prefix, or a name that only starts like a built-in one, belongs to a plugin.
+    const r = run({
+      rules: { AC201: 'off', 'secrets-inherit-banned': 'error', 'unused-input-legacy': 'warning' },
+      overrides: [{ rule: 'XY604', file: WF, reason: 'an organization rule' }],
+    });
+    expect(r.unloadedRules).toHaveLength(4);
+    // One edit from a loaded code, two from a loaded name, or the built-in prefix: a typo.
+    expect(issues({ rules: { FO201: 'off' } })).toEqual(['rules.FO201: unknown rule (did you mean FP201?)']);
+    expect(issues({ rules: { PF401: 'off' } })).toEqual(['rules.PF401: unknown rule (did you mean FP401?)']);
+    expect(issues({ rules: { 'unused-inptu': 'off' } })).toEqual([
+      'rules.unused-inptu: unknown rule (did you mean unused-input?)',
+    ]);
+    expect(issues({ rules: { fp999: 'off' } })).toEqual(['rules.fp999: unknown rule "fp999"']);
   });
 
   it('says when an expired override matches nothing', () => {

@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { parseArgs } from 'node:util';
 import {
+  assertSafeWritePath,
   ConfigError,
   createLogger,
   type LoadedConfig,
@@ -84,22 +86,39 @@ export interface CliContext {
 }
 
 /**
- * Every value of a flag that may be repeated, in order: `--name v`, `--name=v` and `-x v`. citty keeps only the last
- * one.
+ * Every value of a flag that may be repeated (`-o`, `--plugin`), in order; citty keeps only the last one. The arguments
+ * are parsed the way citty parses them — node:util's parseArgs, not strict, with the command's flags, after dropping
+ * `--no-*` — so the value of another flag is never taken for this one: in `--title "--plugin=x"`, `--plugin=x` is the
+ * title.
  */
-export function repeatedFlag(rawArgs: string[], name: string, alias?: string): string[] {
-  const values: string[] = [];
-  for (let i = 0; i < rawArgs.length; i++) {
-    const a = rawArgs[i]!;
-    if (a === '--') break;
-    if (a === `--${name}` || (alias && a === `-${alias}`)) {
-      const v = rawArgs[i + 1];
-      if (v !== undefined) values.push(v);
-      i++;
-    } else if (a.startsWith(`--${name}=`)) values.push(a.slice(name.length + 3));
-    else if (alias && a.startsWith(`-${alias}=`)) values.push(a.slice(alias.length + 2));
+export function repeatedFlag(rawArgs: string[], def: ArgsDef, name: string): string[] {
+  type Option = { type: 'string' | 'boolean'; short?: string; multiple?: boolean };
+  const options: Record<string, Option> = {};
+  for (const [key, arg] of Object.entries(def)) {
+    if (arg.type === 'positional') continue;
+    const type = arg.type === 'boolean' ? 'boolean' : 'string';
+    const alias = 'alias' in arg ? (arg.alias as string | string[] | undefined) : undefined;
+    const aliases = alias === undefined ? [] : Array.isArray(alias) ? alias : [alias];
+    const short = aliases.find((a) => a.length === 1);
+    options[key] = { type, ...(short ? { short } : {}), ...(key === name ? { multiple: true } : {}) };
+    // citty also accepts the camelCase spelling (`--failOn`) and long aliases.
+    const camel = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    for (const long of [camel, ...aliases.filter((a) => a.length > 1)])
+      if (long !== key) options[long] ??= { type };
   }
-  return values;
+  const end = rawArgs.indexOf('--');
+  const args = rawArgs.filter((a, i) => !(a.startsWith('--no-') && (end < 0 || i < end)));
+  let values: Record<string, unknown>;
+  try {
+    ({ values } = parseArgs({ args, options, allowPositionals: true, strict: false }));
+  } catch {
+    return [];
+  }
+  const found = values[name];
+  // A flag without a value (`-o` at the end) is '', as in citty; callers skip it.
+  return found === undefined
+    ? []
+    : (Array.isArray(found) ? found : [found]).map((v) => (typeof v === 'string' ? v : ''));
 }
 
 function countVerbose(rawArgs: string[]): number {
@@ -149,7 +168,8 @@ export function colorEnabled(
   return flagColor !== false && !noColor && !forceOff && (forceOn || pc.isColorSupported);
 }
 
-export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext {
+/** `def`: the command's flags (citty's `cmd.args`), to read repeated flags as citty reads the others. */
+export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDef): CliContext {
   const env = process.env;
   const color = colorEnabled(flags.color, env);
   const isTTY = Boolean(process.stdout.isTTY);
@@ -189,7 +209,9 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
     loaded,
     plugins: {
       config: flags.plugins !== false,
-      extra: repeatedFlag(rawArgs, 'plugin').map((p) => resolve(process.cwd(), p)),
+      extra: repeatedFlag(rawArgs, def, 'plugin')
+        .filter(Boolean)
+        .map((p) => resolve(process.cwd(), p)),
     },
     stdout: (s) => process.stdout.write(s.endsWith('\n') ? s : `${s}\n`),
     stderr: (s) => process.stderr.write(s.endsWith('\n') ? s : `${s}\n`),
@@ -228,6 +250,11 @@ export function workspacePrefix(root: string, env: NodeJS.ProcessEnv = process.e
 
 export function writeOutput(file: string, content: string, ctx: CliContext) {
   const abs = resolve(process.cwd(), file);
+  // Inside the repository (or the Actions workspace), never through a symlink a pull request could have committed.
+  assertSafeWritePath(abs, [
+    ctx.root,
+    ...(process.env.GITHUB_WORKSPACE ? [process.env.GITHUB_WORKSPACE] : []),
+  ]);
   try {
     mkdirSync(dirname(abs), { recursive: true });
     // A report file may be printed by a later CI step; keep it free of workflow commands too.

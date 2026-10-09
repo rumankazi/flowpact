@@ -1,6 +1,6 @@
 import { resolveSeverities } from '@flowpact/core';
 import { renderRuleList } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
 import { commonArgs, createContext, EXIT, guard, pluginArgs } from '../shared';
 
@@ -11,9 +11,9 @@ export const rulesCommand = defineCommand({
     ...pluginArgs,
     format: { type: 'enum', options: ['pretty', 'json'], default: 'pretty', description: 'Output format' },
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       const registry = await loadRegistry(ctx);
       const severities = resolveSeverities(registry, ctx.loaded.config);
       if (args.format === 'json') {
