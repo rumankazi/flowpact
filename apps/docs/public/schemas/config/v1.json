@@ -134,6 +134,30 @@
         "additionalProperties": false
       }
     },
+    "generated": {
+      "description": "Which workflow and action files are generated. Rules about their internals are not reported there; flowpact detects them by a header comment or the `.lock.yml` name.",
+      "default": {},
+      "type": "object",
+      "properties": {
+        "include": {
+          "default": [],
+          "description": "Files or globs of workflows and actions that are generated, even without a marker.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "default": [],
+          "description": "Files or globs of workflows and actions written by hand, even with a marker or a `.lock.yml` name. Wins over `include`.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "plugins": {
       "default": [],
       "description": "Repo-relative JavaScript modules (.js/.mjs) exporting extra rules (default export: rule or array of rules).",

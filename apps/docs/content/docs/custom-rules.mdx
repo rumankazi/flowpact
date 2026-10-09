@@ -46,6 +46,14 @@ Besides `message`, `loc` and `symbol`, `ctx.report` takes `fix` (advice for this
 `severity`, which reports one finding below the rule's severity. It can only lower it: a finding never exceeds the
 severity the rule is configured with.
 
+Two optional fields shape where and how a rule speaks:
+
+- `generatedFiles: 'skip'` drops the rule's findings located in [generated files](/docs/configuration#generated-files)
+  (gh-aw `*.lock.yml`, a `DO NOT EDIT` header). Use it for rules about a file's own internals, such as dead
+  declarations or style; the default, `'report'`, suits checks of calls between units.
+- `docs.scope` describes what the rule deliberately leaves out. It appears in `flowpact explain` (and on the built-in
+  rule pages), but not with each finding.
+
 ## Codes
 
 Codes have the form `<PREFIX><category digit><two digits>`:

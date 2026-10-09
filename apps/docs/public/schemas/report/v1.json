@@ -156,6 +156,12 @@
           "type": "integer",
           "minimum": -9007199254740991,
           "maximum": 9007199254740991
+        },
+        "skippedInGenerated": {
+          "description": "Findings not reported because they are about the internals of generated files.",
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
         }
       },
       "required": [
