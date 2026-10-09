@@ -1,0 +1,109 @@
+---
+title: Security
+description: What flowpact reads, writes and sends, the permissions it needs, how releases are built and signed, and how to verify them.
+---
+
+flowpact is a static analyzer: it reads the workflow, action, config and contract files of a repository and reports
+on them. This page is for the people who review it before it runs in their organization. To report a vulnerability,
+see the [security policy](https://github.com/rumankazi/flowpact/security/policy).
+
+## What it reads and writes
+
+- **Reads** the repository it analyzes: `.github/workflows/*.yml`, local actions (`action.yml`), the config
+  (`.github/flowpact/flowpact.config.yml`) and the contracts (`.github/flowpact/contracts/`). With
+  [impact mode](/docs/impact-mode), it also reads the same files at the pull request's base commit through git.
+- **Writes** only what you ask for: reports to stdout or `--output`, contracts with `flowpact generate`, and a patch
+  with `flowpact check --patch`. It never commits or pushes.
+- **The GitHub Action** additionally writes annotations, the job summary and its outputs, and, in `mode: check` when
+  contracts drifted, uploads the regenerated contracts as a workflow artifact (`upload-contracts`).
+
+flowpact treats the analyzed files as untrusted input: it never writes through a symlink or outside the repository,
+escapes control characters in every finding, and caps matrix expansion (the YAML parser limits alias expansion). Reports of a
+way around any of this are in scope of the [security policy](https://github.com/rumankazi/flowpact/security/policy).
+
+## Network and telemetry
+
+flowpact has **no telemetry** and sends nothing anywhere.
+
+- The CLI, the language server and the VS Code extension make **no network requests**.
+- The GitHub Action makes two kinds, both to GitHub and both optional:
+  - in impact mode, when the checkout is shallow, a `git fetch` of the base commit (and, for release pull requests, the
+    release tags) from the repository's own `origin`, with the `token` input as a one-off authorization header;
+  - in `mode: check` with `upload-contracts`, the artifact upload, through the runner's artifact service.
+
+On GitHub Enterprise Server, both go to the enterprise server, never to github.com.
+
+## Permissions
+
+- **CLI and editor:** none beyond reading the repository. They run with the permissions of whoever runs them.
+- **GitHub Action:** `contents: read` to check out the repository; the action itself does not call the GitHub API.
+  Uploading SARIF to code scanning is a separate step (`github/codeql-action/upload-sarif`) that needs
+  `security-events: write`. See [action permissions](/docs/action#permissions).
+
+## Plugins run code
+
+[Plugins](/docs/custom-rules) are JavaScript modules from the analyzed repository, listed in its config. They run with
+the permissions and environment of whatever runs flowpact. flowpact never downloads them.
+
+- The GitHub Action's `plugins: auto` (the default) skips them on `pull_request_target` and `workflow_run`, where the
+  repository's code may come from an untrusted fork while the job holds secrets.
+- The VS Code extension loads them only in a [trusted workspace](/docs/editors#workspace-trust), and only for
+  repositories inside the workspace folders.
+- The CLI loads the plugins the config lists. Run it with plugins only on code you trust.
+
+If you do not use plugins, set `plugins: false` in the action.
+
+## How releases are built
+
+- **Built only by GitHub Actions**, from a tag, in this repository's
+  [release workflow](https://github.com/rumankazi/flowpact/blob/main/.github/workflows/release.yml). Release tags (`v*`)
+  can only be created or moved by the release automation and maintainers. Every workflow pins its actions to commit
+  SHAs.
+- **npm:** published with npm trusted publishing (no long-lived token) and npm provenance.
+- **GitHub release assets:** the npm tarball, the VS Code extension (`.vsix`) and the GitHub Action as an archive
+  (`flowpact-action-X.Y.Z.tar.gz`: `action.yml`, the bundle, its license notices and SBOM). Each is signed with a
+  Sigstore bundle (`.sigstore.json`) and carries in-toto build provenance (`.intoto.jsonl`).
+- **What each artifact contains:** every bundle ships `THIRD_PARTY_LICENSES.txt` (each bundled package with its license
+  text) and `sbom.cdx.json` (a CycloneDX SBOM). The release attaches each SBOM separately, attested against its
+  artifact.
+- **Published only once complete:** a release stays a draft until every signed asset is attached.
+- **Reproducible:** the action's bundle is committed, and CI fails when building it from source gives different bytes.
+  The action archive and the `.vsix` are built deterministically from the tag.
+
+The action archive, the SBOMs and draft releases start with 0.8.3.
+
+## Verify a release
+
+Download the assets of a release (`gh release download vX.Y.Z --repo rumankazi/flowpact`), then:
+
+```sh
+# Built by this repository's release workflow:
+gh attestation verify flowpact-X.Y.Z.tgz --repo rumankazi/flowpact
+gh attestation verify flowpact-action-X.Y.Z.tar.gz --repo rumankazi/flowpact
+gh attestation verify flowpact-vscode-X.Y.Z.vsix --repo rumankazi/flowpact
+
+# The SBOM describes that artifact:
+gh attestation verify flowpact-X.Y.Z.tgz --repo rumankazi/flowpact --predicate-type https://cyclonedx.org/bom
+
+# The npm package you installed is the one that was published with provenance:
+npm audit signatures
+```
+
+To check that the GitHub Action at a tag is the released one, compare the archive's files with the tag:
+
+```sh
+mkdir action && tar -xzf flowpact-action-X.Y.Z.tar.gz -C action
+git clone --depth 1 --branch vX.Y.Z https://github.com/rumankazi/flowpact.git source
+diff -r action/packages/action/dist source/packages/action/dist && cmp action/action.yml source/action.yml
+```
+
+Pin the action to the commit you verified: `uses: rumankazi/flowpact@<commit-sha> # vX.Y.Z`.
+
+## Repository practices
+
+- Changes reach `main` through pull requests that must pass CI, including flowpact's lint of its own workflows (the
+  maintainer can bypass the rules).
+- CodeQL (extended queries), secret scanning with push protection, dependency updates (Renovate) and the
+  [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/rumankazi/flowpact) run on the repository.
+- Vulnerabilities are reported privately, and only the latest release receives fixes; see the
+  [security policy](https://github.com/rumankazi/flowpact/security/policy).
