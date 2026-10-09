@@ -163,6 +163,8 @@
   "files": [
     "dist/extension.js",
     "dist/server.mjs",
+    "dist/THIRD_PARTY_LICENSES.txt",
+    "dist/sbom.cdx.json",
     "icon.png",
     "LICENSE"
   ],

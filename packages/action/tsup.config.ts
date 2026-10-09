@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import { bundleLicenses } from '../../scripts/bundle-licenses';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -15,5 +17,15 @@ export default defineConfig({
   },
   esbuildOptions(options) {
     options.conditions = ['source'];
+    // @actions/artifact imports unzip-stream only to download artifacts, which the action never does.
+    options.alias = { 'unzip-stream': './src/stubs/unzip-stream.ts' };
   },
+  // dist/THIRD_PARTY_LICENSES.txt and dist/sbom.cdx.json: what the committed bundle contains.
+  esbuildPlugins: [
+    bundleLicenses({
+      name: 'flowpact-action',
+      version: pkg.version,
+      description: 'The flowpact GitHub Action',
+    }),
+  ],
 });

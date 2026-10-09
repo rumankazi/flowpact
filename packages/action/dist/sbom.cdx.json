@@ -1,0 +1,2359 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:npm/flowpact-action@0.8.2",
+      "name": "flowpact-action",
+      "version": "0.8.2",
+      "purl": "pkg:npm/flowpact-action@0.8.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/artifact@6.3.1",
+      "name": "@actions/artifact",
+      "version": "6.3.1",
+      "purl": "pkg:npm/%40actions/artifact@6.3.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/artifact"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/core@3.0.1",
+      "name": "@actions/core",
+      "version": "3.0.1",
+      "purl": "pkg:npm/%40actions/core@3.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/core"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/exec@3.0.0",
+      "name": "@actions/exec",
+      "version": "3.0.0",
+      "purl": "pkg:npm/%40actions/exec@3.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/exec"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/expressions@0.3.61",
+      "name": "@actions/expressions",
+      "version": "0.3.61",
+      "purl": "pkg:npm/%40actions/expressions@0.3.61",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/languageservices"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/github@9.1.1",
+      "name": "@actions/github",
+      "version": "9.1.1",
+      "purl": "pkg:npm/%40actions/github@9.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/github"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/http-client@3.0.2",
+      "name": "@actions/http-client",
+      "version": "3.0.2",
+      "purl": "pkg:npm/%40actions/http-client@3.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/http-client"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/http-client@4.0.1",
+      "name": "@actions/http-client",
+      "version": "4.0.1",
+      "purl": "pkg:npm/%40actions/http-client@4.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/http-client"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/io@3.0.2",
+      "name": "@actions/io",
+      "version": "3.0.2",
+      "purl": "pkg:npm/%40actions/io@3.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/toolkit/tree/main/packages/io"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40actions/workflow-parser@0.3.61",
+      "name": "@actions/workflow-parser",
+      "version": "0.3.61",
+      "purl": "pkg:npm/%40actions/workflow-parser@0.3.61",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/actions/languageservices"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/abort-controller@2.2.0",
+      "name": "@azure/abort-controller",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40azure/abort-controller@2.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/abort-controller/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-auth@1.11.0",
+      "name": "@azure/core-auth",
+      "version": "1.11.0",
+      "purl": "pkg:npm/%40azure/core-auth@1.11.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/core-auth/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-client@1.11.1",
+      "name": "@azure/core-client",
+      "version": "1.11.1",
+      "purl": "pkg:npm/%40azure/core-client@1.11.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-client/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-http-compat@2.5.0",
+      "name": "@azure/core-http-compat",
+      "version": "2.5.0",
+      "purl": "pkg:npm/%40azure/core-http-compat@2.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-http-compat/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-lro@2.7.2",
+      "name": "@azure/core-lro",
+      "version": "2.7.2",
+      "purl": "pkg:npm/%40azure/core-lro@2.7.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-lro/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-rest-pipeline@1.25.0",
+      "name": "@azure/core-rest-pipeline",
+      "version": "1.25.0",
+      "purl": "pkg:npm/%40azure/core-rest-pipeline@1.25.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/core-rest-pipeline/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-tracing@1.4.0",
+      "name": "@azure/core-tracing",
+      "version": "1.4.0",
+      "purl": "pkg:npm/%40azure/core-tracing@1.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-tracing/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-util@1.14.0",
+      "name": "@azure/core-util",
+      "version": "1.14.0",
+      "purl": "pkg:npm/%40azure/core-util@1.14.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-util/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/core-xml@1.6.0",
+      "name": "@azure/core-xml",
+      "version": "1.6.0",
+      "purl": "pkg:npm/%40azure/core-xml@1.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/core-xml/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/logger@1.4.0",
+      "name": "@azure/logger",
+      "version": "1.4.0",
+      "purl": "pkg:npm/%40azure/logger@1.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/logger/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/storage-blob@12.34.0",
+      "name": "@azure/storage-blob",
+      "version": "12.34.0",
+      "purl": "pkg:npm/%40azure/storage-blob@12.34.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/storage/storage-blob/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40azure/storage-common@12.5.0",
+      "name": "@azure/storage-common",
+      "version": "12.5.0",
+      "purl": "pkg:npm/%40azure/storage-common@12.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/storage/storage-common/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40nodable/entities@3.1.0",
+      "name": "@nodable/entities",
+      "version": "3.1.0",
+      "purl": "pkg:npm/%40nodable/entities@3.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/nodable/val-parsers"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/auth-token@6.0.0",
+      "name": "@octokit/auth-token",
+      "version": "6.0.0",
+      "purl": "pkg:npm/%40octokit/auth-token@6.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/auth-token.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/core@7.0.8",
+      "name": "@octokit/core",
+      "version": "7.0.8",
+      "purl": "pkg:npm/%40octokit/core@7.0.8",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/core.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/endpoint@11.0.5",
+      "name": "@octokit/endpoint",
+      "version": "11.0.5",
+      "purl": "pkg:npm/%40octokit/endpoint@11.0.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/endpoint.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/graphql@9.0.5",
+      "name": "@octokit/graphql",
+      "version": "9.0.5",
+      "purl": "pkg:npm/%40octokit/graphql@9.0.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/graphql.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/plugin-paginate-rest@14.0.0",
+      "name": "@octokit/plugin-paginate-rest",
+      "version": "14.0.0",
+      "purl": "pkg:npm/%40octokit/plugin-paginate-rest@14.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/plugin-paginate-rest.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/plugin-request-log@6.0.0",
+      "name": "@octokit/plugin-request-log",
+      "version": "6.0.0",
+      "purl": "pkg:npm/%40octokit/plugin-request-log@6.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/plugin-request-log.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/plugin-rest-endpoint-methods@17.0.0",
+      "name": "@octokit/plugin-rest-endpoint-methods",
+      "version": "17.0.0",
+      "purl": "pkg:npm/%40octokit/plugin-rest-endpoint-methods@17.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/plugin-rest-endpoint-methods.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/plugin-retry@8.1.1",
+      "name": "@octokit/plugin-retry",
+      "version": "8.1.1",
+      "purl": "pkg:npm/%40octokit/plugin-retry@8.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/plugin-retry.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/request@10.0.16",
+      "name": "@octokit/request",
+      "version": "10.0.16",
+      "purl": "pkg:npm/%40octokit/request@10.0.16",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/request.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40octokit/request-error@7.1.2",
+      "name": "@octokit/request-error",
+      "version": "7.1.2",
+      "purl": "pkg:npm/%40octokit/request-error@7.1.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:octokit/request-error.js"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40protobuf-ts/runtime@2.11.1",
+      "name": "@protobuf-ts/runtime",
+      "version": "2.11.1",
+      "purl": "pkg:npm/%40protobuf-ts/runtime@2.11.1",
+      "licenses": [
+        {
+          "expression": "(Apache-2.0 AND BSD-3-Clause)"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/timostamm/protobuf-ts"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40protobuf-ts/runtime-rpc@2.11.1",
+      "name": "@protobuf-ts/runtime-rpc",
+      "version": "2.11.1",
+      "purl": "pkg:npm/%40protobuf-ts/runtime-rpc@2.11.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/timostamm/protobuf-ts"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40typespec/ts-http-runtime@0.3.9",
+      "name": "@typespec/ts-http-runtime",
+      "version": "0.3.9",
+      "purl": "pkg:npm/%40typespec/ts-http-runtime@0.3.9",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/ts-http-runtime/README.md"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/abort-controller@3.0.0",
+      "name": "abort-controller",
+      "version": "3.0.0",
+      "purl": "pkg:npm/abort-controller@3.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/mysticatea/abort-controller#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/agent-base@7.1.4",
+      "name": "agent-base",
+      "version": "7.1.4",
+      "purl": "pkg:npm/agent-base@7.1.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/TooTallNate/proxy-agents"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ansi-regex@6.4.0",
+      "name": "ansi-regex",
+      "version": "6.4.0",
+      "purl": "pkg:npm/ansi-regex@6.4.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "chalk/ansi-regex"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/anynum@1.0.1",
+      "name": "anynum",
+      "version": "1.0.1",
+      "purl": "pkg:npm/anynum@1.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/anynum"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/apache-arrow@21.2.0",
+      "name": "apache-arrow",
+      "version": "21.2.0",
+      "purl": "pkg:npm/apache-arrow@21.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://arrow.apache.org/js/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/archiver@7.0.1",
+      "name": "archiver",
+      "version": "7.0.1",
+      "purl": "pkg:npm/archiver@7.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-archiver"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/archiver-utils@5.0.2",
+      "name": "archiver-utils",
+      "version": "5.0.2",
+      "purl": "pkg:npm/archiver-utils@5.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/archiver-utils#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/async@3.2.6",
+      "name": "async",
+      "version": "3.2.6",
+      "purl": "pkg:npm/async@3.2.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://caolan.github.io/async/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/b4a@1.9.0",
+      "name": "b4a",
+      "version": "1.9.0",
+      "purl": "pkg:npm/b4a@1.9.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/holepunchto/b4a#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/balanced-match@1.0.2",
+      "name": "balanced-match",
+      "version": "1.0.2",
+      "purl": "pkg:npm/balanced-match@1.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/balanced-match"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/before-after-hook@4.0.0",
+      "name": "before-after-hook",
+      "version": "4.0.0",
+      "purl": "pkg:npm/before-after-hook@4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:gr2m/before-after-hook"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bottleneck@2.19.5",
+      "name": "bottleneck",
+      "version": "2.19.5",
+      "purl": "pkg:npm/bottleneck@2.19.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/SGrondin/bottleneck"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/brace-expansion@2.1.7",
+      "name": "brace-expansion",
+      "version": "2.1.7",
+      "purl": "pkg:npm/brace-expansion@2.1.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/brace-expansion"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/buffer-crc32@1.0.0",
+      "name": "buffer-crc32",
+      "version": "1.0.0",
+      "purl": "pkg:npm/buffer-crc32@1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/brianloveswords/buffer-crc32"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/compress-commons@6.0.2",
+      "name": "compress-commons",
+      "version": "6.0.2",
+      "purl": "pkg:npm/compress-commons@6.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-compress-commons"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/content-type@3.1.1",
+      "name": "content-type",
+      "version": "3.1.1",
+      "purl": "pkg:npm/content-type@3.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "jshttp/content-type"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/core-util-is@1.0.3",
+      "name": "core-util-is",
+      "version": "1.0.3",
+      "purl": "pkg:npm/core-util-is@1.0.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/core-util-is"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/crc-32@1.2.2",
+      "name": "crc-32",
+      "version": "1.2.2",
+      "purl": "pkg:npm/crc-32@1.2.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://sheetjs.com/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/crc32-stream@6.0.0",
+      "name": "crc32-stream",
+      "version": "6.0.0",
+      "purl": "pkg:npm/crc32-stream@6.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-crc32-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cronstrue@2.59.0",
+      "name": "cronstrue",
+      "version": "2.59.0",
+      "purl": "pkg:npm/cronstrue@2.59.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/bradymholt/cronstrue"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/debug@4.4.3",
+      "name": "debug",
+      "version": "4.4.3",
+      "purl": "pkg:npm/debug@4.4.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/debug-js/debug"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/diff@9.0.0",
+      "name": "diff",
+      "version": "9.0.0",
+      "purl": "pkg:npm/diff@9.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/kpdecker/jsdiff"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/event-target-shim@5.0.1",
+      "name": "event-target-shim",
+      "version": "5.0.1",
+      "purl": "pkg:npm/event-target-shim@5.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/mysticatea/event-target-shim"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/events-universal@1.0.1",
+      "name": "events-universal",
+      "version": "1.0.1",
+      "purl": "pkg:npm/events-universal@1.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/holepunchto/events-universal#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-fifo@1.3.2",
+      "name": "fast-fifo",
+      "version": "1.3.2",
+      "purl": "pkg:npm/fast-fifo@1.3.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/fast-fifo"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-xml-builder@1.3.1",
+      "name": "fast-xml-builder",
+      "version": "1.3.1",
+      "purl": "pkg:npm/fast-xml-builder@1.3.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/fast-xml-builder"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-xml-parser@5.11.2",
+      "name": "fast-xml-parser",
+      "version": "5.11.2",
+      "purl": "pkg:npm/fast-xml-parser@5.11.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/fast-xml-parser"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/flatbuffers@25.9.23",
+      "name": "flatbuffers",
+      "version": "25.9.23",
+      "purl": "pkg:npm/flatbuffers@25.9.23",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://google.github.io/flatbuffers/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/get-east-asian-width@1.7.0",
+      "name": "get-east-asian-width",
+      "version": "1.7.0",
+      "purl": "pkg:npm/get-east-asian-width@1.7.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "sindresorhus/get-east-asian-width"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/glob@10.5.0",
+      "name": "glob",
+      "version": "10.5.0",
+      "purl": "pkg:npm/glob@10.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/node-glob"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/graceful-fs@4.2.11",
+      "name": "graceful-fs",
+      "version": "4.2.11",
+      "purl": "pkg:npm/graceful-fs@4.2.11",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/isaacs/node-graceful-fs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/has-flag@4.0.0",
+      "name": "has-flag",
+      "version": "4.0.0",
+      "purl": "pkg:npm/has-flag@4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "sindresorhus/has-flag"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/http-proxy-agent@7.0.2",
+      "name": "http-proxy-agent",
+      "version": "7.0.2",
+      "purl": "pkg:npm/http-proxy-agent@7.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/TooTallNate/proxy-agents"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/https-proxy-agent@7.0.6",
+      "name": "https-proxy-agent",
+      "version": "7.0.6",
+      "purl": "pkg:npm/https-proxy-agent@7.0.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/TooTallNate/proxy-agents"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/inherits@2.0.4",
+      "name": "inherits",
+      "version": "2.0.4",
+      "purl": "pkg:npm/inherits@2.0.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/inherits"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/is-stream@2.0.1",
+      "name": "is-stream",
+      "version": "2.0.1",
+      "purl": "pkg:npm/is-stream@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "sindresorhus/is-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/is-unsafe@2.0.2",
+      "name": "is-unsafe",
+      "version": "2.0.2",
+      "purl": "pkg:npm/is-unsafe@2.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/is-unsafe"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isarray@1.0.0",
+      "name": "isarray",
+      "version": "1.0.0",
+      "purl": "pkg:npm/isarray@1.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/juliangruber/isarray"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json-with-bigint@3.5.12",
+      "name": "json-with-bigint",
+      "version": "3.5.12",
+      "purl": "pkg:npm/json-with-bigint@3.5.12",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Ivan-Korolenko/json-with-bigint"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jwt-decode@4.0.0",
+      "name": "jwt-decode",
+      "version": "4.0.0",
+      "purl": "pkg:npm/jwt-decode@4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/auth0/jwt-decode#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lazystream@1.0.1",
+      "name": "lazystream",
+      "version": "1.0.1",
+      "purl": "pkg:npm/lazystream@1.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/jpommerening/node-lazystream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lodash@4.18.1",
+      "name": "lodash",
+      "version": "4.18.1",
+      "purl": "pkg:npm/lodash@4.18.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://lodash.com/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lru-cache@10.4.3",
+      "name": "lru-cache",
+      "version": "10.4.3",
+      "purl": "pkg:npm/lru-cache@10.4.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/node-lru-cache"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@5.1.9",
+      "name": "minimatch",
+      "version": "5.1.9",
+      "purl": "pkg:npm/minimatch@5.1.9",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/minimatch"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@9.0.9",
+      "name": "minimatch",
+      "version": "9.0.9",
+      "purl": "pkg:npm/minimatch@9.0.9",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/isaacs/minimatch"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minipass@7.1.3",
+      "name": "minipass",
+      "version": "7.1.3",
+      "purl": "pkg:npm/minipass@7.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "BlueOak-1.0.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/isaacs/minipass"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ms@2.1.3",
+      "name": "ms",
+      "version": "2.1.3",
+      "purl": "pkg:npm/ms@2.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "vercel/ms"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/normalize-path@3.0.0",
+      "name": "normalize-path",
+      "version": "3.0.0",
+      "purl": "pkg:npm/normalize-path@3.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/jonschlinkert/normalize-path"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/path-expression-matcher@1.6.2",
+      "name": "path-expression-matcher",
+      "version": "1.6.2",
+      "purl": "pkg:npm/path-expression-matcher@1.6.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/path-expression-matcher#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/path-scurry@1.11.1",
+      "name": "path-scurry",
+      "version": "1.11.1",
+      "purl": "pkg:npm/path-scurry@1.11.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "BlueOak-1.0.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/isaacs/path-scurry"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/picocolors@1.1.1",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "purl": "pkg:npm/picocolors@1.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "alexeyraspopov/picocolors"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/process@0.11.10",
+      "name": "process",
+      "version": "0.11.10",
+      "purl": "pkg:npm/process@0.11.10",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/shtylman/node-process"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/process-nextick-args@2.0.1",
+      "name": "process-nextick-args",
+      "version": "2.0.1",
+      "purl": "pkg:npm/process-nextick-args@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/calvinmetcalf/process-nextick-args"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/readable-stream@2.3.8",
+      "name": "readable-stream",
+      "version": "2.3.8",
+      "purl": "pkg:npm/readable-stream@2.3.8",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "git://github.com/nodejs/readable-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/readable-stream@4.7.0",
+      "name": "readable-stream",
+      "version": "4.7.0",
+      "purl": "pkg:npm/readable-stream@4.7.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/nodejs/readable-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/readdir-glob@1.1.3",
+      "name": "readdir-glob",
+      "version": "1.1.3",
+      "purl": "pkg:npm/readdir-glob@1.1.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/Yqnn/node-readdir-glob"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/safe-buffer@5.1.2",
+      "name": "safe-buffer",
+      "version": "5.1.2",
+      "purl": "pkg:npm/safe-buffer@5.1.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/feross/safe-buffer"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/safe-buffer@5.2.1",
+      "name": "safe-buffer",
+      "version": "5.2.1",
+      "purl": "pkg:npm/safe-buffer@5.2.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/feross/safe-buffer"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/streamx@2.28.1",
+      "name": "streamx",
+      "version": "2.28.1",
+      "purl": "pkg:npm/streamx@2.28.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/streamx"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string_decoder@1.1.1",
+      "name": "string_decoder",
+      "version": "1.1.1",
+      "purl": "pkg:npm/string_decoder@1.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/nodejs/string_decoder"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string_decoder@1.3.0",
+      "name": "string_decoder",
+      "version": "1.3.0",
+      "purl": "pkg:npm/string_decoder@1.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/nodejs/string_decoder"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string-width@8.3.0",
+      "name": "string-width",
+      "version": "8.3.0",
+      "purl": "pkg:npm/string-width@8.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "sindresorhus/string-width"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/strip-ansi@7.2.0",
+      "name": "strip-ansi",
+      "version": "7.2.0",
+      "purl": "pkg:npm/strip-ansi@7.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "chalk/strip-ansi"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/strnum@2.4.2",
+      "name": "strnum",
+      "version": "2.4.2",
+      "purl": "pkg:npm/strnum@2.4.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/strnum"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/supports-color@7.2.0",
+      "name": "supports-color",
+      "version": "7.2.0",
+      "purl": "pkg:npm/supports-color@7.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "chalk/supports-color"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tar-stream@3.2.2",
+      "name": "tar-stream",
+      "version": "3.2.2",
+      "purl": "pkg:npm/tar-stream@3.2.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/mafintosh/tar-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/text-decoder@1.2.7",
+      "name": "text-decoder",
+      "version": "1.2.7",
+      "purl": "pkg:npm/text-decoder@1.2.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/holepunchto/text-decoder#readme"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tslib@2.8.1",
+      "name": "tslib",
+      "version": "2.8.1",
+      "purl": "pkg:npm/tslib@2.8.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.typescriptlang.org/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tunnel@0.0.6",
+      "name": "tunnel",
+      "version": "0.0.6",
+      "purl": "pkg:npm/tunnel@0.0.6",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/koichik/node-tunnel/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/undici@6.29.0",
+      "name": "undici",
+      "version": "6.29.0",
+      "purl": "pkg:npm/undici@6.29.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://undici.nodejs.org"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/universal-user-agent@7.0.3",
+      "name": "universal-user-agent",
+      "version": "7.0.3",
+      "purl": "pkg:npm/universal-user-agent@7.0.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "github:gr2m/universal-user-agent"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/util-deprecate@1.0.2",
+      "name": "util-deprecate",
+      "version": "1.0.2",
+      "purl": "pkg:npm/util-deprecate@1.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/TooTallNate/util-deprecate"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xml-naming@0.3.0",
+      "name": "xml-naming",
+      "version": "0.3.0",
+      "purl": "pkg:npm/xml-naming@0.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/NaturalIntelligence/xml-naming"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yaml@2.9.1",
+      "name": "yaml",
+      "version": "2.9.1",
+      "purl": "pkg:npm/yaml@2.9.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "ISC"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://eemeli.org/yaml/"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/zip-stream@6.0.1",
+      "name": "zip-stream",
+      "version": "6.0.1",
+      "purl": "pkg:npm/zip-stream@6.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/archiverjs/node-zip-stream"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/zod@4.6.5",
+      "name": "zod",
+      "version": "4.6.5",
+      "purl": "pkg:npm/zod@4.6.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://zod.dev"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/flowpact-action@0.8.2",
+      "dependsOn": [
+        "pkg:npm/%40actions/artifact@6.3.1",
+        "pkg:npm/%40actions/core@3.0.1",
+        "pkg:npm/%40actions/exec@3.0.0",
+        "pkg:npm/%40actions/expressions@0.3.61",
+        "pkg:npm/%40actions/github@9.1.1",
+        "pkg:npm/%40actions/http-client@3.0.2",
+        "pkg:npm/%40actions/http-client@4.0.1",
+        "pkg:npm/%40actions/io@3.0.2",
+        "pkg:npm/%40actions/workflow-parser@0.3.61",
+        "pkg:npm/%40azure/abort-controller@2.2.0",
+        "pkg:npm/%40azure/core-auth@1.11.0",
+        "pkg:npm/%40azure/core-client@1.11.1",
+        "pkg:npm/%40azure/core-http-compat@2.5.0",
+        "pkg:npm/%40azure/core-lro@2.7.2",
+        "pkg:npm/%40azure/core-rest-pipeline@1.25.0",
+        "pkg:npm/%40azure/core-tracing@1.4.0",
+        "pkg:npm/%40azure/core-util@1.14.0",
+        "pkg:npm/%40azure/core-xml@1.6.0",
+        "pkg:npm/%40azure/logger@1.4.0",
+        "pkg:npm/%40azure/storage-blob@12.34.0",
+        "pkg:npm/%40azure/storage-common@12.5.0",
+        "pkg:npm/%40nodable/entities@3.1.0",
+        "pkg:npm/%40octokit/auth-token@6.0.0",
+        "pkg:npm/%40octokit/core@7.0.8",
+        "pkg:npm/%40octokit/endpoint@11.0.5",
+        "pkg:npm/%40octokit/graphql@9.0.5",
+        "pkg:npm/%40octokit/plugin-paginate-rest@14.0.0",
+        "pkg:npm/%40octokit/plugin-request-log@6.0.0",
+        "pkg:npm/%40octokit/plugin-rest-endpoint-methods@17.0.0",
+        "pkg:npm/%40octokit/plugin-retry@8.1.1",
+        "pkg:npm/%40octokit/request@10.0.16",
+        "pkg:npm/%40octokit/request-error@7.1.2",
+        "pkg:npm/%40protobuf-ts/runtime@2.11.1",
+        "pkg:npm/%40protobuf-ts/runtime-rpc@2.11.1",
+        "pkg:npm/%40typespec/ts-http-runtime@0.3.9",
+        "pkg:npm/abort-controller@3.0.0",
+        "pkg:npm/agent-base@7.1.4",
+        "pkg:npm/ansi-regex@6.4.0",
+        "pkg:npm/anynum@1.0.1",
+        "pkg:npm/apache-arrow@21.2.0",
+        "pkg:npm/archiver@7.0.1",
+        "pkg:npm/archiver-utils@5.0.2",
+        "pkg:npm/async@3.2.6",
+        "pkg:npm/b4a@1.9.0",
+        "pkg:npm/balanced-match@1.0.2",
+        "pkg:npm/before-after-hook@4.0.0",
+        "pkg:npm/bottleneck@2.19.5",
+        "pkg:npm/brace-expansion@2.1.7",
+        "pkg:npm/buffer-crc32@1.0.0",
+        "pkg:npm/compress-commons@6.0.2",
+        "pkg:npm/content-type@3.1.1",
+        "pkg:npm/core-util-is@1.0.3",
+        "pkg:npm/crc-32@1.2.2",
+        "pkg:npm/crc32-stream@6.0.0",
+        "pkg:npm/cronstrue@2.59.0",
+        "pkg:npm/debug@4.4.3",
+        "pkg:npm/diff@9.0.0",
+        "pkg:npm/event-target-shim@5.0.1",
+        "pkg:npm/events-universal@1.0.1",
+        "pkg:npm/fast-fifo@1.3.2",
+        "pkg:npm/fast-xml-builder@1.3.1",
+        "pkg:npm/fast-xml-parser@5.11.2",
+        "pkg:npm/flatbuffers@25.9.23",
+        "pkg:npm/get-east-asian-width@1.7.0",
+        "pkg:npm/glob@10.5.0",
+        "pkg:npm/graceful-fs@4.2.11",
+        "pkg:npm/has-flag@4.0.0",
+        "pkg:npm/http-proxy-agent@7.0.2",
+        "pkg:npm/https-proxy-agent@7.0.6",
+        "pkg:npm/inherits@2.0.4",
+        "pkg:npm/is-stream@2.0.1",
+        "pkg:npm/is-unsafe@2.0.2",
+        "pkg:npm/isarray@1.0.0",
+        "pkg:npm/json-with-bigint@3.5.12",
+        "pkg:npm/jwt-decode@4.0.0",
+        "pkg:npm/lazystream@1.0.1",
+        "pkg:npm/lodash@4.18.1",
+        "pkg:npm/lru-cache@10.4.3",
+        "pkg:npm/minimatch@5.1.9",
+        "pkg:npm/minimatch@9.0.9",
+        "pkg:npm/minipass@7.1.3",
+        "pkg:npm/ms@2.1.3",
+        "pkg:npm/normalize-path@3.0.0",
+        "pkg:npm/path-expression-matcher@1.6.2",
+        "pkg:npm/path-scurry@1.11.1",
+        "pkg:npm/picocolors@1.1.1",
+        "pkg:npm/process@0.11.10",
+        "pkg:npm/process-nextick-args@2.0.1",
+        "pkg:npm/readable-stream@2.3.8",
+        "pkg:npm/readable-stream@4.7.0",
+        "pkg:npm/readdir-glob@1.1.3",
+        "pkg:npm/safe-buffer@5.1.2",
+        "pkg:npm/safe-buffer@5.2.1",
+        "pkg:npm/streamx@2.28.1",
+        "pkg:npm/string_decoder@1.1.1",
+        "pkg:npm/string_decoder@1.3.0",
+        "pkg:npm/string-width@8.3.0",
+        "pkg:npm/strip-ansi@7.2.0",
+        "pkg:npm/strnum@2.4.2",
+        "pkg:npm/supports-color@7.2.0",
+        "pkg:npm/tar-stream@3.2.2",
+        "pkg:npm/text-decoder@1.2.7",
+        "pkg:npm/tslib@2.8.1",
+        "pkg:npm/tunnel@0.0.6",
+        "pkg:npm/undici@6.29.0",
+        "pkg:npm/universal-user-agent@7.0.3",
+        "pkg:npm/util-deprecate@1.0.2",
+        "pkg:npm/xml-naming@0.3.0",
+        "pkg:npm/yaml@2.9.1",
+        "pkg:npm/zip-stream@6.0.1",
+        "pkg:npm/zod@4.6.5"
+      ]
+    }
+  ]
+}

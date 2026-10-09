@@ -329,6 +329,27 @@ jobs:
           # The signed in-toto statement (DSSE envelope), one per line.
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$tgz.intoto.jsonl"
           gh release upload "$TAG" "$tgz" "$tgz.sigstore.json" "$tgz.intoto.jsonl" --clobber --repo "$GITHUB_REPOSITORY"
+      - id: sbom
+        name: Take the SBOM out of the tarball
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          # The SBOM the build wrote into the package (scripts/bundle-licenses.ts); versions before 0.8.3 have none.
+          if tar -xzOf "flowpact-$VERSION.tgz" package/dist/sbom.cdx.json > "flowpact-$VERSION.cdx.json" 2>/dev/null; then
+            echo "sbom=flowpact-$VERSION.cdx.json" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.sbom.outputs.sbom != ''
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: flowpact-${{ needs.resolve.outputs.version }}.tgz
+          sbom-path: ${{ steps.sbom.outputs.sbom }}
+      - name: Upload the SBOM
+        if: steps.sbom.outputs.sbom != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          SBOM: ${{ steps.sbom.outputs.sbom }}
+        run: gh release upload "$TAG" "$SBOM" --clobber --repo "$GITHUB_REPOSITORY"
 
   action-archive:
     # The GitHub Action as released: action.yml and its committed bundle in a reproducible archive with provenance, so a
@@ -385,6 +406,27 @@ jobs:
           cp "$BUNDLE" "$ARCHIVE.sigstore.json"
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$ARCHIVE.intoto.jsonl"
           gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sigstore.json" "$ARCHIVE.intoto.jsonl" --repo "$GITHUB_REPOSITORY"
+      - id: sbom
+        name: Take the SBOM out of the archive
+        if: steps.asset.outputs.attached != 'true'
+        env:
+          ARCHIVE: ${{ steps.asset.outputs.archive }}
+        run: |
+          sbom="${ARCHIVE%.tar.gz}.cdx.json"
+          tar -xzOf "$ARCHIVE" packages/action/dist/sbom.cdx.json > "$sbom"
+          echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+      - if: steps.asset.outputs.attached != 'true'
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.asset.outputs.archive }}
+          sbom-path: ${{ steps.sbom.outputs.sbom }}
+      - name: Upload the SBOM
+        if: steps.asset.outputs.attached != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          SBOM: ${{ steps.sbom.outputs.sbom }}
+        run: gh release upload "$TAG" "$SBOM" --repo "$GITHUB_REPOSITORY"
 
   publish-release:
     # release-please creates the release as a draft (release-please-config.json: draft, force-tag-creation), so it is
@@ -547,6 +589,29 @@ jobs:
           cp "$BUNDLE" "$VSIX.sigstore.json"
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$VSIX.intoto.jsonl"
           gh release upload "$TAG" "$VSIX" "$VSIX.sigstore.json" "$VSIX.intoto.jsonl" --repo "$GITHUB_REPOSITORY"
+      - id: sbom
+        name: Take the SBOM out of the extension
+        if: steps.asset.outputs.attached != 'true'
+        env:
+          VSIX: ${{ steps.asset.outputs.vsix }}
+        run: |
+          # Extensions before 0.8.3 have none.
+          sbom="$RUNNER_TEMP/release/${VSIX%.vsix}.cdx.json"
+          if unzip -p "$RUNNER_TEMP/release/$VSIX" extension/dist/sbom.cdx.json > "$sbom" 2>/dev/null && [ -s "$sbom" ]; then
+            echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.sbom.outputs.sbom != ''
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ runner.temp }}/release/${{ steps.asset.outputs.vsix }}
+          sbom-path: ${{ steps.sbom.outputs.sbom }}
+      - name: Upload the SBOM
+        if: steps.sbom.outputs.sbom != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          SBOM: ${{ steps.sbom.outputs.sbom }}
+        run: gh release upload "$TAG" "$SBOM" --repo "$GITHUB_REPOSITORY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vsix
