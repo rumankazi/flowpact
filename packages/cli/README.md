@@ -5,8 +5,8 @@
 **Data-flow linter for GitHub Actions:** find the inputs, secrets and matrix values that arrive empty while the run
 stays green.
 
-GitHub Actions evaluates a missing matrix key, an undeclared secret or an omitted optional input to an empty value: no
-error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
+GitHub Actions evaluates a missing matrix key, an undeclared secret or an optional input without a default to an empty
+value: no error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
 or an upload stops running without anyone noticing. flowpact follows every input, secret, env var, matrix key and
 output across those calls, evaluates every combination of the matrices written in your workflows, and reports where a
 value goes missing. Use it next to actionlint, which checks each file in depth.

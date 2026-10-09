@@ -25,7 +25,7 @@ const features = [
   },
   {
     title: 'Impact mode',
-    body: 'For publishers: grades what each pull request changes for consumers as major, minor, patch or none, and fails when a change that needs a minor or major release is declared as less.',
+    body: 'For publishers: grades what each pull request changes for consumers as major, minor, patch or none, and fails when a pull request declares less, such as a `fix:` title on a change that needs a minor or major release.',
   },
 ];
 
@@ -41,9 +41,9 @@ export default function HomePage() {
           Know exactly what flows between your workflows.
         </h1>
         <p className="max-w-2xl text-lg text-fd-muted-foreground">
-          GitHub Actions turns a missing matrix value, an undeclared secret or an omitted optional input into
-          an empty value and keeps the run green. flowpact finds them across reusable workflows, local actions
-          and every combination of the matrices written in your workflows.
+          GitHub Actions turns a missing matrix value, an undeclared secret or an optional input without a
+          default into an empty value and keeps the run green. flowpact finds them across reusable workflows,
+          local actions and every combination of the matrices written in your workflows.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link

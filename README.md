@@ -20,8 +20,8 @@
 
 **Data-flow linter for GitHub Actions.**
 
-GitHub Actions evaluates a missing matrix key, an undeclared secret or an omitted optional input to an empty value: no
-error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
+GitHub Actions evaluates a missing matrix key, an undeclared secret or an optional input without a default to an empty
+value: no error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
 or an upload stops running without anyone noticing. flowpact follows every input, secret, env var, matrix key and
 output across those calls, evaluates every combination of the matrices written in your workflows, and reports where a
 value goes missing. It runs as a CLI, a GitHub Action and a VS Code extension, and complements actionlint.
@@ -35,12 +35,15 @@ reports nothing here.*
 
 - **You call reusable workflows or local actions:** flowpact finds inputs callers do not pass, secrets that are never
   declared, and matrix values that are empty in some combinations.
-- **You publish an action or a reusable workflow:** contracts flag breaking interface changes, and impact mode checks
-  that a pull request declares the version bump its changes need.
-- **You edit workflows in VS Code:** the same findings as you type.
+- **You publish actions or reusable workflows that other repositories use,** in public or inside your organization:
+  contracts flag breaking interface changes, and impact mode fails a pull request whose changes need a minor or major
+  release when it declares less.
+- **You edit workflows in VS Code:** the same findings as you type, with the
+  [extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact).
 
-It adds little to a few standalone workflows, and calls to workflows in other repositories are reported as unverified
-(cross-repository resolution is on the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap)).
+It adds little to a few standalone workflows. Calls to reusable workflows in other repositories are reported as
+unverified, not checked (cross-repository resolution is on the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap));
+the repository that publishes them can still lint them and lock their interfaces with contracts.
 
 ## Get started
 
@@ -72,12 +75,14 @@ runner labels, expression types) and zizmor (security): see the
 
 ## For publishers of actions and reusable workflows
 
-Other repositories pin your workflow to a tag such as `@v1`, and you cannot see their branch protection. Rename a job
-of a published reusable workflow and their required check waits on *Expected — Waiting for status to be reported*.
-With [impact mode](https://rumankazi.github.io/flowpact/docs/impact-mode) on (`impact: auto` in the action, for
-repositories that publish workflows or actions), flowpact grades what each pull request changes for those consumers
-as major, minor, patch or none, and fails when a change that needs a minor or major release is declared as less, by
-default in the Conventional Commits title.
+Other repositories pin your action or workflow to a tag such as `@v1`, and you cannot see their workflows or branch
+protection. Remove an output of your action and their steps read an empty value; rename a job of a published reusable
+workflow and their required check waits on *Expected — Waiting for status to be reported*.
+
+With [impact mode](https://rumankazi.github.io/flowpact/docs/impact-mode) on (`impact: auto` in the action, on pull
+requests), flowpact grades what each pull request changes for those consumers as major, minor, patch or none, and fails
+when the pull request declares less than a minor or major change needs. By default the declaration is the Conventional
+Commits title (`fix:` patch, `feat:` minor, `feat!:` major); labels can be used instead.
 
 ## Contracts
 

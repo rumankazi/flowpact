@@ -1,6 +1,6 @@
 # flowpact for VS Code
 
-GitHub Actions turns a missing matrix value, an undeclared secret or an omitted optional input into an empty value,
+GitHub Actions turns a missing matrix value, an undeclared secret or an optional input without a default into an empty value,
 and the run stays green. [flowpact](https://rumankazi.github.io/flowpact) finds these across reusable workflows, local
 actions and every combination of the matrices written in your workflows, and shows them as you type. It helps most when
 your workflows call reusable workflows or local actions, or use `include` matrices.
@@ -13,8 +13,9 @@ your workflows call reusable workflows or local actions, or use `include` matric
 - A secret that a reusable workflow reads but never declares, so it is empty unless the caller passes `secrets: inherit`.
 - Inputs that callers do not pass, outputs nothing reads, and `uses: ./` paths that do not exist where the step runs.
 
-It works next to GitHub's GitHub Actions extension, which checks each file's syntax: by default flowpact hides its four
-checks that repeat that extension's (`FP502`–`FP505`) in the files you open while it runs.
+It works next to GitHub's GitHub Actions extension, which checks each file's syntax and expressions. By default, in
+the files you open, flowpact hides its four checks that repeat that extension's (`FP502`–`FP505`), so nothing is
+reported twice.
 
 ## Features
 
@@ -37,8 +38,9 @@ severities, overrides, ignores and plugins.
 
 ## Also in CI
 
-The same checks run in CI with `npx flowpact lint` or the
-[GitHub Action](https://github.com/marketplace/actions/flowpact), which annotates pull requests.
+The same checks run in CI with `npx flowpact lint` (`npx flowpact check` adds contract drift) or the
+[GitHub Action](https://github.com/marketplace/actions/flowpact) (`mode: check` for drift), which annotates pull
+requests.
 
 ## Requirements
 
