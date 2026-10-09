@@ -1,4 +1,5 @@
 export * from './contracts';
+export * from './github';
 export * from './graph';
 export * from './json';
 export * from './markdown';

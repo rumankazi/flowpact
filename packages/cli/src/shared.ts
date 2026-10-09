@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import {
   ConfigError,
   createLogger,
@@ -36,6 +36,21 @@ export const commonArgs = {
   ascii: { type: 'boolean', description: 'ASCII-only symbols for limited terminals' },
 } satisfies ArgsDef;
 
+/** Flags of the commands that load rules: which plugins run. */
+export const pluginArgs = {
+  plugins: {
+    type: 'boolean',
+    default: true,
+    description: 'Load the plugins the config lists (--no-plugins on code you do not trust)',
+  },
+  plugin: {
+    type: 'string',
+    description:
+      'Also load this plugin, relative to the working directory (repeatable; not affected by --no-plugins)',
+    valueHint: 'file',
+  },
+} satisfies ArgsDef;
+
 export interface CommonFlags {
   root?: string | undefined;
   config?: string | undefined;
@@ -44,6 +59,7 @@ export interface CommonFlags {
   quiet?: boolean | undefined;
   color?: boolean | undefined;
   ascii?: boolean | undefined;
+  plugins?: boolean | undefined;
 }
 
 export interface CliContext {
@@ -54,8 +70,29 @@ export interface CliContext {
   /** Render options for files: never colored, no hyperlinks. */
   plain: RenderOptions;
   loaded: LoadedConfig;
+  /** Whether the plugins the config lists are loaded, and the plugins given with `--plugin` (absolute paths). */
+  plugins: { config: boolean; extra: string[] };
   stdout: (s: string) => void;
   stderr: (s: string) => void;
+}
+
+/**
+ * Every value of a flag that may be repeated, in order: `--name v`, `--name=v` and `-x v`. citty keeps only the last
+ * one.
+ */
+export function repeatedFlag(rawArgs: string[], name: string, alias?: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i]!;
+    if (a === '--') break;
+    if (a === `--${name}` || (alias && a === `-${alias}`)) {
+      const v = rawArgs[i + 1];
+      if (v !== undefined) values.push(v);
+      i++;
+    } else if (a.startsWith(`--${name}=`)) values.push(a.slice(name.length + 3));
+    else if (alias && a.startsWith(`-${alias}=`)) values.push(a.slice(alias.length + 2));
+  }
+  return values;
 }
 
 function countVerbose(rawArgs: string[]): number {
@@ -140,6 +177,10 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
     render,
     plain: { ...render, color: false, hyperlinks: false },
     loaded,
+    plugins: {
+      config: flags.plugins !== false,
+      extra: repeatedFlag(rawArgs, 'plugin').map((p) => resolve(process.cwd(), p)),
+    },
     stdout: (s) => process.stdout.write(s.endsWith('\n') ? s : `${s}\n`),
     stderr: (s) => process.stderr.write(s.endsWith('\n') ? s : `${s}\n`),
   };
@@ -155,6 +196,24 @@ export function displayPath(abs: string): string {
 export function printBanner(ctx: CliContext, extra?: string) {
   if (ctx.level === 'error') return;
   ctx.stderr(renderBanner(toolMeta(), ctx.render, extra));
+}
+
+/**
+ * Prints GitHub workflow commands (`--format github`). index.ts keeps every string written to stdout from being read
+ * as a workflow command; a Buffer passes, which is only right for commands flowpact builds with every value escaped.
+ */
+export function writeWorkflowCommands(text: string) {
+  process.stdout.write(Buffer.from(text));
+}
+
+/**
+ * In GitHub Actions, the root relative to the workspace (the repository) when it is a subdirectory of it, or ''.
+ * Annotations, code scanning and links to files resolve paths against the repository.
+ */
+export function workspacePrefix(root: string, env: NodeJS.ProcessEnv = process.env): string {
+  if (env.GITHUB_ACTIONS !== 'true' || !env.GITHUB_WORKSPACE) return '';
+  const rel = relative(resolve(env.GITHUB_WORKSPACE), root);
+  return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel.split(sep).join('/') : '';
 }
 
 export function writeOutput(file: string, content: string, ctx: CliContext) {

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, posix, relative, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { DefaultArtifactClient } from '@actions/artifact';
 import * as core from '@actions/core';
 import {
@@ -35,7 +35,14 @@ import {
   resolveLogLevel,
   writeContracts,
 } from '@flowpact/core';
-import { type MarkdownOptions, renderJson, renderMarkdown, renderSarif } from '@flowpact/reporters';
+import {
+  githubAnnotation,
+  inRepository,
+  type MarkdownOptions,
+  renderJson,
+  renderMarkdown,
+  renderSarif,
+} from '@flowpact/reporters';
 
 /** Input defaults; `action.yml` declares the same values (a test keeps them in sync). */
 export const DEFAULTS = {
@@ -330,43 +337,11 @@ function actionsSink(runnerDebug: boolean, groups: { depth: number }): LogSink {
 const toPosix = (p: string) => p.split(sep).join('/');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Path of a root-relative file relative to the workspace, where annotations and code scanning resolve it. */
-function inWorkspace(prefix: string, file: string): string {
-  return prefix ? posix.join(prefix, file) : file;
-}
-
 function annotate(f: Finding, prefix: string): void {
-  const loc = f.loc;
-  const props: core.AnnotationProperties = {
-    title: `${f.code} ${f.name}`,
-    file: inWorkspace(prefix, loc.file),
-    startLine: loc.line,
-    endLine: loc.endLine,
-    // GitHub only honours columns on single-line annotations.
-    ...(loc.line === loc.endLine ? { startColumn: loc.column, endColumn: loc.endColumn } : {}),
-  };
-  const message = `${f.message}\n${f.fix}\n${f.docsUrl}`;
-  if (f.severity === 'error') core.error(message, props);
-  else if (f.severity === 'warning') core.warning(message, props);
+  const { level, message, ...props } = githubAnnotation(f, { pathPrefix: prefix });
+  if (level === 'error') core.error(message, props);
+  else if (level === 'warning') core.warning(message, props);
   else core.notice(message, props);
-}
-
-/** Rewrites SARIF artifact URIs so they are relative to the workspace (the repository) instead of the flowpact root. */
-function sarifInWorkspace(sarif: string, prefix: string): string {
-  if (!prefix) return sarif;
-  const doc = JSON.parse(sarif) as unknown;
-  const visit = (v: unknown): void => {
-    if (Array.isArray(v)) {
-      for (const item of v) visit(item);
-      return;
-    }
-    if (!v || typeof v !== 'object') return;
-    const o = v as Record<string, unknown>;
-    if (typeof o.uri === 'string' && o.uriBaseId === '%SRCROOT%') o.uri = posix.join(prefix, o.uri);
-    for (const value of Object.values(o)) visit(value);
-  };
-  visit(doc);
-  return `${JSON.stringify(doc, null, 2)}\n`;
 }
 
 function writeReport(workspace: string, file: string, content: string): string {
@@ -433,7 +408,7 @@ async function driftArtifact(
   // Paths in the patch and the artifact are relative to the repository, not to working-directory.
   const repoPlan: ContractPlan = {
     ...plan,
-    entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix, e.file) })),
+    entries: plan.entries.map((e) => ({ ...e, file: inRepository(e.file, prefix) })),
   };
   const patch = join(dir, PATCH_FILE);
   writeFileSync(patch, contractPatch(repoPlan));
@@ -626,7 +601,7 @@ export async function run(): Promise<void> {
           reports.sarif = writeReport(
             workspace,
             inputs.reportSarif,
-            sarifInWorkspace(renderSarif(result), prefix),
+            renderSarif(result, { pathPrefix: prefix }),
           );
         if (inputs.reportMarkdown) writeReport(workspace, inputs.reportMarkdown, markdown());
       });

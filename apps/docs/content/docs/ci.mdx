@@ -58,10 +58,10 @@ jobs:
         with:
           node-version: 22
       - name: Check workflows and contracts
-        run: npx --yes flowpact check --output flowpact-report.md --patch flowpact-contracts.patch
-      - name: Job summary
-        if: always()
-        run: cat flowpact-report.md >> "$GITHUB_STEP_SUMMARY"
+        run: >-
+          npx --yes flowpact check --format github
+          -o markdown:"$GITHUB_STEP_SUMMARY"
+          --patch flowpact-contracts.patch
       - name: Keep the regenerated contracts
         if: always()
         uses: actions/upload-artifact@v7
@@ -72,13 +72,16 @@ jobs:
 ```
 
 - Use `flowpact lint` instead of `flowpact check` if you do not commit [contracts](/docs/contracts).
-- `--output flowpact-report.md` writes a Markdown report (format by extension), which the next step appends to the job
-  summary. Use `.json` for a machine-readable report instead.
+- `--format github` annotates each finding on its file and line, in the run and the pull request, like the
+  [action](/docs/action#annotations). Leave it out to print the terminal report in the job log instead (GitHub's log
+  viewer keeps its colors).
+- `-o markdown:"$GITHUB_STEP_SUMMARY"` writes the Markdown report to the job summary. `-o` can be repeated, e.g.
+  `-o flowpact.sarif` for [code scanning](#code-scanning-sarif) or `-o flowpact-report.json` for a machine-readable
+  report.
 - The step fails (exit `1`) when there are errors, which in `flowpact check` includes missing, outdated, breaking, orphaned
   and invalid contracts. Use `--fail-on warning` to be stricter or `--fail-on never` to report without failing.
 - `--patch` writes `flowpact-contracts.patch` only when contracts drifted. Anyone can download it from the run and apply it
   with `git apply flowpact-contracts.patch` — no local Node.js needed.
-- The terminal output in the job log is the same as locally (colors are kept in GitHub's log viewer).
 - When you re-run a job with **debug logging enabled**, GitHub sets `RUNNER_DEBUG=1` and flowpact switches to debug logs
   automatically.
 

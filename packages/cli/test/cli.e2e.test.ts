@@ -336,6 +336,52 @@ describe('plugins in rules / explain', () => {
     const explain = await flowpact(['explain', 'ACME601', '--root', root]);
     expect(explain.stdout).toContain('https://example.com/acme601');
   });
+
+  it('skips the config plugins with --no-plugins, and loads others with --plugin', async () => {
+    const plugin = (code: string, name: string) =>
+      `export default { code: '${code}', name: '${name}', category: 'structure', defaultSeverity: 'error',
+        docsUrl: 'https://example.com/${code}', docs: { summary: 'A plugin rule for tests.', why: 'Why.', fix: 'Fix.' },
+        check(ctx) { ctx.report({ message: '${name} ran', loc: { file: '.github/workflows/a.yml', line: 1, column: 1, endLine: 1, endColumn: 2 } }); } };\n`;
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-no-plugins-'));
+    mkdirSync(join(root, '.github/workflows'), { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
+    writeFileSync(
+      join(root, '.github/workflows/a.yml'),
+      'on: push\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n',
+    );
+    writeFileSync(join(root, 'repo.mjs'), plugin('REPO601', 'repo-rule'));
+    writeFileSync(
+      join(root, '.github/flowpact/flowpact.config.yml'),
+      'plugins: [./repo.mjs]\nrules:\n  repo-rule: warning\n',
+    );
+    const org = join(mkdtempSync(join(tmpdir(), 'flowpact-org-')), 'org.mjs');
+    writeFileSync(org, plugin('ORG601', 'org-rule'));
+    const codes = async (...args: string[]) =>
+      JSON.parse((await flowpact(['lint', '--root', root, '--format', 'json', '-q', ...args])).stdout)
+        .findings.map((f: { code: string }) => f.code)
+        .sort();
+    expect(await codes()).toEqual(['REPO601']);
+    expect(await codes('--no-plugins')).toEqual([]);
+    expect(await codes('--no-plugins', '--plugin', org)).toEqual(['ORG601']);
+    expect(await codes(`--plugin=${org}`)).toEqual(['ORG601', 'REPO601']);
+    const skipped = await flowpact(['lint', '--root', root, '--no-plugins']);
+    expect(skipped.exitCode).toBe(0);
+    expect(skipped.stderr).toContain('not loading 1 plugin(s) from the config (--no-plugins)');
+    const rules = await flowpact([
+      'rules',
+      '--root',
+      root,
+      '--no-plugins',
+      '--plugin',
+      org,
+      '--format',
+      'json',
+    ]);
+    expect(rules.exitCode).toBe(0);
+    const listed = JSON.parse(rules.stdout).map((r: { code: string }) => r.code);
+    expect(listed).toContain('ORG601');
+    expect(listed).not.toContain('REPO601');
+  });
 });
 
 describe('review fixes', () => {

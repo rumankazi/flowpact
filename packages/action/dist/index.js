@@ -56819,7 +56819,7 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, posix as posix4, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
+import { dirname as dirname3, join as join7, relative as relative4, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -135670,6 +135670,32 @@ function toJsonReport(result, opts = {}) {
   };
 }
 
+// ../reporters/src/github.ts
+import { posix as posix4 } from "path";
+var LEVEL = {
+  error: "error",
+  warning: "warning",
+  info: "notice"
+};
+function inRepository(file2, pathPrefix = "") {
+  return pathPrefix ? posix4.join(pathPrefix, file2) : file2;
+}
+function githubAnnotation(f, opts = {}) {
+  const loc = f.loc;
+  return {
+    level: LEVEL[f.severity],
+    message: `${f.message}
+${f.fix}
+${f.docsUrl}`,
+    title: `${f.code} ${f.name}`,
+    file: inRepository(loc.file, opts.pathPrefix),
+    startLine: loc.line,
+    endLine: loc.endLine,
+    // GitHub only honours columns on single-line annotations.
+    ...loc.line === loc.endLine ? { startColumn: loc.column, endColumn: loc.endColumn } : {}
+  };
+}
+
 // ../reporters/src/graph.ts
 var KIND_ORDER = {
   workflow: 0,
@@ -136145,7 +136171,7 @@ function renderMarkdown(result, opts = {}) {
 
 // ../reporters/src/sarif.ts
 var SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json";
-var LEVEL = {
+var LEVEL2 = {
   error: "error",
   warning: "warning",
   info: "note"
@@ -136156,8 +136182,8 @@ var region = (loc) => ({
   endLine: loc.endLine,
   endColumn: loc.endColumn
 });
-var physicalLocation = (loc) => ({
-  artifactLocation: { uri: loc.file, uriBaseId: "%SRCROOT%" },
+var physicalLocation = (loc, pathPrefix) => ({
+  artifactLocation: { uri: inRepository(loc.file, pathPrefix), uriBaseId: "%SRCROOT%" },
   region: region(loc)
 });
 function renderSarif(result, opts = {}) {
@@ -136192,7 +136218,7 @@ function renderSarif(result, opts = {}) {
         text: [why, fix && `Fix: ${fix}`, `Docs: ${helpUri}`].filter(Boolean).join("\n\n"),
         markdown: [why && `**Why:** ${why}`, fix && `**Fix:** ${fix}`, `[Documentation](${helpUri})`].filter(Boolean).join("\n\n")
       },
-      defaultConfiguration: { level: LEVEL[severity] },
+      defaultConfiguration: { level: LEVEL2[severity] },
       properties: { tags: category ? [category] : [] }
     };
   });
@@ -136200,14 +136226,14 @@ function renderSarif(result, opts = {}) {
   const results = all.map((f) => ({
     ruleId: f.code,
     ruleIndex: ruleIndex.get(f.code),
-    level: LEVEL[f.severity],
+    level: LEVEL2[f.severity],
     message: { text: f.message },
-    locations: [{ physicalLocation: physicalLocation(f.loc) }],
+    locations: [{ physicalLocation: physicalLocation(f.loc, opts.pathPrefix) }],
     ...f.related.length ? {
       relatedLocations: f.related.map((r, id) => ({
         id,
         message: { text: r.message },
-        physicalLocation: physicalLocation(r.loc)
+        physicalLocation: physicalLocation(r.loc, opts.pathPrefix)
       }))
     } : {},
     partialFingerprints: { "flowpact/v1": f.fingerprint },
@@ -136445,42 +136471,11 @@ function actionsSink(runnerDebug, groups) {
 }
 var toPosix2 = (p) => p.split(sep3).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-function inWorkspace(prefix2, file2) {
-  return prefix2 ? posix4.join(prefix2, file2) : file2;
-}
 function annotate(f, prefix2) {
-  const loc = f.loc;
-  const props = {
-    title: `${f.code} ${f.name}`,
-    file: inWorkspace(prefix2, loc.file),
-    startLine: loc.line,
-    endLine: loc.endLine,
-    // GitHub only honours columns on single-line annotations.
-    ...loc.line === loc.endLine ? { startColumn: loc.column, endColumn: loc.endColumn } : {}
-  };
-  const message = `${f.message}
-${f.fix}
-${f.docsUrl}`;
-  if (f.severity === "error") error(message, props);
-  else if (f.severity === "warning") warning(message, props);
+  const { level, message, ...props } = githubAnnotation(f, { pathPrefix: prefix2 });
+  if (level === "error") error(message, props);
+  else if (level === "warning") warning(message, props);
   else notice(message, props);
-}
-function sarifInWorkspace(sarif, prefix2) {
-  if (!prefix2) return sarif;
-  const doc = JSON.parse(sarif);
-  const visit3 = (v) => {
-    if (Array.isArray(v)) {
-      for (const item of v) visit3(item);
-      return;
-    }
-    if (!v || typeof v !== "object") return;
-    const o = v;
-    if (typeof o.uri === "string" && o.uriBaseId === "%SRCROOT%") o.uri = posix4.join(prefix2, o.uri);
-    for (const value of Object.values(o)) visit3(value);
-  };
-  visit3(doc);
-  return `${JSON.stringify(doc, null, 2)}
-`;
 }
 function writeReport(workspace, file2, content) {
   const abs = resolve4(workspace, file2);
@@ -136526,7 +136521,7 @@ async function driftArtifact(plan, prefix2, inputs, runId) {
   }
   const repoPlan = {
     ...plan,
-    entries: plan.entries.map((e) => ({ ...e, file: inWorkspace(prefix2, e.file) }))
+    entries: plan.entries.map((e) => ({ ...e, file: inRepository(e.file, prefix2) }))
   };
   const patch = join7(dir2, PATCH_FILE);
   writeFileSync2(patch, contractPatch(repoPlan));
@@ -136695,7 +136690,7 @@ async function run() {
           reports.sarif = writeReport(
             workspace,
             inputs.reportSarif,
-            sarifInWorkspace(renderSarif(result), prefix2)
+            renderSarif(result, { pathPrefix: prefix2 })
           );
         if (inputs.reportMarkdown) writeReport(workspace, inputs.reportMarkdown, markdown());
       });

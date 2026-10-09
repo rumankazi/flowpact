@@ -20,6 +20,7 @@ const SCRUB = [
   'GITHUB_ACTIONS',
   'GITHUB_SERVER_URL',
   'GITHUB_SHA',
+  'GITHUB_WORKSPACE',
 ];
 
 /** Runs the built CLI with a controlled environment (no inherited color/debug/Actions settings). */
@@ -135,6 +136,75 @@ describe('flowpact lint output formats', () => {
     expect(reportSchema.safeParse(JSON.parse(read('r.json'))).success).toBe(true);
     expect(read('r.md')).toMatch(/^## flowpact report\n/);
     expect(read('r.txt')).toContain('FP401 empty-binding-for-matrix-combo');
+  });
+
+  it('writes several reports in one run, and takes the format from a prefix', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'flowpact-multi-'));
+    const root = fixture('incident-matrix');
+    const r = await flowpact([
+      'lint',
+      '--root',
+      root,
+      '-q',
+      '-o',
+      join(dir, 'r.sarif'),
+      `--output=json:${join(dir, 'report')}`,
+      '-o',
+      `markdown:${join(dir, 'summary')}`,
+    ]);
+    expect(r.exitCode).toBe(1);
+    const read = (f: string) => readFileSync(join(dir, f), 'utf8');
+    expect(JSON.parse(read('r.sarif')).version).toBe('2.1.0');
+    expect(reportSchema.safeParse(JSON.parse(read('report'))).success).toBe(true);
+    expect(read('summary')).toMatch(/^## flowpact report\n/);
+    const github = await flowpact(['lint', '--root', root, '-o', `github:${join(dir, 'x')}`]);
+    expect(github.exitCode).toBe(2);
+    expect(github.stderr).toContain('use --format github');
+  });
+
+  it('prints GitHub annotations with --format github', async () => {
+    const r = await flowpact(['lint', '--root', fixture('incident-matrix'), '--format', 'github', '-q']);
+    expect(r.exitCode).toBe(1);
+    expect(r.stdout).toMatch(
+      /^::error title=FP401 empty-binding-for-matrix-combo,file=\.github\/workflows\/tests\.yml,line=23,endLine=23,col=19,endColumn=32::Input "config"/,
+    );
+    // Workflow commands on purpose: not defused like the rest of the output.
+    expect(r.stdout).not.toContain('\u200b');
+    expect((await flowpact(['lint', '--root', fixture('clean'), '--format', 'github', '-q'])).stdout).toBe(
+      '',
+    );
+  });
+
+  it('resolves paths against the repository in GitHub Actions when --root is a subdirectory', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'flowpact-workspace-'));
+    const r = await flowpact(
+      [
+        'lint',
+        '--root',
+        fixture('incident-matrix'),
+        '--format',
+        'github',
+        '-q',
+        '-o',
+        join(dir, 'r.sarif'),
+        '-o',
+        join(dir, 'r.md'),
+      ],
+      {
+        NO_COLOR: '1',
+        GITHUB_ACTIONS: 'true',
+        GITHUB_WORKSPACE: ROOT,
+        GITHUB_SERVER_URL: 'https://github.com',
+        GITHUB_SHA: 'abc123',
+      },
+    );
+    expect(r.stdout).toContain(',file=fixtures/incident-matrix/.github/workflows/tests.yml,');
+    expect(readFileSync(join(dir, 'r.sarif'), 'utf8')).toContain(
+      '"uri": "fixtures/incident-matrix/.github/workflows/tests.yml"',
+    );
+    expect(readFileSync(join(dir, 'r.md'), 'utf8')).toContain(
+      '(https://github.com/acme/fixtures/blob/abc123/fixtures/incident-matrix/.github/workflows/tests.yml#L23)',
+    );
   });
 
   it('supports the same formats in flowpact check', async () => {
