@@ -57,7 +57,7 @@ In CI, add the action; it lints by default and annotates the pull request:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: rumankazi/flowpact@v0.7
+- uses: rumankazi/flowpact@v0.8
 ```
 
 📖 **Docs:** https://rumankazi.github.io/flowpact — getting started, how it works, the CLI (`generate`, `check`,
