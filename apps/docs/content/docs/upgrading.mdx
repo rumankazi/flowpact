@@ -1,0 +1,78 @@
+---
+title: Upgrading
+description: What changes between flowpact releases, and what to do when you move to a new one.
+---
+
+flowpact is before 1.0: a minor release (0.7 → 0.8) can change what is reported. Each section below lists what to do
+when you move to that release.
+
+## 0.7 → 0.8
+
+0.8 removes most false positives found on 28 large public repositories, so most repositories see fewer findings.
+Two things can still fail a CI run right after the upgrade: contracts written by 0.7, and overrides for findings 0.8 no
+longer reports.
+
+### Move to the new version
+
+- **GitHub Action:** `uses: rumankazi/flowpact@v0.8`. Before 1.0 the floating tag follows a minor release, so `@v0.7`
+  stays on 0.7.
+- **CLI:** `npx flowpact@0.8`, or update the dev dependency.
+- **VS Code:** the extension updates itself.
+
+### Regenerate your contracts
+
+If the repository locks its contracts (`.github/flowpact/contracts/`), run `flowpact generate` and commit the result.
+0.8 records more of each interface:
+
+- A read of a whole outputs object, such as `toJSON(needs.build.outputs)` or `needs.build.outputs[matrix.key]`, now
+  counts as reading every output in it, and the callee's contract lists them.
+- Actions used through a checkout `path:` or the new `$/` syntax now resolve, so their callers appear under `uses`.
+
+Until then, `flowpact check` reports those contracts as [FP802](/docs/rules/fp802) (contract-outdated, an error).
+In `mode: check` the action attaches the regenerated contracts as an artifact and a patch.
+
+### Remove overrides that no longer match
+
+Overrides written for findings that 0.8 no longer reports match nothing. [FP902](/docs/rules/fp902)
+(override-unused, a warning) names each one so you can delete it:
+
+- **FP606** for actions used through a checkout `path:`: a step's `uses: ./path` now resolves against the runner's
+  workspace, as GitHub does.
+- **FP303** for outputs of published units: reusable workflows whose file name does not start with `_`, and the root
+  `action.yml`, or exactly the units in [`impact.publish`](/docs/impact-mode#configuration) when it is set.
+- **Findings inside [generated files](/docs/configuration#generated-files)** (`*.lock.yml`, or a header such as
+  `DO NOT EDIT`), for the rules about a file's own internals: FP104, FP105, FP203, FP204, FP303, FP304, FP604, FP605
+  and FP607.
+- **FP105, FP205, FP401, FP402 and FP404** where the workflow already handles the empty value: a fallback
+  (`matrix.k || 'x'`), a comparison, a quoted shell test, or a caller whose inputs skip the step.
+- **FP302** for a job's own `if:` that reads a job it depends on indirectly: GitHub makes those visible there.
+- **FP503** for background steps and `cache-mode`, which GitHub runs.
+
+### New and changed findings
+
+- **[FP610](/docs/rules/fp610) (workspace-unverified, info)** marks a step's `uses: ./…` that flowpact cannot read,
+  such as a path inside another repository's checkout. Write `owner/repo/path@ref` to have those actions checked, or
+  set `FP610: off`.
+- **[FP606](/docs/rules/fp606)** can fire where it was silent: an action of this repository used as `./…` in a job that
+  checks the repository out only in a subdirectory, or a composite action's `./path` that works for one caller and not
+  for another.
+- **[FP105](/docs/rules/fp105)** now also reports published units when every local caller passes the input, because
+  callers in other repositories can still omit it.
+- **[FP401](/docs/rules/fp401)** is a warning when the empty value replaces a non-empty `default`, and is not reported
+  when the input is optional with an empty default that no condition reads (or reads only through a fallback).
+  **[FP404](/docs/rules/fp404)** reports a fallback that always applies as info.
+- **[FP503](/docs/rules/fp503)** reports keys GitHub accepts and ignores, such as a top-level `env:` in `action.yml`,
+  as warnings.
+- If a hand-written file is treated as generated, list it under `generated.exclude`. If other repositories use an action
+  in a subdirectory, list it under `impact.publish`; that setting replaces the default list, so include your other
+  published units too.
+
+### Code scanning alerts
+
+A finding's fingerprint includes its message. Messages changed for some FP105, FP205, FP302, FP401, FP404 and FP503
+findings, so those alerts close and reopen once. If you had dismissed one, dismiss the new alert again.
+
+### `flowpact generate` with paths
+
+`flowpact generate <paths>` now writes only the contracts of those workflows and actions, and leaves the others
+(including orphaned ones) alone. A path that names no workflow or action exits with code 2.
