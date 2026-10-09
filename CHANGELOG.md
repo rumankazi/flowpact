@@ -4,6 +4,13 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.8.2](https://github.com/rumankazi/flowpact/compare/v0.8.1...v0.8.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **core:** report an invalid expression once, as FP502 ([#65](https://github.com/rumankazi/flowpact/issues/65)) ([fd8cd1a](https://github.com/rumankazi/flowpact/commit/fd8cd1afb241c3ad13d37171c7edb35ac8e4d98f))
+
 ## [0.8.1](https://github.com/rumankazi/flowpact/compare/v0.8.0...v0.8.1) (2026-10-09)
 
 
