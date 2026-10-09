@@ -6,6 +6,8 @@ import {
   analyze,
   assertSafeWritePath,
   ConfigError,
+  createRegistry,
+  defineRule,
   loadConfig,
   memoryFileSystem,
   neutralizeWorkflowCommands,
@@ -107,6 +109,12 @@ describe('report paths', () => {
     expect(() => assertSafeWritePath(join(root, 'inner/new.json'), [root])).not.toThrow();
     expect(() => assertSafeWritePath(join(root, 'flowpact.json'), [root])).not.toThrow();
     expect(() => assertSafeWritePath(join(outside, 'target.txt'), [root])).not.toThrow();
+    // Another spelling of a path into the repository is checked too: through a symlink outside that points in.
+    const door = join(mkdtempSync(join(tmpdir(), 'flowpact-write-door-')), 'repo');
+    symlinkSync(root, door);
+    expect(() => assertSafeWritePath(join(door, 'report.sarif'), [root])).toThrow(UnsafePathError);
+    expect(() => assertSafeWritePath(join(door, 'out/new.json'), [root])).toThrow(UnsafePathError);
+    expect(() => assertSafeWritePath(join(door, 'flowpact.json'), [root])).not.toThrow();
   });
 });
 
@@ -229,19 +237,58 @@ describe('config edge cases (#3, #11, #14)', () => {
       }
       return [];
     };
-    // Another prefix, or a name that only starts like a built-in one, belongs to a plugin.
+    // Another prefix, even one letter from FP, or a name that only starts like a built-in one, belongs to a plugin.
     const r = run({
-      rules: { AC201: 'off', 'secrets-inherit-banned': 'error', 'unused-input-legacy': 'warning' },
+      rules: {
+        AC201: 'off',
+        DP201: 'off',
+        PF401: 'off',
+        FPX201: 'off',
+        'secrets-inherit-banned': 'error',
+        'unused-input-legacy': 'warning',
+      },
       overrides: [{ rule: 'XY604', file: WF, reason: 'an organization rule' }],
     });
-    expect(r.unloadedRules).toHaveLength(4);
-    // One edit from a loaded code, two from a loaded name, or the built-in prefix: a typo.
-    expect(issues({ rules: { FO201: 'off' } })).toEqual(['rules.FO201: unknown rule (did you mean FP201?)']);
-    expect(issues({ rules: { PF401: 'off' } })).toEqual(['rules.PF401: unknown rule (did you mean FP401?)']);
+    expect(r.unloadedRules).toHaveLength(7);
+    // The built-in prefix in any spelling, or a name two edits from a loaded one in any case: a typo.
+    expect(issues({ rules: { FP10l: 'off' } })).toEqual(['rules.FP10l: unknown rule (did you mean FP101?)']);
+    expect(issues({ rules: { 'FP-101': 'off' } })).toEqual([
+      'rules.FP-101: unknown rule (did you mean FP101?)',
+    ]);
     expect(issues({ rules: { 'unused-inptu': 'off' } })).toEqual([
       'rules.unused-inptu: unknown rule (did you mean unused-input?)',
     ]);
-    expect(issues({ rules: { fp999: 'off' } })).toEqual(['rules.fp999: unknown rule "fp999"']);
+    expect(issues({ rules: { unusedInput: 'off' } })).toEqual([
+      'rules.unusedInput: unknown rule (did you mean unused-input?)',
+    ]);
+    expect(issues({ rules: { fp999: 'off' } })[0]).toMatch(/^rules\.fp999: unknown rule/);
+  });
+
+  it('tells a typo of a loaded plugin code by its prefix', () => {
+    const registry = createRegistry().register(
+      defineRule({
+        code: 'ACME601',
+        name: 'acme-check',
+        category: 'structure',
+        defaultSeverity: 'warning',
+        docsUrl: 'https://example.com/acme601',
+        docs: { summary: 'Acme check', why: 'Because acme.', fix: 'Do the acme thing.' },
+        check() {},
+      }),
+    );
+    const analyzeWith = (rules: Record<string, string>) =>
+      analyze({
+        root: '/v',
+        fs: memoryFileSystem(files),
+        validateSchema: false,
+        config: parseConfig({ rules }),
+        registry,
+        repository: 'a/b',
+      });
+    expect(() => analyzeWith({ ACME610: 'off' })).toThrow(ConfigError);
+    expect(analyzeWith({ ACME601: 'off', OTHER601: 'off' }).unloadedRules).toEqual([
+      'rules.OTHER601: unknown rule "OTHER601"',
+    ]);
   });
 
   it('says when an expired override matches nothing', () => {

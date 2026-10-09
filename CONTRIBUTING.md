@@ -100,9 +100,10 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
    assets cannot change, so what a mirror verified stays what was released.
 
 If publishing fails after the tag exists, run the **Release** workflow manually with that tag, or re-run the failed
-jobs: assets already attached are kept and the missing ones added, the release stays a draft until every asset is
-attached, and versions already on npm, the Marketplace or Open VSX are skipped. The same re-run publishes a release to a
-registry that was set up after it went out.
+jobs: assets already attached with their signature bundle and provenance are kept, the missing ones are added (an asset
+whose upload stopped halfway is replaced), the release stays a draft until every asset is attached, and versions already
+on npm, the Marketplace or Open VSX are skipped. A published release is never changed, so the same run can publish an
+old release to a registry that was set up after it went out without touching its assets.
 
 ### Publishing the VS Code extension (one-time setup)
 

@@ -25,7 +25,8 @@ flowpact treats the analyzed files as untrusted input:
 - it escapes control characters in every finding, and keeps its output from being read as
   [workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands) (`::…`
   at the start of a line, `##[…]` anywhere), except the annotations it prints on purpose with `--format github`;
-- it reads the value of a flag only as that flag: `--title "$PR_TITLE"` cannot add a `--plugin` or an `-o`;
+- it reads the value of a flag only as that flag: `--title "$PR_TITLE"` cannot add a `--plugin` or an `-o`, turn off
+  `--no-plugins`, or end the run as `--help` would;
 - it caps matrix expansion (the YAML parser limits alias expansion).
 
 Reports of a way around any of this are in scope of the
@@ -75,9 +76,11 @@ If you do not use plugins, set `plugins: false` in the action.
   (`flowpact-action-X.Y.Z.tar.gz`: `action.yml`, the bundle, its license notices and SBOM). Each is signed with a
   Sigstore bundle (`.sigstore.json`) and carries in-toto build provenance (`.intoto.jsonl`).
 - **What each artifact contains:** every bundle ships `THIRD_PARTY_LICENSES.txt` (each bundled package with its license
-  text) and `sbom.cdx.json` (a CycloneDX SBOM). The release attaches each SBOM separately, attested against its
-  artifact.
-- **Published only once complete:** a release stays a draft until every signed asset is attached.
+  text) and `sbom.cdx.json` (a CycloneDX SBOM). Each SBOM is also attested against its artifact (a CycloneDX
+  attestation whose subject is the artifact), and the release attaches a copy (`flowpact-X.Y.Z.cdx.json`,
+  `flowpact-action-X.Y.Z.cdx.json`, `flowpact-vscode-X.Y.Z.cdx.json`).
+- **Published only once complete:** a release stays a draft until every signed asset and SBOM is attached, and a
+  published release is never changed.
 - **Reproducible:** the action's bundle is committed, and CI fails when building it from source gives different bytes.
   The action archive and the `.vsix` are built deterministically from the tag.
 
@@ -93,8 +96,10 @@ gh attestation verify flowpact-X.Y.Z.tgz --repo rumankazi/flowpact
 gh attestation verify flowpact-action-X.Y.Z.tar.gz --repo rumankazi/flowpact
 gh attestation verify flowpact-vscode-X.Y.Z.vsix --repo rumankazi/flowpact
 
-# The SBOM describes that artifact:
-gh attestation verify flowpact-X.Y.Z.tgz --repo rumankazi/flowpact --predicate-type https://cyclonedx.org/bom
+# An SBOM was attested for that artifact, and the attached copy is the attested one:
+gh attestation verify flowpact-X.Y.Z.tgz --repo rumankazi/flowpact --predicate-type https://cyclonedx.org/bom \
+  --format json --jq '.[0].verificationResult.statement.predicate' | jq -S . > attested.cdx.json
+jq -S . flowpact-X.Y.Z.cdx.json | diff - attested.cdx.json
 
 # The npm package you installed is the one that was published with provenance:
 npm audit signatures

@@ -20,6 +20,7 @@ import {
   pathArgs,
   pluginArgs,
   printBanner,
+  protectedTrees,
   UsageError,
   writeOutput,
 } from '../shared';
@@ -75,14 +76,14 @@ export const generateCommand = defineCommand({
       const dryRun = Boolean(args['dry-run']);
       const out = args.out ? resolve(process.cwd(), args.out) : undefined;
       // Write first, so the summary never claims files that were refused.
-      const written = dryRun || args.patch ? [] : writeContracts(ctx.root, plan, out);
+      const written = dryRun || args.patch ? [] : writeContracts(ctx.root, plan, out, protectedTrees(ctx));
       ctx.stdout(renderContractPlan(plan, ctx.render, { applied: !dryRun && !args.patch }));
       if (dryRun) {
         if (plan.drift) ctx.stdout(renderPatch(contractPatch(plan), ctx.render));
         return EXIT.ok;
       }
       if (args.patch) {
-        writeOutput(args.patch, contractPatch(plan), ctx);
+        writeOutput(args.patch, contractPatch(plan), ctx, 'data');
         return EXIT.ok;
       }
       ctx.logger.info(`wrote ${written.length} contract file(s)`, { files: written });

@@ -3,7 +3,16 @@ import { renderTrace } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import pc from 'picocolors';
 import { runAnalysis } from '../analysis';
-import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
+import {
+  commonArgs,
+  createContext,
+  EXIT,
+  guard,
+  jsonSafe,
+  pluginArgs,
+  printBanner,
+  UsageError,
+} from '../shared';
 
 export const traceCommand = defineCommand({
   meta: {
@@ -39,7 +48,7 @@ export const traceCommand = defineCommand({
         const direction: TraceDirection = args.up ? 'up' : 'down';
         if (unit) {
           if (args.format === 'json')
-            ctx.stdout(JSON.stringify({ query: args.symbol, direction, traces: [] }, null, 2));
+            ctx.stdout(jsonSafe(JSON.stringify({ query: args.symbol, direction, traces: [] }, null, 2)));
           else ctx.stdout(`${unit.path} declares no inputs, secrets or outputs — nothing to trace.`);
           return EXIT.ok;
         }
@@ -65,7 +74,7 @@ export const traceCommand = defineCommand({
       const trees = matches.map((m) => trace(result.index, m.id, { direction, maxDepth: depth }));
       if (args.format === 'json') {
         // Always the same shape, however many symbols matched.
-        ctx.stdout(JSON.stringify({ query: args.symbol, direction, traces: trees }, null, 2));
+        ctx.stdout(jsonSafe(JSON.stringify({ query: args.symbol, direction, traces: trees }, null, 2)));
       } else {
         ctx.stdout(trees.map((t) => renderTrace(t, direction, ctx.render)).join('\n\n'));
       }

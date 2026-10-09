@@ -2,7 +2,7 @@ import { resolveSeverities } from '@flowpact/core';
 import { renderRuleList } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
-import { commonArgs, createContext, EXIT, guard, pluginArgs } from '../shared';
+import { commonArgs, createContext, EXIT, guard, jsonSafe, pluginArgs } from '../shared';
 
 export const rulesCommand = defineCommand({
   meta: { name: 'rules', description: 'List every rule with its code, effective severity and summary' },
@@ -18,18 +18,20 @@ export const rulesCommand = defineCommand({
       const severities = resolveSeverities(registry, ctx.loaded.config);
       if (args.format === 'json') {
         ctx.stdout(
-          JSON.stringify(
-            registry.all().map((r) => ({
-              code: r.code,
-              name: r.name,
-              category: r.category,
-              defaultSeverity: r.defaultSeverity,
-              severity: severities.get(r.code),
-              summary: r.docs.summary,
-              docsUrl: registry.docsUrl(r),
-            })),
-            null,
-            2,
+          jsonSafe(
+            JSON.stringify(
+              registry.all().map((r) => ({
+                code: r.code,
+                name: r.name,
+                category: r.category,
+                defaultSeverity: r.defaultSeverity,
+                severity: severities.get(r.code),
+                summary: r.docs.summary,
+                docsUrl: registry.docsUrl(r),
+              })),
+              null,
+              2,
+            ),
           ),
         );
       } else {

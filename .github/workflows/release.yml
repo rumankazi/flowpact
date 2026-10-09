@@ -290,11 +290,33 @@ jobs:
     outputs:
       assets: ${{ steps.done.outputs.assets }}
     steps:
+      - id: asset
+        name: What is attached already?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          tgz="flowpact-$VERSION.tgz"
+          # A published release is never changed: its assets are what was verified (and immutable releases forbid it).
+          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A re-run keeps what an earlier run attached completely, and replaces a partial upload.
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          has() { grep -qxF "$1" <<< "$assets"; }
+          if has "$tgz" && has "$tgz.sigstore.json" && has "$tgz.intoto.jsonl"; then echo "signed=true" >> "$GITHUB_OUTPUT"; fi
+          if has "flowpact-$VERSION.cdx.json"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
       # The same npm as the smoke test, not the runner image's default.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - if: steps.asset.outputs.published != 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
       - name: Fetch the published tarball
+        if: >-
+          steps.asset.outputs.published != 'true' &&
+          (steps.asset.outputs.signed != 'true' || steps.asset.outputs.sbom-attached != 'true')
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
@@ -316,10 +338,12 @@ jobs:
             exit 1
           fi
       - id: attest
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.signed != 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: flowpact-${{ needs.resolve.outputs.version }}.tgz
       - name: Upload the tarball, signature bundle and provenance
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.signed != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
@@ -330,9 +354,11 @@ jobs:
           cp "$BUNDLE" "$tgz.sigstore.json"
           # The signed in-toto statement (DSSE envelope), one per line.
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$tgz.intoto.jsonl"
+          # The release is a draft (checked above), so --clobber only replaces a partial upload.
           gh release upload "$TAG" "$tgz" "$tgz.sigstore.json" "$tgz.intoto.jsonl" --clobber --repo "$GITHUB_REPOSITORY"
       - id: sbom
         name: Take the SBOM out of the tarball
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.sbom-attached != 'true'
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
         run: |
@@ -355,13 +381,16 @@ jobs:
           SBOM: ${{ steps.sbom.outputs.sbom }}
         run: gh release upload "$TAG" "$SBOM" --clobber --repo "$GITHUB_REPOSITORY"
       - id: done
+        if: steps.asset.outputs.published != 'true'
         env:
           VERSION: ${{ needs.resolve.outputs.version }}
-          SBOM: ${{ steps.sbom.outputs.sbom }}
+          HAS_SBOM: ${{ steps.asset.outputs.sbom-attached == 'true' || steps.sbom.outputs.sbom != '' }}
         run: |
           # What publish-release checks for on the release before it publishes it.
           tgz="flowpact-$VERSION.tgz"
-          echo "assets=$tgz $tgz.sigstore.json $tgz.intoto.jsonl $SBOM" >> "$GITHUB_OUTPUT"
+          sbom=""
+          if [ "$HAS_SBOM" = true ]; then sbom="flowpact-$VERSION.cdx.json"; fi
+          echo "assets=$tgz $tgz.sigstore.json $tgz.intoto.jsonl $sbom" >> "$GITHUB_OUTPUT"
 
   action-archive:
     # The GitHub Action as released: action.yml and its committed bundle in a reproducible archive with provenance, so a
@@ -393,70 +422,80 @@ jobs:
           sbom="flowpact-action-$VERSION.cdx.json"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
-          # Tags from before the archive existed (0.8.2 and earlier) have no scripts/action-archive.sh.
-          if [ ! -x scripts/action-archive.sh ]; then
-            echo "none=true" >> "$GITHUB_OUTPUT"
+          # Tags from before the archive existed (0.8.2 and earlier) have no scripts/action-archive.sh; a published
+          # release is never changed.
+          if [ ! -x scripts/action-archive.sh ] \
+            || [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A re-run keeps what an earlier run attached (the archive's attestation is for those bytes), and attests and
-          # attaches the SBOM separately, so a run that failed in between still completes the release.
+          # A re-run keeps the archive an earlier run attached (its provenance is for those bytes), and adds what is
+          # missing: the signature bundle and provenance after a partial upload, or the SBOM.
           assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-          if grep -qxF "$archive" <<< "$assets"; then echo "archive-attached=true" >> "$GITHUB_OUTPUT"; fi
-          if grep -qxF "$sbom" <<< "$assets"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
+          has() { grep -qxF "$1" <<< "$assets"; }
+          if has "$archive"; then echo "archive-attached=true" >> "$GITHUB_OUTPUT"; fi
+          if has "$archive" && has "$archive.sigstore.json" && has "$archive.intoto.jsonl"; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          fi
+          if has "$sbom"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
       - name: Build the archive
-        if: steps.asset.outputs.none != 'true' && steps.asset.outputs.archive-attached != 'true'
+        if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.archive-attached != 'true'
         env:
           ARCHIVE: ${{ steps.asset.outputs.archive }}
         run: |
           scripts/action-archive.sh "$ARCHIVE"
           tar -tzvf "$ARCHIVE"
-      - id: attest
-        if: steps.asset.outputs.none != 'true' && steps.asset.outputs.archive-attached != 'true'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-path: ${{ steps.asset.outputs.archive }}
-      - name: Upload the archive, signature bundle and provenance
-        if: steps.asset.outputs.none != 'true' && steps.asset.outputs.archive-attached != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.resolve.outputs.tag }}
-          ARCHIVE: ${{ steps.asset.outputs.archive }}
-          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
-        run: |
-          cp "$BUNDLE" "$ARCHIVE.sigstore.json"
-          node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$ARCHIVE.intoto.jsonl"
-          gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sigstore.json" "$ARCHIVE.intoto.jsonl" --repo "$GITHUB_REPOSITORY"
       - name: Download the attached archive
-        # The SBOM is attested against the archive as released.
+        # What is still missing is attested against the archive as released.
         if: >-
-          steps.asset.outputs.none != 'true' && steps.asset.outputs.archive-attached == 'true' &&
-          steps.asset.outputs.sbom-attached != 'true'
+          steps.asset.outputs.skip != 'true' && steps.asset.outputs.archive-attached == 'true' &&
+          (steps.asset.outputs.signed != 'true' || steps.asset.outputs.sbom-attached != 'true')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           ARCHIVE: ${{ steps.asset.outputs.archive }}
         run: gh release download "$TAG" --pattern "$ARCHIVE" --repo "$GITHUB_REPOSITORY"
+      - id: attest
+        if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.signed != 'true'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.asset.outputs.archive }}
+      - name: Upload the archive, signature bundle and provenance
+        if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.signed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          ARCHIVE: ${{ steps.asset.outputs.archive }}
+          ATTACHED: ${{ steps.asset.outputs.archive-attached }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" "$ARCHIVE.sigstore.json"
+          node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$ARCHIVE.intoto.jsonl"
+          files=("$ARCHIVE.sigstore.json" "$ARCHIVE.intoto.jsonl")
+          if [ "$ATTACHED" != true ]; then files=("$ARCHIVE" "${files[@]}"); fi
+          # The release is a draft (checked above), so --clobber only replaces a partial upload.
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
       - name: Take the SBOM out of the archive
-        if: steps.asset.outputs.none != 'true' && steps.asset.outputs.sbom-attached != 'true'
+        if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.sbom-attached != 'true'
         env:
           ARCHIVE: ${{ steps.asset.outputs.archive }}
           SBOM: ${{ steps.asset.outputs.sbom }}
         run: tar -xzOf "$ARCHIVE" packages/action/dist/sbom.cdx.json > "$SBOM"
-      - if: steps.asset.outputs.none != 'true' && steps.asset.outputs.sbom-attached != 'true'
+      - if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.sbom-attached != 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ steps.asset.outputs.archive }}
           predicate-type: https://cyclonedx.org/bom
           predicate-path: ${{ steps.asset.outputs.sbom }}
       - name: Upload the SBOM
-        if: steps.asset.outputs.none != 'true' && steps.asset.outputs.sbom-attached != 'true'
+        if: steps.asset.outputs.skip != 'true' && steps.asset.outputs.sbom-attached != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           SBOM: ${{ steps.asset.outputs.sbom }}
-        run: gh release upload "$TAG" "$SBOM" --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" "$SBOM" --clobber --repo "$GITHUB_REPOSITORY"
       - id: done
-        if: steps.asset.outputs.none != 'true'
+        if: steps.asset.outputs.skip != 'true'
         env:
           ARCHIVE: ${{ steps.asset.outputs.archive }}
           SBOM: ${{ steps.asset.outputs.sbom }}
@@ -622,33 +661,43 @@ jobs:
           else
             cp "$RUNNER_TEMP/build/$VSIX" "$RUNNER_TEMP/release/$VSIX"
           fi
-          # The SBOM is attached separately, so a run that failed after attaching the extension still adds it.
-          sbom="${VSIX%.vsix}.cdx.json"
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qxF "$sbom"; then
-            echo "sbom-attached=true" >> "$GITHUB_OUTPUT"
-          fi
           echo "vsix=$VSIX" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$RUNNER_TEMP/release/$VSIX" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          # A published release is never changed; the registries still get its extension (or this build).
+          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A re-run adds what an earlier run left out: the signature bundle and provenance after a partial upload, or
+          # the SBOM.
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          has() { grep -qxF "$1" <<< "$assets"; }
+          if has "$VSIX" && has "$VSIX.sigstore.json" && has "$VSIX.intoto.jsonl"; then echo "signed=true" >> "$GITHUB_OUTPUT"; fi
+          if has "${VSIX%.vsix}.cdx.json"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
       - id: attest
-        if: steps.asset.outputs.attached != 'true'
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.signed != 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ runner.temp }}/release/${{ steps.asset.outputs.vsix }}
       - name: Upload the extension, signature bundle and provenance
-        if: steps.asset.outputs.attached != 'true'
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.signed != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           VSIX: ${{ steps.asset.outputs.vsix }}
+          ATTACHED: ${{ steps.asset.outputs.attached }}
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
           cd "$RUNNER_TEMP/release"
           cp "$BUNDLE" "$VSIX.sigstore.json"
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$VSIX.intoto.jsonl"
-          gh release upload "$TAG" "$VSIX" "$VSIX.sigstore.json" "$VSIX.intoto.jsonl" --repo "$GITHUB_REPOSITORY"
+          files=("$VSIX.sigstore.json" "$VSIX.intoto.jsonl")
+          if [ "$ATTACHED" != true ]; then files=("$VSIX" "${files[@]}"); fi
+          # The release is a draft (checked above), so --clobber only replaces a partial upload.
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
       - id: sbom
         name: Take the SBOM out of the extension
-        if: steps.asset.outputs.sbom-attached != 'true'
+        if: steps.asset.outputs.published != 'true' && steps.asset.outputs.sbom-attached != 'true'
         env:
           VSIX: ${{ steps.asset.outputs.vsix }}
         run: |
@@ -669,8 +718,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           SBOM: ${{ steps.sbom.outputs.sbom }}
-        run: gh release upload "$TAG" "$SBOM" --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" "$SBOM" --clobber --repo "$GITHUB_REPOSITORY"
       - id: done
+        if: steps.asset.outputs.published != 'true'
         env:
           VSIX: ${{ steps.asset.outputs.vsix }}
           HAS_SBOM: ${{ steps.asset.outputs.sbom-attached == 'true' || steps.sbom.outputs.sbom != '' }}

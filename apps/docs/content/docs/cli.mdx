@@ -15,6 +15,10 @@ description: Every flowpact command, flag, output format and environment variabl
 | [`flowpact rules`](#flowpact-rules) | List the rules and their effective severities. |
 | [`flowpact lsp`](#flowpact-lsp) | Start the language server for editors. |
 
+Options go after the command (`flowpact lint --no-plugins`); an option before it is a usage error. The value of an
+option is only ever that option's value, whatever it looks like: `--title "$PR_TITLE"` with a title of `--help` or
+`--plugin=x` is just a title.
+
 The analysis commands (`lint`, `check`, `impact`, `generate`, `trace`) start by printing the tool version and the
 version of every schema they read or write (to stderr, so JSON on stdout stays clean):
 

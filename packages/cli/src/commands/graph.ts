@@ -1,7 +1,16 @@
 import { analyze } from '@flowpact/core';
 import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import { commonArgs, createContext, displayPath, EXIT, guard, printBanner, UsageError } from '../shared';
+import {
+  commonArgs,
+  createContext,
+  displayPath,
+  EXIT,
+  guard,
+  jsonSafe,
+  printBanner,
+  UsageError,
+} from '../shared';
 
 export const graphCommand = defineCommand({
   meta: {
@@ -43,7 +52,7 @@ export const graphCommand = defineCommand({
           ctx.stdout(renderDot(graph));
           break;
         case 'json':
-          ctx.stdout(JSON.stringify(graph, null, 2));
+          ctx.stdout(jsonSafe(JSON.stringify(graph, null, 2)));
           break;
         default:
           ctx.stdout(renderGraphTree(graph, ctx.render));

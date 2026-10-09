@@ -23,6 +23,7 @@ import {
   createContext,
   displayPath,
   guard,
+  jsonSafe,
   pathArgs,
   pluginArgs,
   printBanner,
@@ -254,9 +255,9 @@ export async function runReport(
   const render = (format: Format, toFile: boolean): string => {
     switch (format) {
       case 'json':
-        return renderJson(result, { includeGraph });
+        return jsonSafe(renderJson(result, { includeGraph }));
       case 'sarif':
-        return renderSarif(result, { pathPrefix });
+        return jsonSafe(renderSarif(result, { pathPrefix }));
       case 'github':
         return renderGithub(result, { pathPrefix });
       case 'markdown':
@@ -269,10 +270,17 @@ export async function runReport(
   };
   if (args.format === 'github') writeWorkflowCommands(render('github', false));
   else ctx.stdout(render(args.format as Format, false));
-  for (const { format, file } of files) writeOutput(file, render(format, true), ctx);
+  for (const { format, file } of files)
+    writeOutput(file, render(format, true), ctx, format === 'json' || format === 'sarif' ? 'data' : 'text');
   if (args['dump-graph'])
-    writeOutput(args['dump-graph'], `${JSON.stringify(result.index.toJSON(), null, 2)}\n`, ctx);
-  if (args.patch && result.contracts?.drift) writeOutput(args.patch, contractPatch(result.contracts), ctx);
+    writeOutput(
+      args['dump-graph'],
+      jsonSafe(`${JSON.stringify(result.index.toJSON(), null, 2)}\n`),
+      ctx,
+      'data',
+    );
+  if (args.patch && result.contracts?.drift)
+    writeOutput(args.patch, contractPatch(result.contracts), ctx, 'data');
   return exitCodeFor(result.summary, args['fail-on'] as 'error' | 'warning' | 'never');
 }
 

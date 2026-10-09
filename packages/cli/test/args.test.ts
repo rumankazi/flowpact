@@ -7,7 +7,7 @@ import { impactCommand } from '../src/commands/impact';
 import { lintCommand } from '../src/commands/lint';
 import { rulesCommand } from '../src/commands/rules';
 import { traceCommand } from '../src/commands/trace';
-import { repeatedFlag } from '../src/shared';
+import { normalizeArgv, repeatedFlag } from '../src/shared';
 
 const COMMANDS = {
   lint: lintCommand,
@@ -34,6 +34,8 @@ const TOKENS = [
   '--plugin=a.mjs',
   'b.mjs',
   '-o',
+  '--o',
+  '--help',
   '-o=c.json',
   '-oc.md',
   '--output',
@@ -60,6 +62,66 @@ function* argLists(count: number): Generator<string[]> {
     yield Array.from({ length }, () => TOKENS[next() % TOKENS.length]!);
   }
 }
+
+describe('normalizeArgv', () => {
+  it('attaches every value of a string flag to its flag', () => {
+    expect(
+      normalizeArgv(
+        [
+          'impact',
+          '--title',
+          '--',
+          '--no-plugins',
+          '--labels',
+          '--help',
+          '-qo',
+          'x.md',
+          '-o',
+          '',
+          '--base',
+          'main',
+        ],
+        COMMANDS,
+      ),
+    ).toEqual([
+      'impact',
+      '--title=--',
+      '--no-plugins',
+      '--labels=--help',
+      '-qox.md',
+      '--output=',
+      '--base=main',
+    ]);
+    // Booleans, attached values, positionals and everything after `--` stay as they are.
+    expect(normalizeArgv(['lint', '-q', '--title=x', 'a.yml', '--', '--title', 'y'], COMMANDS)).toEqual([
+      'lint',
+      '-q',
+      '--title=x',
+      'a.yml',
+      '--',
+      '--title',
+      'y',
+    ]);
+  });
+
+  it('refuses options before the command, which citty would drop, but not help or the version', () => {
+    expect(() => normalizeArgv(['--no-plugins', 'lint'], COMMANDS)).toThrow('Options go after the command');
+    for (const argv of [['--version'], ['-h', 'lint'], [], ['lsp', '--socket', '1234']])
+      expect(normalizeArgv(argv, COMMANDS)).toEqual(argv);
+  });
+
+  it('keeps a pull request title from turning off --no-plugins or ending the run', () => {
+    for (const title of ['--', '--help', '-h', '--version', '-V', '--no-plugins', '--plugin=x']) {
+      const argv = normalizeArgv(['impact', '--title', title, '--no-plugins'], COMMANDS);
+      const parsed = parseArgs(argv.slice(1), impactCommand.args as ArgsDef) as Record<string, unknown>;
+      expect({ title, parsed: [parsed.title, parsed.plugins, parsed.plugin] }).toEqual({
+        title,
+        parsed: [title, false, undefined],
+      });
+      expect(argv.filter((a) => ['--', '--help', '-h', '--version', '-V'].includes(a))).toEqual([]);
+    }
+  });
+});
 
 describe('repeatedFlag', () => {
   it('collects every value in order', () => {
@@ -89,7 +151,7 @@ describe('repeatedFlag', () => {
     expect(repeatedFlag(['--', '--plugin=x'], def, 'plugin')).toEqual([]);
   });
 
-  it('agrees with citty on the last value, for every command', () => {
+  it('agrees with citty, for every command', () => {
     let compared = 0;
     for (const [name, command] of Object.entries(COMMANDS)) {
       const def = command.args as ArgsDef;
@@ -100,17 +162,34 @@ describe('repeatedFlag', () => {
         } catch {
           continue; // citty rejects it (e.g. an invalid --format), so the command never runs.
         }
+        const normalized = normalizeArgv([name, ...args], COMMANDS).slice(1);
+        let afterNormalizing: Record<string, unknown>;
+        try {
+          afterNormalizing = parseArgs(normalized, def) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
         for (const flag of ['plugin', 'output'] as const) {
           if (!(flag in def)) continue;
           const citty = parsed[flag] === '' ? undefined : parsed[flag];
-          const last = repeatedFlag(args, def, flag).at(-1);
-          const ours = last === '' ? undefined : last;
-          expect({ command: name, args, flag, value: ours }).toEqual({
-            command: name,
-            args,
-            flag,
-            value: citty,
-          });
+          const raw = repeatedFlag(args, def, flag);
+          // Attaching values changes nothing citty reads, apart from what a value can no longer steer: `--`,
+          // `--help` and `--no-*` are read as values when they follow a string flag.
+          if (!args.some((a) => a === '--' || a === '--help' || a.startsWith('--no-'))) {
+            const later = afterNormalizing[flag] === '' ? undefined : afterNormalizing[flag];
+            expect({ command: name, args, flag, value: later }).toEqual({
+              command: name,
+              args,
+              flag,
+              value: citty,
+            });
+          }
+          // citty keeps one value (the last, unless spellings mix); we keep them all, so its value must be one of ours,
+          // and we find none where it finds none, unless the last occurrence had no value.
+          const values = raw.filter(Boolean);
+          const ok =
+            citty !== undefined ? values.includes(citty as string) : values.length === 0 || raw.at(-1) === '';
+          expect({ command: name, args, flag, citty, values, ok }).toMatchObject({ ok: true });
           compared++;
         }
       }

@@ -85,40 +85,109 @@ export interface CliContext {
   stderr: (s: string) => void;
 }
 
+/** How a command's string flags can be written: `--name`, its camelCase, long aliases, and `-x` for one-letter aliases. */
+function flagSpellings(def: ArgsDef) {
+  const strings = new Map<string, string>(); // spelling without dashes → flag name
+  const shortStrings = new Map<string, string>();
+  for (const [key, arg] of Object.entries(def)) {
+    if (arg.type === 'positional') continue;
+    const alias = 'alias' in arg ? (arg.alias as string | string[] | undefined) : undefined;
+    const aliases = alias === undefined ? [] : Array.isArray(alias) ? alias : [alias];
+    const camel = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    if (arg.type === 'boolean') continue;
+    // citty makes every alias an option of its own, so a one-letter alias also works as `--o`.
+    for (const long of [key, camel, ...aliases]) strings.set(long, key);
+    for (const a of aliases) if (a.length === 1) shortStrings.set(a, key);
+  }
+  return { strings, shortStrings };
+}
+
+/**
+ * The arguments with every value of a string flag attached to its flag: `--title X` becomes `--title=X`, `-o X` becomes
+ * `-oX`. citty looks for `--no-*`, `--`, `--help` and `--version` before it knows which arguments are values, so a value
+ * such as a pull request title (`--title "--"`, `--title "--help"`) could otherwise turn off `--no-plugins` or end the
+ * run. Options before the command (`flowpact --no-plugins lint`), which citty would drop, are a usage error.
+ */
+export function normalizeArgv(argv: string[], commands: Record<string, { args?: unknown }>): string[] {
+  const [first, ...rest] = argv;
+  if (first === undefined || ['--help', '-h', '--version', '-V'].includes(first)) return argv;
+  if (first.startsWith('-')) {
+    throw new UsageError(
+      `Options go after the command, e.g. \`flowpact lint ${first}\` (got \`${first}\` before the command).`,
+    );
+  }
+  const args = commands[first]?.args;
+  // The language server reads its own arguments (--socket <port>) the way editors pass them.
+  if (first === 'lsp' || !args || typeof args !== 'object') return argv;
+  const { strings, shortStrings } = flagSpellings(args as ArgsDef);
+  const out = [first];
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]!;
+    const next = rest[i + 1];
+    if (a === '--') {
+      out.push(...rest.slice(i));
+      break;
+    }
+    const long = /^--([^=]+)$/.exec(a)?.[1];
+    if (long !== undefined && strings.has(long) && next !== undefined) {
+      out.push(`--${long}=${next}`);
+      i++;
+      continue;
+    }
+    if (/^-[A-Za-z]+$/.test(a)) {
+      // A cluster of short flags (`-qo`): a string flag takes the rest of it, or the next argument when it is last.
+      const at = [...a.slice(1)].findIndex((c) => shortStrings.has(c));
+      if (at === a.length - 2 && next !== undefined) {
+        // An empty value cannot be attached to a short flag; the long form keeps it.
+        out.push(
+          ...(next === ''
+            ? [...(at ? [a.slice(0, -1)] : []), `--${shortStrings.get(a.at(-1)!)}=`]
+            : [a + next]),
+        );
+        i++;
+        continue;
+      }
+    }
+    out.push(a);
+  }
+  return out;
+}
+
 /**
  * Every value of a flag that may be repeated (`-o`, `--plugin`), in order; citty keeps only the last one. The arguments
- * are parsed the way citty parses them — node:util's parseArgs, not strict, with the command's flags, after dropping
- * `--no-*` — so the value of another flag is never taken for this one: in `--title "--plugin=x"`, `--plugin=x` is the
- * title.
+ * are parsed the way citty parses them — node:util's parseArgs, not strict, with the command's flags and their aliases,
+ * after dropping `--no-*` — so the value of another flag is never taken for this one: in `--title "--plugin=x"`,
+ * `--plugin=x` is the title. A flag without a value (`-o` at the end) is '', as in citty; callers skip it.
  */
 export function repeatedFlag(rawArgs: string[], def: ArgsDef, name: string): string[] {
-  type Option = { type: 'string' | 'boolean'; short?: string; multiple?: boolean };
+  type Option = { type: 'string' | 'boolean'; short?: string };
   const options: Record<string, Option> = {};
+  const names = new Set<string>([name]);
   for (const [key, arg] of Object.entries(def)) {
     if (arg.type === 'positional') continue;
     const type = arg.type === 'boolean' ? 'boolean' : 'string';
     const alias = 'alias' in arg ? (arg.alias as string | string[] | undefined) : undefined;
     const aliases = alias === undefined ? [] : Array.isArray(alias) ? alias : [alias];
     const short = aliases.find((a) => a.length === 1);
-    options[key] = { type, ...(short ? { short } : {}), ...(key === name ? { multiple: true } : {}) };
-    // citty also accepts the camelCase spelling (`--failOn`) and long aliases.
+    options[key] = { type, ...(short ? { short } : {}) };
     const camel = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-    for (const long of [camel, ...aliases.filter((a) => a.length > 1)])
-      if (long !== key) options[long] ??= { type };
+    for (const long of [camel, ...aliases]) {
+      if (long === key) continue;
+      options[long] ??= { type };
+      if (key === name) names.add(long);
+    }
   }
   const end = rawArgs.indexOf('--');
   const args = rawArgs.filter((a, i) => !(a.startsWith('--no-') && (end < 0 || i < end)));
-  let values: Record<string, unknown>;
+  let tokens: ReturnType<typeof parseArgs>['tokens'];
   try {
-    ({ values } = parseArgs({ args, options, allowPositionals: true, strict: false }));
+    ({ tokens } = parseArgs({ args, options, allowPositionals: true, strict: false, tokens: true }));
   } catch {
     return [];
   }
-  const found = values[name];
-  // A flag without a value (`-o` at the end) is '', as in citty; callers skip it.
-  return found === undefined
-    ? []
-    : (Array.isArray(found) ? found : [found]).map((v) => (typeof v === 'string' ? v : ''));
+  return (tokens ?? []).flatMap((t) =>
+    t.kind === 'option' && names.has(t.name) ? [typeof t.value === 'string' ? t.value : ''] : [],
+  );
 }
 
 function countVerbose(rawArgs: string[]): number {
@@ -208,7 +277,8 @@ export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDe
     plain: { ...render, color: false, hyperlinks: false },
     loaded,
     plugins: {
-      config: flags.plugins !== false,
+      // `--no-plugins` anywhere disables them, even where citty would not see it: failing safe.
+      config: flags.plugins !== false && !rawArgs.includes('--no-plugins'),
       extra: repeatedFlag(rawArgs, def, 'plugin')
         .filter(Boolean)
         .map((p) => resolve(process.cwd(), p)),
@@ -248,17 +318,28 @@ export function workspacePrefix(root: string, env: NodeJS.ProcessEnv = process.e
   return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel.split(sep).join('/') : '';
 }
 
-export function writeOutput(file: string, content: string, ctx: CliContext) {
+/** Where files are never written through a symlink a pull request could have committed: the repository, the workspace. */
+export const protectedTrees = (ctx: CliContext): string[] => [
+  ctx.root,
+  ...(process.env.GITHUB_WORKSPACE ? [process.env.GITHUB_WORKSPACE] : []),
+];
+
+/**
+ * JSON with `##[` written as `##\u005b`: the same data, but no legacy workflow command when a CI step prints it (and
+ * nothing for the stdout guard to change). In JSON, `##[` can only occur inside strings, where the escape is valid.
+ */
+export const jsonSafe = (json: string) => json.replace(/##\[/g, '##\\u005b');
+
+/**
+ * Writes a report or a patch. A text report may be printed by a later CI step, so it is kept free of workflow commands;
+ * JSON is passed through `jsonSafe` by whoever renders it; a patch is written as is, for `git apply`.
+ */
+export function writeOutput(file: string, content: string, ctx: CliContext, kind: 'text' | 'data' = 'text') {
   const abs = resolve(process.cwd(), file);
-  // Inside the repository (or the Actions workspace), never through a symlink a pull request could have committed.
-  assertSafeWritePath(abs, [
-    ctx.root,
-    ...(process.env.GITHUB_WORKSPACE ? [process.env.GITHUB_WORKSPACE] : []),
-  ]);
+  assertSafeWritePath(abs, protectedTrees(ctx));
   try {
     mkdirSync(dirname(abs), { recursive: true });
-    // A report file may be printed by a later CI step; keep it free of workflow commands too.
-    writeFileSync(abs, neutralizeWorkflowCommands(content));
+    writeFileSync(abs, kind === 'text' ? neutralizeWorkflowCommands(content) : content);
   } catch (err) {
     throw new UsageError(`Cannot write ${file}: ${(err as Error).message}`);
   }

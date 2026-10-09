@@ -27269,8 +27269,8 @@ var require_primordials = __commonJS({
       ArrayPrototypeIndexOf(self2, el) {
         return self2.indexOf(el);
       },
-      ArrayPrototypeJoin(self2, sep4) {
-        return self2.join(sep4);
+      ArrayPrototypeJoin(self2, sep5) {
+        return self2.join(sep5);
       },
       ArrayPrototypeMap(self2, fn) {
         return self2.map(fn);
@@ -39567,7 +39567,7 @@ var require_commonjs4 = __commonJS({
        *
        * @internal
        */
-      constructor(cwd = process.cwd(), pathImpl, sep4, { nocase, childrenCacheSize = 16 * 1024, fs: fs8 = defaultFS } = {}) {
+      constructor(cwd = process.cwd(), pathImpl, sep5, { nocase, childrenCacheSize = 16 * 1024, fs: fs8 = defaultFS } = {}) {
         this.#fs = fsFromOption(fs8);
         if (cwd instanceof URL || cwd.startsWith("file://")) {
           cwd = (0, node_url_1.fileURLToPath)(cwd);
@@ -39578,7 +39578,7 @@ var require_commonjs4 = __commonJS({
         this.#resolveCache = new ResolveCache();
         this.#resolvePosixCache = new ResolveCache();
         this.#children = new ChildrenCache(childrenCacheSize);
-        const split = cwdPath.substring(this.rootPath.length).split(sep4);
+        const split = cwdPath.substring(this.rootPath.length).split(sep5);
         if (split.length === 1 && !split[0]) {
           split.pop();
         }
@@ -52373,10 +52373,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -52390,7 +52390,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep4) {
+          if (!keyProps.anchor && !keyProps.tag && !sep5) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map3.comment)
@@ -52414,7 +52414,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map3.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep5 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -52430,7 +52430,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep5, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -52521,7 +52521,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep4 = "";
+        let sep5 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -52535,13 +52535,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep4 + cb;
-              sep4 = "";
+                comment += sep5 + cb;
+              sep5 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep4 += source;
+                sep5 += source;
               hasSpace = true;
               break;
             default:
@@ -52584,18 +52584,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep4 && !value) {
+          if (!props.anchor && !props.tag && !sep5 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -52649,8 +52649,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap5 && !sep4 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
+        if (!isMap5 && !sep5 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep5, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -52662,7 +52662,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep5 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -52673,8 +52673,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap5 && !props.found && ctx.options.strict) {
-              if (sep4)
-                for (const st of sep4) {
+              if (sep5)
+                for (const st of sep5) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -52691,7 +52691,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep5, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -52871,7 +52871,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep4 = "";
+      let sep5 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -52888,24 +52888,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep4 === " ")
-            sep4 = "\n";
-          else if (!prevMoreIndented && sep4 === "\n")
-            sep4 = "\n\n";
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          if (sep5 === " ")
+            sep5 = "\n";
+          else if (!prevMoreIndented && sep5 === "\n")
+            sep5 = "\n\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep4 === "\n")
+          if (sep5 === "\n")
             value += "\n";
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          value += sep4 + content;
-          sep4 = " ";
+          value += sep5 + content;
+          sep5 = " ";
           prevMoreIndented = false;
         }
       }
@@ -53088,25 +53088,25 @@ var require_resolve_flow_scalar = __commonJS({
         trimBoth = /^[ \t]+|[ \t]+$/g;
       }
       let res = match[1].replace(trimEnd2, "");
-      let sep4 = " ";
+      let sep5 = " ";
       let pos = line.lastIndex;
       while (match = line.exec(source)) {
         const lm = match[1].replace(trimBoth, "");
         if (lm === "") {
-          if (sep4 === "\n")
-            res += sep4;
+          if (sep5 === "\n")
+            res += sep5;
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          res += sep4 + lm;
-          sep4 = " ";
+          res += sep5 + lm;
+          sep5 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep4 + (match?.[1] ?? "");
+      return res + sep5 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -53916,14 +53916,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep4, value }) {
+    function stringifyItem({ start, key, sep: sep5, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep4)
-        for (const st of sep4)
+      if (sep5)
+        for (const st of sep5)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -55090,18 +55090,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep4;
+          let sep5;
           if (scalar.end) {
-            sep4 = scalar.end;
-            sep4.push(this.sourceToken);
+            sep5 = scalar.end;
+            sep5.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep4 = [this.sourceToken];
+            sep5 = [this.sourceToken];
           const map3 = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep4 }]
+            items: [{ start, key: scalar, sep: sep5 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map3;
@@ -55254,15 +55254,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep4 = it.sep;
-                  sep4.push(this.sourceToken);
+                  const sep5 = it.sep;
+                  sep5.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep4 }]
+                    items: [{ start: start2, key, sep: sep5 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -55456,13 +55456,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent2);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep4 = fc.end.splice(1, fc.end.length);
-            sep4.push(this.sourceToken);
+            const sep5 = fc.end.splice(1, fc.end.length);
+            sep5.push(this.sourceToken);
             const map3 = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep4 }]
+              items: [{ start, key: fc, sep: sep5 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map3;
@@ -56819,7 +56819,7 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, relative as relative5, resolve as resolve6, sep as sep3 } from "path";
+import { dirname as dirname3, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -70009,21 +70009,21 @@ var Matcher = class {
    * @returns {string}
    */
   toString(separator, includeNamespace = true) {
-    const sep4 = separator || this.separator;
-    const isDefault = sep4 === this.separator && includeNamespace === true;
+    const sep5 = separator || this.separator;
+    const isDefault = sep5 === this.separator && includeNamespace === true;
     if (isDefault) {
       if (this._pathStringCache !== null) {
         return this._pathStringCache;
       }
       const result = this.path.map(
         (n) => n.namespace ? `${n.namespace}:${n.tag}` : n.tag
-      ).join(sep4);
+      ).join(sep5);
       this._pathStringCache = result;
       return result;
     }
     return this.path.map(
       (n) => includeNamespace && n.namespace ? `${n.namespace}:${n.tag}` : n.tag
-    ).join(sep4);
+    ).join(sep5);
   }
   /**
    * Get path as array of tag names.
@@ -125230,8 +125230,8 @@ function evalCall(e, resolve7) {
       );
     case "join": {
       const arr = vals[0] ?? null;
-      const sep4 = vals.length > 1 ? toStr(vals[1] ?? null) : ",";
-      return known(Array.isArray(arr) ? arr.map(toStr).join(sep4) : toStr(arr), taint);
+      const sep5 = vals.length > 1 ? toStr(vals[1] ?? null) : ",";
+      return known(Array.isArray(arr) ? arr.map(toStr).join(sep5) : toStr(arr), taint);
     }
     case "tojson":
       return known(JSON.stringify(vals[0] ?? null, null, 2), taint);
@@ -130110,7 +130110,7 @@ function parseConfig(raw, file2) {
 
 // ../core/src/contracts.ts
 import { existsSync as existsSync7, lstatSync as lstatSync2, mkdirSync, realpathSync as realpathSync2, rmSync, writeFileSync } from "fs";
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join5, relative as relative3, resolve as resolve4 } from "path";
+import { basename as basename5, dirname as dirname2, isAbsolute as isAbsolute3, join as join5, relative as relative3, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/diff@9.0.0/node_modules/diff/libesm/diff/base.js
 var Diff = class {
@@ -131689,25 +131689,46 @@ function isSymlink(abs) {
     return false;
   }
 }
+function realpathNearest(p) {
+  const rest = [];
+  let at = resolve4(p);
+  for (; ; ) {
+    try {
+      return join5(realpathSync2(at), ...rest.reverse());
+    } catch {
+      const parent2 = dirname2(at);
+      if (parent2 === at) return resolve4(p);
+      rest.push(basename5(at));
+      at = parent2;
+    }
+  }
+}
+var withinOrAt = (root, p) => {
+  const rel = relative3(root, p);
+  return rel === "" || rel !== ".." && !rel.startsWith(`..${sep3}`) && !isAbsolute3(rel);
+};
 function assertSafeWritePath(abs, trees) {
   const target = resolve4(abs);
+  const realParent = realpathNearest(dirname2(target));
+  const ancestors = [];
+  for (let at = target; ; at = dirname2(at)) {
+    ancestors.push(at);
+    if (dirname2(at) === at) break;
+  }
   for (const tree of trees) {
-    const roots = [resolve4(tree)];
-    try {
-      roots.push(realpathSync2(tree));
-    } catch {
-    }
-    const inside = roots.some((r) => {
-      const rel = relative3(r, target);
-      return rel !== "" && !rel.startsWith("..") && !isAbsolute3(rel);
-    });
-    if (inside && (isSymlink(target) || !insideRepository(tree, target)))
+    const realTree = realpathNearest(tree);
+    const enters = ancestors.some((a) => existsSync7(a) && withinOrAt(realTree, realpathSync2(a)));
+    if (!enters && !withinOrAt(resolve4(tree), target)) continue;
+    if (isSymlink(target) || !withinOrAt(realTree, realParent))
       throw new UnsafePathError(`Not writing ${abs}: it is a symlink, or links outside ${tree}`);
   }
 }
-function writeContracts(root, plan, outDir) {
+function writeContracts(root, plan, outDir, trees = [root]) {
   const written = [];
   const base = outDir ?? root;
+  if (outDir) {
+    for (const e of plan.entries) if (e.status !== "delete") assertSafeWritePath(join5(outDir, e.file), trees);
+  }
   if (!outDir) {
     const unsafe = plan.entries.filter((e) => e.status !== "unchanged").map((e) => e.file).filter((f) => isSymlink(join5(root, f)) || !insideRepository(root, join5(root, f)));
     if (unsafe.length)
@@ -134855,22 +134876,41 @@ function createRegistry() {
 }
 
 // ../core/src/analyze.ts
+var normalizeRuleKey = (s) => s.toLowerCase().replace(/[-_\s]/g, "");
 function typoOf(registry2, key) {
-  const code2 = /^[a-z][a-z0-9]{1,9}?\d{3}$/i.test(key);
-  const k = code2 ? key.toUpperCase() : key.toLowerCase().replace(/_/g, "-");
-  let best;
-  for (const r of registry2.all()) {
-    const rule = code2 ? r.code : r.name;
-    const d = typoDistance(k, rule);
-    if (d <= (code2 ? 1 : 2) && (!best || d < best.d)) best = { rule, d };
+  const k = normalizeRuleKey(key);
+  const near = (candidates, max) => {
+    let best;
+    for (const rule2 of candidates) {
+      const d = typoDistance(k, normalizeRuleKey(rule2));
+      if (d <= max && (!best || d < best.d)) best = { rule: rule2, d };
+    }
+    return best?.rule;
+  };
+  const rules = registry2.all();
+  if (/^fp\d/.test(k)) {
+    const rule2 = near(
+      rules.map((r) => r.code),
+      1
+    );
+    return { typo: true, ...rule2 ? { rule: rule2 } : {} };
   }
-  return best?.rule;
+  const prefix2 = (code3) => CODE_PATTERN.exec(code3)?.[1]?.toLowerCase() ?? "";
+  const keyPrefix = /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1];
+  const code2 = near(
+    rules.map((r) => r.code).filter((c) => keyPrefix !== void 0 && prefix2(c) === keyPrefix),
+    1
+  );
+  const rule = code2 ?? near(
+    rules.map((r) => r.name),
+    2
+  );
+  return rule ? { typo: true, rule } : { typo: false };
 }
 function triageUnknown(registry2, key, path4, out) {
-  const typo = typoOf(registry2, key);
-  const issue3 = `${path4}: unknown rule${typo ? ` (did you mean ${typo}?)` : ` "${key}"`}`;
-  if (!typo && !/^FP\d/i.test(key)) out.tolerated.push(issue3);
-  else out.hard.push(issue3);
+  const { typo, rule } = typoOf(registry2, key);
+  const issue3 = `${path4}: unknown rule${rule ? ` (did you mean ${rule}?)` : ` "${key}"`}`;
+  (typo ? out.hard : out.tolerated).push(issue3);
 }
 var SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 function resolveSeverities(registry2, config2, opts = {}) {
@@ -135543,7 +135583,7 @@ function prepareImpact(root, headConfig, req, logger7) {
   const base = analyze({
     root,
     fs: fs8,
-    config: baseConfig ?? defaultConfig(),
+    config: { ...baseConfig ?? defaultConfig(), rules: {}, overrides: [] },
     validateSchema: false,
     only: [],
     ...req.repository ? { repository: req.repository } : {}
@@ -136552,7 +136592,7 @@ function actionsSink(runnerDebug, groups) {
     }
   };
 }
-var toPosix2 = (p) => p.split(sep3).join("/");
+var toPosix2 = (p) => p.split(sep4).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function annotate(f, prefix2) {
   const { level, message, ...props } = githubAnnotation(f, { pathPrefix: prefix2 });

@@ -8,7 +8,7 @@ import { type Logger, silentLogger } from './logger';
 import { declaredMatrix, expandMatrix, type MatrixExpansion } from './matrix';
 import { detectRepository, type FileSystem, loadProject, nodeFileSystem } from './project';
 import { createRegistry, IMPACT_CODES } from './rules/index';
-import type { RuleRegistry } from './rules/registry';
+import { CODE_PATTERN, type RuleRegistry } from './rules/registry';
 import type {
   Finding,
   OverrideUsage,
@@ -107,21 +107,46 @@ export interface AnalysisResult {
   durationMs: number;
 }
 
+const normalizeRuleKey = (s: string) => s.toLowerCase().replace(/[-_\s]/g, '');
+
 /**
- * The loaded rule an unknown key is a typo of: a code one edit from a loaded code (`FP10l`, `PF401`), or a name at most
- * two edits from a loaded name (`unused-inptu`). Another prefix (`AC201` beside `FP201`) or a longer name
- * (`secrets-inherit-banned` beside `secrets-inherit`) is the rule of a plugin, not a typo.
+ * The loaded rule an unknown key is a typo of, if it is one: a key with the built-in `FP` prefix (`FP10l`, `fp-101`),
+ * a code one edit from a loaded code with the same prefix (`ACME610`), or a name at most two edits from a loaded name,
+ * ignoring case, `-` and `_` (`unused-inptu`, `unusedInput`). A code with another prefix (`AC201`, `DP201` beside
+ * `FP201`) or a longer name (`secrets-inherit-banned` beside `secrets-inherit`) belongs to a plugin, not a typo.
  */
-function typoOf(registry: RuleRegistry, key: string): string | undefined {
-  const code = /^[a-z][a-z0-9]{1,9}?\d{3}$/i.test(key);
-  const k = code ? key.toUpperCase() : key.toLowerCase().replace(/_/g, '-');
-  let best: { rule: string; d: number } | undefined;
-  for (const r of registry.all()) {
-    const rule = code ? r.code : r.name;
-    const d = typoDistance(k, rule);
-    if (d <= (code ? 1 : 2) && (!best || d < best.d)) best = { rule, d };
+function typoOf(registry: RuleRegistry, key: string): { typo: boolean; rule?: string } {
+  const k = normalizeRuleKey(key);
+  const near = (candidates: string[], max: number) => {
+    let best: { rule: string; d: number } | undefined;
+    for (const rule of candidates) {
+      const d = typoDistance(k, normalizeRuleKey(rule));
+      if (d <= max && (!best || d < best.d)) best = { rule, d };
+    }
+    return best?.rule;
+  };
+  const rules = registry.all();
+  if (/^fp\d/.test(k)) {
+    const rule = near(
+      rules.map((r) => r.code),
+      1,
+    );
+    return { typo: true, ...(rule ? { rule } : {}) };
   }
-  return best?.rule;
+  const prefix = (code: string) => CODE_PATTERN.exec(code)?.[1]?.toLowerCase() ?? '';
+  // The prefix is the shortest start that a digit follows, as in CODE_PATTERN: `ACME` in ACME610, `K8S` in K8S601.
+  const keyPrefix = /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1];
+  const code = near(
+    rules.map((r) => r.code).filter((c) => keyPrefix !== undefined && prefix(c) === keyPrefix),
+    1,
+  );
+  const rule =
+    code ??
+    near(
+      rules.map((r) => r.name),
+      2,
+    );
+  return rule ? { typo: true, rule } : { typo: false };
 }
 
 /**
@@ -135,10 +160,9 @@ function triageUnknown(
   path: string,
   out: { hard: string[]; tolerated: string[] },
 ) {
-  const typo = typoOf(registry, key);
-  const issue = `${path}: unknown rule${typo ? ` (did you mean ${typo}?)` : ` "${key}"`}`;
-  if (!typo && !/^FP\d/i.test(key)) out.tolerated.push(issue);
-  else out.hard.push(issue);
+  const { typo, rule } = typoOf(registry, key);
+  const issue = `${path}: unknown rule${rule ? ` (did you mean ${rule}?)` : ` "${key}"`}`;
+  (typo ? out.hard : out.tolerated).push(issue);
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };

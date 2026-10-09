@@ -10,7 +10,28 @@ import { lintCommand } from './commands/lint';
 import { lspCommand } from './commands/lsp';
 import { rulesCommand } from './commands/rules';
 import { traceCommand } from './commands/trace';
-import { colorEnabled } from './shared';
+import { colorEnabled, normalizeArgv } from './shared';
+
+const COMMANDS = {
+  lint: lintCommand,
+  check: checkCommand,
+  generate: generateCommand,
+  impact: impactCommand,
+  trace: traceCommand,
+  graph: graphCommand,
+  explain: explainCommand,
+  rules: rulesCommand,
+  lsp: lspCommand,
+};
+
+// Before anything reads the arguments: values of string flags are attached to their flags, so that a value such as a
+// pull request title is never read as `--`, `--no-plugins` or `--help` (see normalizeArgv).
+try {
+  process.argv.splice(2, Infinity, ...normalizeArgv(process.argv.slice(2), COMMANDS));
+} catch (err) {
+  process.stderr.write(neutralizeWorkflowCommands(`Error: ${(err as Error).message}\n`));
+  process.exit(2);
+}
 
 // Output embeds names from the analyzed YAML; no line of it may become a GitHub workflow command in a CI log. The
 // language server's stdout carries the protocol and must stay byte-exact.
@@ -36,17 +57,7 @@ const main = defineCommand({
     version: VERSION,
     description: 'Lint, trace and lock the data flow between your GitHub Actions workflows',
   },
-  subCommands: {
-    lint: lintCommand,
-    check: checkCommand,
-    generate: generateCommand,
-    impact: impactCommand,
-    trace: traceCommand,
-    graph: graphCommand,
-    explain: explainCommand,
-    rules: rulesCommand,
-    lsp: lspCommand,
-  },
+  subCommands: COMMANDS,
 });
 
 /** citty's usage text, then where the docs are; without color codes when the output is not a terminal. */
