@@ -134898,13 +134898,14 @@ function typoOf(registry2, key) {
     return { typo: true, ...rule2 ? { rule: rule2 } : {} };
   }
   const builtin = nearest(
-    codes.filter((c) => c.startsWith("FP") && c.length === k.length),
+    codes.filter((c) => /^FP\d/.test(c) && c.length === k.length),
     fromCode,
     1
   );
   if (k.startsWith("fp") && builtin) return { typo: true, rule: builtin };
   const prefix2 = (code3) => CODE_PATTERN.exec(code3.toUpperCase())?.[1];
-  const keyPrefix = prefix2(k) ?? /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
+  const asCode = CODE_PATTERN.exec(k.toUpperCase());
+  const keyPrefix = asCode && asCode[2] !== "0" ? asCode[1] : /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
   const code2 = nearest(
     codes.filter((c) => keyPrefix !== void 0 && prefix2(c) === keyPrefix),
     fromCode,
@@ -134912,8 +134913,16 @@ function typoOf(registry2, key) {
   );
   if (code2) return { typo: true, rule: code2 };
   const names = rules.map((r) => r.name);
-  const spelled = key.toLowerCase().replace(/_/g, "-");
-  const rule = names.find((n) => compact(n) === k) ?? nearest(names, (n) => typoDistance(spelled, n), 2);
+  const spelled = key.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[_\s]+/g, "-");
+  const undashed = !/[-_\s]/.test(key) && !/[a-z0-9][A-Z]/.test(key);
+  const rule = names.find((n) => compact(n) === k) ?? nearest(
+    names,
+    (n) => Math.min(
+      typoDistance(spelled, n),
+      undashed ? typoDistance(k, compact(n)) + 1 : Number.POSITIVE_INFINITY
+    ),
+    2
+  );
   return rule ? { typo: true, rule } : { typo: false };
 }
 function triageUnknown(registry2, key, path4, out) {

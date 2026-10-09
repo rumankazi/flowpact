@@ -178,11 +178,21 @@ jobs:
         env:
           PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           if [ "$PRERELEASE" = true ]; then
             npm publish --provenance --access public --tag next
+            exit 0
+          fi
+          # `latest` only for the newest stable release: an older one completed after a newer one went out gets
+          # `previous` (npm refuses to move `latest` back without --tag).
+          tags=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" 'v*.*.*')
+          newest=$(cut -f2 <<< "$tags" | cut -d/ -f3- | grep -v -e '-' | sort -V | tail -n 1)
+          [ -n "$newest" ] || { echo "::error::cannot list the release tags"; exit 1; }
+          if [ "$newest" = "$TAG" ]; then
+            npm publish --provenance --access public --tag latest
           else
-            npm publish --provenance --access public
+            npm publish --provenance --access public --tag previous
           fi
 
   major-tag:
@@ -565,6 +575,7 @@ jobs:
             # Latest only when this is the newest stable release: completing an older draft must not demote a newer one.
             tags=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" 'v*.*.*')
             newest=$(cut -f2 <<< "$tags" | cut -d/ -f3- | grep -v -e '-' | sort -V | tail -n 1)
+            [ -n "$newest" ] || { echo "::error::cannot list the release tags"; exit 1; }
             latest=false
             if [ "$newest" = "$TAG" ]; then latest=true; fi
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$latest"

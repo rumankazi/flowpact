@@ -247,7 +247,7 @@ export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDe
   const resolved = resolveLogLevel({
     debug: Boolean(flags.debug),
     // Every -v counts, also in a cluster such as -vvo; read like any flag, so a value never does.
-    verbose: repeatedFlag(rawArgs, def, 'verbose').length,
+    verbose: repeatedFlag(rawArgs, def, 'verbose').filter((v) => v !== 'false').length,
     quiet: Boolean(flags.quiet),
   });
   // The CLI keeps info-level progress quiet unless asked for; the report itself is the output.

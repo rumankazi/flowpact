@@ -263,17 +263,28 @@ describe('config edge cases (#3, #11, #14)', () => {
         'secrets-inherit-banned': 'error',
         'no-secrets-inherit': 'error',
         'secrets-inherit-v2': 'error',
+        noSecretsInherit: 'error',
+        nosecretsinherit: 'error',
         'unused-input-legacy': 'warning',
       },
       overrides: [{ rule: 'XY604', file: WF, reason: 'an organization rule' }],
     });
-    expect(r.unloadedRules).toHaveLength(10);
+    expect(r.unloadedRules).toHaveLength(12);
     // The built-in prefix in any spelling, or a name two edits from a loaded one in any case: a typo.
     expect(issues({ rules: { FP10l: 'off' } })).toEqual(['rules.FP10l: unknown rule (did you mean FP101?)']);
     expect(issues({ rules: { 'FP-101': 'off' } })).toEqual([
       'rules.FP-101: unknown rule (did you mean FP101?)',
     ]);
     expect(issues({ rules: { FPl01: 'off' } })).toEqual(['rules.FPl01: unknown rule (did you mean FP101?)']);
+    for (const typo of [
+      'missingRequiredInptu',
+      'MissingRequiredInptu',
+      'missingrequiredinptu',
+      'missing_required_inptu',
+    ])
+      expect(issues({ rules: { [typo]: 'off' } })).toEqual([
+        `rules.${typo}: unknown rule (did you mean missing-required-input?)`,
+      ]);
     expect(issues({ rules: { 'unused-inptu': 'off' } })).toEqual([
       'rules.unused-inptu: unknown rule (did you mean unused-input?)',
     ]);
@@ -296,7 +307,8 @@ describe('config edge cases (#3, #11, #14)', () => {
       });
     const registry = createRegistry()
       .register(rule('ACME601', 'acme-check'))
-      .register(rule('AB12601', 'ab-check'));
+      .register(rule('AB12601', 'ab-check'))
+      .register(rule('FPX601', 'fpx-check'));
     const analyzeWith = (rules: Record<string, string>) =>
       analyze({
         root: '/v',
@@ -308,6 +320,9 @@ describe('config edge cases (#3, #11, #14)', () => {
       });
     expect(() => analyzeWith({ ACME610: 'off' })).toThrow(ConfigError);
     expect(() => analyzeWith({ AB12602: 'off' })).toThrow(ConfigError);
+    // An extra digit makes no code (category 0): a typo of ACME601. Another FP-led prefix is another plugin.
+    expect(() => analyzeWith({ ACME6011: 'off' })).toThrow(ConfigError);
+    expect(analyzeWith({ FPY601: 'off' }).unloadedRules).toEqual(['rules.FPY601: unknown rule "FPY601"']);
     expect(analyzeWith({ ACME601: 'off', OTHER601: 'off' }).unloadedRules).toEqual([
       'rules.OTHER601: unknown rule "OTHER601"',
     ]);

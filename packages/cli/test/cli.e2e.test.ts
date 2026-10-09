@@ -479,6 +479,14 @@ describe('untrusted values', () => {
     expect(readdirSync(outside)).toEqual([]);
   });
 
+  it('counts -v in clusters, and not --verbose=false', async () => {
+    const root = fixture('clean');
+    const quiet = await flowpact(['lint', '--root', root, '--verbose=false', '-o', '/dev/null']);
+    expect(quiet.stderr).not.toContain('debug');
+    const loud = await flowpact(['lint', '--root', root, '-vo', '/dev/null']);
+    expect(loud.stderr).toContain('debug');
+  });
+
   it('refuses to write a report through a symlink in the repository', async () => {
     const root = mkdtempSync(join(tmpdir(), 'flowpact-symlink-report-'));
     cpSync(fixture('clean'), root, { recursive: true });

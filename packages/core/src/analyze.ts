@@ -136,14 +136,17 @@ function typoOf(registry: RuleRegistry, key: string): { typo: boolean; rule?: st
     return { typo: true, ...(rule ? { rule } : {}) };
   }
   const builtin = nearest(
-    codes.filter((c) => c.startsWith('FP') && c.length === k.length),
+    codes.filter((c) => /^FP\d/.test(c) && c.length === k.length),
     fromCode,
     1,
   );
   if (k.startsWith('fp') && builtin) return { typo: true, rule: builtin };
-  // The prefix as CODE_PATTERN reads it (`AB12` in AB12602), or for other keys the start before the first digit.
+  // The prefix as CODE_PATTERN reads it (`AB12` in AB12602) when that reading is a code (category digits are 1-9);
+  // otherwise the start before the first digit (`ACME` in ACME6011, which is no code).
   const prefix = (code: string) => CODE_PATTERN.exec(code.toUpperCase())?.[1];
-  const keyPrefix = prefix(k) ?? /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
+  const asCode = CODE_PATTERN.exec(k.toUpperCase());
+  const keyPrefix =
+    asCode && asCode[2] !== '0' ? asCode[1] : /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
   const code = nearest(
     codes.filter((c) => keyPrefix !== undefined && prefix(c) === keyPrefix),
     fromCode,
@@ -151,8 +154,24 @@ function typoOf(registry: RuleRegistry, key: string): { typo: boolean; rule?: st
   );
   if (code) return { typo: true, rule: code };
   const names = rules.map((r) => r.name);
-  const spelled = key.toLowerCase().replace(/_/g, '-');
-  const rule = names.find((n) => compact(n) === k) ?? nearest(names, (n) => typoDistance(spelled, n), 2);
+  // camelCase and snake_case as dashes, so a typo is measured in the name's own words; a key without any separator
+  // (`missingrequiredinptu`) is compared without them, one edit dearer.
+  const spelled = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+  const undashed = !/[-_\s]/.test(key) && !/[a-z0-9][A-Z]/.test(key);
+  const rule =
+    names.find((n) => compact(n) === k) ??
+    nearest(
+      names,
+      (n) =>
+        Math.min(
+          typoDistance(spelled, n),
+          undashed ? typoDistance(k, compact(n)) + 1 : Number.POSITIVE_INFINITY,
+        ),
+      2,
+    );
   return rule ? { typo: true, rule } : { typo: false };
 }
 

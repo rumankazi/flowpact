@@ -29,7 +29,8 @@ repository's plugins, and `flowpact -q lint` was not quiet. 0.9 stops with a usa
 
 A `rules:` or `overrides:` entry for a rule that no loaded plugin defines used to stop the run with a config error. 0.9
 ignores it with a warning, so a repository can configure organization rules that only its organization's wrapper
-loads. A name with the `FP` prefix, or a typo of a loaded rule (`unused-inptu`), is still an error.
+loads. An unknown code with the built-in prefix (`FP999`), or a typo of a loaded rule (`unused-inptu`), is still an
+error; see [Rules that are not loaded](/docs/configuration#rules-that-are-not-loaded).
 
 ## 0.7 → 0.8
 
