@@ -41,7 +41,8 @@ reports nothing here.*
   declared, and matrix values that are empty in some combinations.
 - **You publish actions or reusable workflows that other repositories use,** in public or inside your organization:
   contracts show interface changes in review and mark the breaking ones, and impact mode fails a pull request whose
-  title declares a smaller release than its changes need ([how](#for-publishers-of-actions-and-reusable-workflows)).
+  title declares less than the minor or major release its changes need
+  ([how](#for-publishers-of-actions-and-reusable-workflows)).
 - **You edit workflows in VS Code:** the same findings as you type, with the
   [extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact).
 
@@ -64,11 +65,11 @@ In CI, add the action; it lints by default and annotates the pull request:
 - uses: rumankazi/flowpact@v0.8
 ```
 
+Findings you accept go into `.github/flowpact/flowpact.config.yml` as **overrides** with a reason, an owner and an
+expiry date; expired overrides bring the findings back.
+
 📖 **Docs:** https://rumankazi.github.io/flowpact — getting started, how it works, the CLI (`generate`, `check`,
 `graph`, `lsp`), CI and action usage, contracts, impact mode, configuration, and a page for every rule.
-
-Findings you accept go into the config as **overrides** with a reason, an owner and an expiry date; expired overrides
-bring the findings back.
 
 ## What it finds that other tools miss
 
@@ -91,15 +92,15 @@ also checks shell scripts, runner labels, expression types, cron schedules and t
 ## For publishers of actions and reusable workflows
 
 Other repositories pin your action or reusable workflow to a tag such as `@v1`, and you cannot see their workflows or
-their branch protection. Remove an output and their steps read an empty value; rename a job and their required check
-waits on *Expected — Waiting for status to be reported*. Nothing fails in your repository, and neither actionlint nor
+their branch protection. Remove an output and their steps read an empty value; rename a job in a reusable workflow and
+their required check waits on *Expected — Waiting for status to be reported*. Nothing fails in your repository, and neither actionlint nor
 GitHub's Actions extension reports either change. flowpact puts both in the pull request:
 
-1. **Commit the contracts.** `flowpact generate` writes one contract per workflow and local action into
-   `.github/flowpact/`: its inputs, secrets and outputs, what it calls and who calls it. Contracts are deterministic (no
-   hashes or timestamps), so a pull request that changes an interface also changes a contract, and reviewers see a
-   small YAML diff.
-2. **Check every pull request.** `flowpact check`, or the action with `mode: check`, fails until the contracts match the
+1. **Commit the contracts.** `npx flowpact generate` writes one contract per workflow and per action in the repository
+   (the root `action.yml` included) into `.github/flowpact/`: its inputs, secrets and outputs, what it calls and which
+   workflows in this repository call it. Contracts are deterministic (no hashes or timestamps), so a pull request that
+   changes an interface also changes a contract, and reviewers see a small YAML diff.
+2. **Check every pull request.** `npx flowpact check`, or the action with `mode: check`, fails until the contracts match the
    workflows again and marks **breaking** changes, such as a removed output or a new required input. The action's job
    summary lists every change, breaking ones in bold, and the action uploads the regenerated contracts as a patch that
    contributors without Node.js can apply with `git apply`.
@@ -108,10 +109,12 @@ GitHub's Actions extension reports either change. flowpact puts both in the pull
 
 3. **Grade the release.** With `impact: auto`, the action compares each pull request with its base and grades what
    consumers can see as major, minor, patch or none: a renamed job or a removed output is major, a new optional input
-   minor. It fails the pull request when its Conventional Commits title declares less (`fix:` patch, `feat:` minor,
-   `feat!:` major). When pull requests are squash-merged, that title becomes the commit message that release tools such
-   as release-please read, so the release they cut is no smaller than the change needs. Labels can declare the impact
-   instead, and release pull requests are compared with the last release tag.
+   minor. It fails the pull request when its changes need a minor or major release and its Conventional Commits title
+   declares less (`fix:` patch, `feat:` minor, `feat!:` major). When pull requests are squash-merged with the title as
+   the commit message (*Default commit message: Pull request title* in the repository settings; GitHub's default uses
+   the commit's own title when a pull request has one commit), release tools such as release-please read that title,
+   so the release they cut is no smaller than the change needs. Labels can declare the impact instead, and release pull
+   requests are compared with the last release tag.
 
    ![flowpact impact failing a pull request titled "fix: tidy the test job" with FP810: a removed output and a renamed job require a major release](apps/docs/public/screenshots/impact.svg)
 

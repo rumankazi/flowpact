@@ -125,7 +125,8 @@ flowpact check           # lint + compare with the committed contracts
 ```
 
 [Contracts](/docs/contracts) make every change to an input, secret, output or call visible in review, and `flowpact check`
-fails on breaking changes.
+fails on breaking changes. If other repositories use your workflows or actions, [impact mode](/docs/impact-mode) also
+fails a pull request whose title declares less than the minor or major release its changes need.
 </Step>
 <Step>
 ### Run it in CI

@@ -57,13 +57,13 @@ export default function HomePage() {
         </div>
         <code className="rounded-lg bg-fd-muted px-4 py-2 font-mono text-sm">npx flowpact lint</code>
         <p className="text-sm text-fd-muted-foreground">
-          The extension is also on{' '}
-          <a href={installLinks.openVsx} className="underline underline-offset-4">
-            Open VSX
-          </a>{' '}
-          for VSCodium, Cursor and Windsurf. In CI, use the{' '}
+          In CI, use the{' '}
           <a href={installLinks.action} className="underline underline-offset-4">
             GitHub Action
+          </a>
+          . In VSCodium, Cursor or Windsurf, install the extension from{' '}
+          <a href={installLinks.openVsx} className="underline underline-offset-4">
+            Open VSX
           </a>
           .
         </p>
@@ -89,8 +89,10 @@ export default function HomePage() {
             Other repositories pin what you publish to a tag such as <code>@v1</code>, and a renamed job or a
             removed output breaks them without any error in your repository. Contracts put every change to
             inputs, secrets and outputs into the pull request as a YAML diff and mark the breaking ones.
-            Impact mode grades each pull request as major, minor, patch or none, and fails it when its title
-            declares less, such as <code>fix:</code> on a renamed job.
+            Impact mode grades each pull request as major, minor, patch or none, and fails it when a change
+            needs a minor or major release and its title declares less, such as <code>fix:</code> on a renamed
+            job. Turn both on in the GitHub Action with <code>mode: check</code> and <code>impact: auto</code>
+            .
           </p>
         </div>
         <Screenshot
