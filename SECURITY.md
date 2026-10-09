@@ -35,8 +35,9 @@ Releases are published from GitHub Actions only:
 - the npm package has npm provenance (`npm audit signatures`);
 - each GitHub release carries the npm tarball with a Sigstore bundle (`.sigstore.json`) and its in-toto provenance
   (`.intoto.jsonl`): `gh attestation verify flowpact-<version>.tgz --repo rumankazi/flowpact`;
-- from 0.8.3, the release also carries the GitHub Action as an archive (`flowpact-action-<version>.tar.gz`) and a
-  CycloneDX SBOM for each artifact, all signed the same way, and is published only once every asset is attached;
+- from the first release after 0.8.2, the release also carries the GitHub Action as an archive
+  (`flowpact-action-<version>.tar.gz`) and a CycloneDX SBOM for each artifact, all signed the same way, and is
+  published only once every asset is attached;
 - release tags (`v*`) can only be created or moved by the release automation and maintainers.
 
 The [security page](https://rumankazi.github.io/flowpact/docs/security) describes what flowpact reads, writes and
