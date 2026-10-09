@@ -22,6 +22,18 @@ export function neutralizeWorkflowCommands(s: string): string {
 }
 
 /**
+ * JSON text that no CI log can read as a workflow command, with the same data: `##[` (a legacy command anywhere in a
+ * line) is written `##\u005b`, and U+2028/U+2029 (which the stdout guard takes for line breaks) as escapes. In JSON
+ * these can only occur inside strings, where the escapes are valid.
+ */
+export function jsonSafe(json: string): string {
+  return json
+    .replace(/##\[/g, '##\\u005b')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
  * `s` without runs of `ch` at its end (and at its start with `start: true`). A loop rather than `/x+$/`, which
  * backtracks quadratically on long runs that are not at the end (CodeQL js/polynomial-redos).
  */

@@ -299,12 +299,16 @@ jobs:
         run: |
           tgz="flowpact-$VERSION.tgz"
           # A published release is never changed: its assets are what was verified (and immutable releases forbid it).
-          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # A re-run keeps what an earlier run attached completely, and replaces a partial upload.
-          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          # Read as an assignment, so a failed read stops the job instead of looking like a published release.
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          case "$draft" in
+            true) ;;
+            false) echo "published=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            *) echo "::error::cannot tell whether $TAG is a draft ($draft)"; exit 1 ;;
+          esac
+          # A re-run keeps what an earlier run attached completely, and replaces a partial upload. Only finished uploads
+          # count: a failed upload can leave an empty asset behind under the name.
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
           has() { grep -qxF "$1" <<< "$assets"; }
           if has "$tgz" && has "$tgz.sigstore.json" && has "$tgz.intoto.jsonl"; then echo "signed=true" >> "$GITHUB_OUTPUT"; fi
           if has "flowpact-$VERSION.cdx.json"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
@@ -406,6 +410,7 @@ jobs:
       attestations: write
     outputs:
       assets: ${{ steps.done.outputs.assets }}
+      none: ${{ steps.asset.outputs.none }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -422,16 +427,23 @@ jobs:
           sbom="flowpact-action-$VERSION.cdx.json"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
-          # Tags from before the archive existed (0.8.2 and earlier) have no scripts/action-archive.sh; a published
-          # release is never changed.
-          if [ ! -x scripts/action-archive.sh ] \
-            || [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+          # Tags from before the archive existed (0.8.2 and earlier) have no scripts/action-archive.sh.
+          if [ ! -x scripts/action-archive.sh ]; then
+            echo "none=true" >> "$GITHUB_OUTPUT"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # A published release is never changed; a failed read stops the job.
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          case "$draft" in
+            true) ;;
+            false) echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            *) echo "::error::cannot tell whether $TAG is a draft ($draft)"; exit 1 ;;
+          esac
           # A re-run keeps the archive an earlier run attached (its provenance is for those bytes), and adds what is
-          # missing: the signature bundle and provenance after a partial upload, or the SBOM.
-          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          # missing: the signature bundle and provenance after a partial upload, or the SBOM. Only finished uploads
+          # count.
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
           has() { grep -qxF "$1" <<< "$assets"; }
           if has "$archive"; then echo "archive-attached=true" >> "$GITHUB_OUTPUT"; fi
           if has "$archive" && has "$archive.sigstore.json" && has "$archive.intoto.jsonl"; then
@@ -521,18 +533,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.resolve.outputs.tag }}
           PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
-          EXPECTED: >-
-            ${{ needs.release-assets.outputs.assets }} ${{ needs.action-archive.outputs.assets }}
-            ${{ needs.vscode-release-asset.outputs.assets }}
+          PACKAGE: ${{ needs.release-assets.outputs.assets }}
+          ACTION: ${{ needs.action-archive.outputs.assets }}
+          NO_ACTION: ${{ needs.action-archive.outputs.none }}
+          EXTENSION: ${{ needs.vscode-release-asset.outputs.assets }}
         run: |
-          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
-            echo "$TAG is already published."
-            exit 0
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          case "$draft" in
+            true) ;;
+            false) echo "$TAG is already published."; exit 0 ;;
+            *) echo "::error::cannot tell whether $TAG is a draft ($draft)"; exit 1 ;;
+          esac
+          # The package and (from 0.9) the action are on every release; a job that stands for no assets went wrong.
+          if [ -z "$PACKAGE" ] || { [ -z "$ACTION" ] && [ "$NO_ACTION" != true ]; }; then
+            echo "::error::an asset job reported no assets; $TAG stays a draft"
+            exit 1
           fi
-          # Every asset the jobs above stand for must be on the release; otherwise it stays a draft.
-          attached=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          # Every asset the jobs above stand for must be on the release, fully uploaded; otherwise it stays a draft.
+          attached=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
           missing=0
-          for asset in $EXPECTED; do
+          for asset in $PACKAGE $ACTION $EXTENSION; do
             if ! grep -qxF "$asset" <<< "$attached"; then
               echo "::error::$TAG has no $asset; it stays a draft"
               missing=1
@@ -542,7 +562,12 @@ jobs:
           if [ "$PRERELEASE" = true ]; then
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
           else
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+            # Latest only when this is the newest stable release: completing an older draft must not demote a newer one.
+            tags=$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" 'v*.*.*')
+            newest=$(cut -f2 <<< "$tags" | cut -d/ -f3- | grep -v -e '-' | sort -V | tail -n 1)
+            latest=false
+            if [ "$newest" = "$TAG" ]; then latest=true; fi
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest="$latest"
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets \
             --jq '"published: draft=\(.isDraft) assets=\([.assets[].name] | join(", "))"'
@@ -654,7 +679,16 @@ jobs:
         run: |
           echo "$SHA256  $RUNNER_TEMP/build/$VSIX" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/release"
-          if gh release download "$TAG" --pattern "$VSIX" --dir "$RUNNER_TEMP/release" --repo "$GITHUB_REPOSITORY"; then
+          # Reads as assignments, so a failed read stops the job; only finished uploads count.
+          draft=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+          case "$draft" in
+            true | false) ;;
+            *) echo "::error::cannot tell whether $TAG is a draft ($draft)"; exit 1 ;;
+          esac
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[] | select(.state == "uploaded") | .name')
+          has() { grep -qxF "$1" <<< "$assets"; }
+          if has "$VSIX"; then
+            gh release download "$TAG" --pattern "$VSIX" --dir "$RUNNER_TEMP/release" --repo "$GITHUB_REPOSITORY"
             existing=$(sha256sum "$RUNNER_TEMP/release/$VSIX" | cut -d' ' -f1)
             [ "$existing" = "$SHA256" ] || echo "::warning::$TAG already has $VSIX ($existing); publishing that file, not this build ($SHA256)."
             echo "attached=true" >> "$GITHUB_OUTPUT"
@@ -664,14 +698,12 @@ jobs:
           echo "vsix=$VSIX" >> "$GITHUB_OUTPUT"
           echo "sha256=$(sha256sum "$RUNNER_TEMP/release/$VSIX" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           # A published release is never changed; the registries still get its extension (or this build).
-          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+          if [ "$draft" = false ]; then
             echo "published=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # A re-run adds what an earlier run left out: the signature bundle and provenance after a partial upload, or
           # the SBOM.
-          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-          has() { grep -qxF "$1" <<< "$assets"; }
           if has "$VSIX" && has "$VSIX.sigstore.json" && has "$VSIX.intoto.jsonl"; then echo "signed=true" >> "$GITHUB_OUTPUT"; fi
           if has "${VSIX%.vsix}.cdx.json"; then echo "sbom-attached=true" >> "$GITHUB_OUTPUT"; fi
       - id: attest

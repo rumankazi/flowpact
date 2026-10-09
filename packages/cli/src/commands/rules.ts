@@ -1,8 +1,8 @@
-import { resolveSeverities } from '@flowpact/core';
+import { jsonSafe, resolveSeverities } from '@flowpact/core';
 import { renderRuleList } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import { loadRegistry } from '../analysis';
-import { commonArgs, createContext, EXIT, guard, jsonSafe, pluginArgs } from '../shared';
+import { commonArgs, createContext, EXIT, guard, pluginArgs } from '../shared';
 
 export const rulesCommand = defineCommand({
   meta: { name: 'rules', description: 'List every rule with its code, effective severity and summary' },

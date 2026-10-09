@@ -665,13 +665,16 @@ function isSymlink(abs: string): boolean {
   }
 }
 
-/** The real path of `p`: its nearest existing ancestor resolved, with the rest appended. */
+/**
+ * The real path of `p`: its nearest existing ancestor resolved, with the rest appended. `native` gives the canonical
+ * letter case on case-insensitive file systems (macOS), so another spelling of the same directory compares equal.
+ */
 function realpathNearest(p: string): string {
   const rest: string[] = [];
   let at = resolve(p);
   for (;;) {
     try {
-      return join(realpathSync(at), ...rest.reverse());
+      return join(realpathSync.native(at), ...rest.reverse());
     } catch {
       const parent = dirname(at);
       if (parent === at) return resolve(p);
@@ -703,7 +706,7 @@ export function assertSafeWritePath(abs: string, trees: string[]): void {
   }
   for (const tree of trees) {
     const realTree = realpathNearest(tree);
-    const enters = ancestors.some((a) => existsSync(a) && withinOrAt(realTree, realpathSync(a)));
+    const enters = ancestors.some((a) => existsSync(a) && withinOrAt(realTree, realpathSync.native(a)));
     if (!enters && !withinOrAt(resolve(tree), target)) continue;
     if (isSymlink(target) || !withinOrAt(realTree, realParent))
       throw new UnsafePathError(`Not writing ${abs}: it is a symlink, or links outside ${tree}`);

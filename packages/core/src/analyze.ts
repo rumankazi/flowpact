@@ -107,45 +107,52 @@ export interface AnalysisResult {
   durationMs: number;
 }
 
-const normalizeRuleKey = (s: string) => s.toLowerCase().replace(/[-_\s]/g, '');
+const compact = (s: string) => s.toLowerCase().replace(/[-_\s]/g, '');
 
 /**
- * The loaded rule an unknown key is a typo of, if it is one: a key with the built-in `FP` prefix (`FP10l`, `fp-101`),
- * a code one edit from a loaded code with the same prefix (`ACME610`), or a name at most two edits from a loaded name,
- * ignoring case, `-` and `_` (`unused-inptu`, `unusedInput`). A code with another prefix (`AC201`, `DP201` beside
- * `FP201`) or a longer name (`secrets-inherit-banned` beside `secrets-inherit`) belongs to a plugin, not a typo.
+ * The loaded rule an unknown key is a typo of, if it is one:
+ * - a key with the built-in `FP` prefix and a digit (`FP10l`, `fp-101`), or a built-in code with one character
+ *   replaced or two swapped (`FPl01`, `FPO01`);
+ * - a code one edit from a loaded code with the same prefix (`ACME610`, `AB12602`);
+ * - another spelling of a loaded name (`unusedInput`, `unused_input`), or a name two edits from one (`unused-inptu`).
+ * A code with another prefix (`AC201`, `DP201`, `FPX201` beside `FP201`) or a name that adds a word to a loaded one
+ * (`no-secrets-inherit`, `secrets-inherit-banned`) belongs to a plugin.
  */
 function typoOf(registry: RuleRegistry, key: string): { typo: boolean; rule?: string } {
-  const k = normalizeRuleKey(key);
-  const near = (candidates: string[], max: number) => {
+  const k = compact(key);
+  const nearest = (candidates: string[], distance: (c: string) => number, max: number) => {
     let best: { rule: string; d: number } | undefined;
     for (const rule of candidates) {
-      const d = typoDistance(k, normalizeRuleKey(rule));
+      const d = distance(rule);
       if (d <= max && (!best || d < best.d)) best = { rule, d };
     }
     return best?.rule;
   };
   const rules = registry.all();
+  const codes = rules.map((r) => r.code);
+  const fromCode = (c: string) => typoDistance(k, c.toLowerCase());
   if (/^fp\d/.test(k)) {
-    const rule = near(
-      rules.map((r) => r.code),
-      1,
-    );
+    const rule = nearest(codes, fromCode, 1);
     return { typo: true, ...(rule ? { rule } : {}) };
   }
-  const prefix = (code: string) => CODE_PATTERN.exec(code)?.[1]?.toLowerCase() ?? '';
-  // The prefix is the shortest start that a digit follows, as in CODE_PATTERN: `ACME` in ACME610, `K8S` in K8S601.
-  const keyPrefix = /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1];
-  const code = near(
-    rules.map((r) => r.code).filter((c) => keyPrefix !== undefined && prefix(c) === keyPrefix),
+  const builtin = nearest(
+    codes.filter((c) => c.startsWith('FP') && c.length === k.length),
+    fromCode,
     1,
   );
-  const rule =
-    code ??
-    near(
-      rules.map((r) => r.name),
-      2,
-    );
+  if (k.startsWith('fp') && builtin) return { typo: true, rule: builtin };
+  // The prefix as CODE_PATTERN reads it (`AB12` in AB12602), or for other keys the start before the first digit.
+  const prefix = (code: string) => CODE_PATTERN.exec(code.toUpperCase())?.[1];
+  const keyPrefix = prefix(k) ?? /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
+  const code = nearest(
+    codes.filter((c) => keyPrefix !== undefined && prefix(c) === keyPrefix),
+    fromCode,
+    1,
+  );
+  if (code) return { typo: true, rule: code };
+  const names = rules.map((r) => r.name);
+  const spelled = key.toLowerCase().replace(/_/g, '-');
+  const rule = names.find((n) => compact(n) === k) ?? nearest(names, (n) => typoDistance(spelled, n), 2);
   return rule ? { typo: true, rule } : { typo: false };
 }
 
@@ -204,7 +211,10 @@ export function fingerprint(code: string, symbol: string | undefined, file: stri
 export function analyze(opts: AnalyzeOptions): AnalysisResult {
   const started = performance.now();
   const logger = opts.logger ?? silentLogger;
-  const config = opts.config ?? defaultConfig();
+  // A run without rules (generate, trace, graph, the impact baseline) has no use for rule settings and overrides, so
+  // entries for rules it does not load cannot fail it.
+  const configured = opts.config ?? defaultConfig();
+  const config = opts.only?.length === 0 ? { ...configured, rules: {}, overrides: [] } : configured;
   // Units to load even when nothing here uses them: what the config (and, in impact mode, the baseline) publishes.
   const publishPatterns = [
     ...new Set([

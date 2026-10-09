@@ -1,5 +1,5 @@
 /** Regression tests for the gaps found when re-verifying the round 2 fixes of the adversarial review. */
-import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -116,6 +116,21 @@ describe('report paths', () => {
     expect(() => assertSafeWritePath(join(door, 'out/new.json'), [root])).toThrow(UnsafePathError);
     expect(() => assertSafeWritePath(join(door, 'flowpact.json'), [root])).not.toThrow();
   });
+
+  // On a case-insensitive file system (macOS by default), another letter case is another spelling of the same path.
+  const probe = mkdtempSync(join(tmpdir(), 'flowpact-Case-'));
+  it.runIf(existsSync(probe.toLowerCase()) && probe !== probe.toLowerCase())(
+    'checks a path written in another letter case',
+    () => {
+      const root = join(probe, 'repo');
+      mkdirSync(root);
+      const outside = mkdtempSync(join(tmpdir(), 'flowpact-case-out-'));
+      symlinkSync(outside, join(root, 'link'));
+      expect(() => assertSafeWritePath(join(probe.toUpperCase(), 'REPO', 'link', 'x.json'), [root])).toThrow(
+        UnsafePathError,
+      );
+    },
+  );
 });
 
 describe('symlinks and .git (#10)', () => {
@@ -244,17 +259,21 @@ describe('config edge cases (#3, #11, #14)', () => {
         DP201: 'off',
         PF401: 'off',
         FPX201: 'off',
+        'fpga-deploy': 'off',
         'secrets-inherit-banned': 'error',
+        'no-secrets-inherit': 'error',
+        'secrets-inherit-v2': 'error',
         'unused-input-legacy': 'warning',
       },
       overrides: [{ rule: 'XY604', file: WF, reason: 'an organization rule' }],
     });
-    expect(r.unloadedRules).toHaveLength(7);
+    expect(r.unloadedRules).toHaveLength(10);
     // The built-in prefix in any spelling, or a name two edits from a loaded one in any case: a typo.
     expect(issues({ rules: { FP10l: 'off' } })).toEqual(['rules.FP10l: unknown rule (did you mean FP101?)']);
     expect(issues({ rules: { 'FP-101': 'off' } })).toEqual([
       'rules.FP-101: unknown rule (did you mean FP101?)',
     ]);
+    expect(issues({ rules: { FPl01: 'off' } })).toEqual(['rules.FPl01: unknown rule (did you mean FP101?)']);
     expect(issues({ rules: { 'unused-inptu': 'off' } })).toEqual([
       'rules.unused-inptu: unknown rule (did you mean unused-input?)',
     ]);
@@ -265,17 +284,19 @@ describe('config edge cases (#3, #11, #14)', () => {
   });
 
   it('tells a typo of a loaded plugin code by its prefix', () => {
-    const registry = createRegistry().register(
+    const rule = (code: string, name: string) =>
       defineRule({
-        code: 'ACME601',
-        name: 'acme-check',
+        code,
+        name,
         category: 'structure',
         defaultSeverity: 'warning',
-        docsUrl: 'https://example.com/acme601',
-        docs: { summary: 'Acme check', why: 'Because acme.', fix: 'Do the acme thing.' },
+        docsUrl: `https://example.com/${code}`,
+        docs: { summary: 'A plugin rule', why: 'Because.', fix: 'Do it.' },
         check() {},
-      }),
-    );
+      });
+    const registry = createRegistry()
+      .register(rule('ACME601', 'acme-check'))
+      .register(rule('AB12601', 'ab-check'));
     const analyzeWith = (rules: Record<string, string>) =>
       analyze({
         root: '/v',
@@ -286,6 +307,7 @@ describe('config edge cases (#3, #11, #14)', () => {
         repository: 'a/b',
       });
     expect(() => analyzeWith({ ACME610: 'off' })).toThrow(ConfigError);
+    expect(() => analyzeWith({ AB12602: 'off' })).toThrow(ConfigError);
     expect(analyzeWith({ ACME601: 'off', OTHER601: 'off' }).unloadedRules).toEqual([
       'rules.OTHER601: unknown rule "OTHER601"',
     ]);

@@ -125429,6 +125429,9 @@ function escapeControl(s, keepNewlines = false) {
 function neutralizeWorkflowCommands(s) {
   return s.replace(/^((?:\s|\u0085|\u001b\[[\d;]*m)*):(?=:)/gm, "$1:\u200B").replace(/##\[/g, "##\u200B[");
 }
+function jsonSafe(json2) {
+  return json2.replace(/##\[/g, "##\\u005b").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+}
 function trimChar(s, ch, { start = false } = {}) {
   let from = 0;
   let to = s.length;
@@ -131694,7 +131697,7 @@ function realpathNearest(p) {
   let at = resolve4(p);
   for (; ; ) {
     try {
-      return join5(realpathSync2(at), ...rest.reverse());
+      return join5(realpathSync2.native(at), ...rest.reverse());
     } catch {
       const parent2 = dirname2(at);
       if (parent2 === at) return resolve4(p);
@@ -131717,7 +131720,7 @@ function assertSafeWritePath(abs, trees) {
   }
   for (const tree of trees) {
     const realTree = realpathNearest(tree);
-    const enters = ancestors.some((a) => existsSync7(a) && withinOrAt(realTree, realpathSync2(a)));
+    const enters = ancestors.some((a) => existsSync7(a) && withinOrAt(realTree, realpathSync2.native(a)));
     if (!enters && !withinOrAt(resolve4(tree), target)) continue;
     if (isSymlink(target) || !withinOrAt(realTree, realParent))
       throw new UnsafePathError(`Not writing ${abs}: it is a symlink, or links outside ${tree}`);
@@ -134876,35 +134879,41 @@ function createRegistry() {
 }
 
 // ../core/src/analyze.ts
-var normalizeRuleKey = (s) => s.toLowerCase().replace(/[-_\s]/g, "");
+var compact = (s) => s.toLowerCase().replace(/[-_\s]/g, "");
 function typoOf(registry2, key) {
-  const k = normalizeRuleKey(key);
-  const near = (candidates, max) => {
+  const k = compact(key);
+  const nearest = (candidates, distance, max) => {
     let best;
     for (const rule2 of candidates) {
-      const d = typoDistance(k, normalizeRuleKey(rule2));
+      const d = distance(rule2);
       if (d <= max && (!best || d < best.d)) best = { rule: rule2, d };
     }
     return best?.rule;
   };
   const rules = registry2.all();
+  const codes = rules.map((r) => r.code);
+  const fromCode = (c) => typoDistance(k, c.toLowerCase());
   if (/^fp\d/.test(k)) {
-    const rule2 = near(
-      rules.map((r) => r.code),
-      1
-    );
+    const rule2 = nearest(codes, fromCode, 1);
     return { typo: true, ...rule2 ? { rule: rule2 } : {} };
   }
-  const prefix2 = (code3) => CODE_PATTERN.exec(code3)?.[1]?.toLowerCase() ?? "";
-  const keyPrefix = /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1];
-  const code2 = near(
-    rules.map((r) => r.code).filter((c) => keyPrefix !== void 0 && prefix2(c) === keyPrefix),
+  const builtin = nearest(
+    codes.filter((c) => c.startsWith("FP") && c.length === k.length),
+    fromCode,
     1
   );
-  const rule = code2 ?? near(
-    rules.map((r) => r.name),
-    2
+  if (k.startsWith("fp") && builtin) return { typo: true, rule: builtin };
+  const prefix2 = (code3) => CODE_PATTERN.exec(code3.toUpperCase())?.[1];
+  const keyPrefix = prefix2(k) ?? /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
+  const code2 = nearest(
+    codes.filter((c) => keyPrefix !== void 0 && prefix2(c) === keyPrefix),
+    fromCode,
+    1
   );
+  if (code2) return { typo: true, rule: code2 };
+  const names = rules.map((r) => r.name);
+  const spelled = key.toLowerCase().replace(/_/g, "-");
+  const rule = names.find((n) => compact(n) === k) ?? nearest(names, (n) => typoDistance(spelled, n), 2);
   return rule ? { typo: true, rule } : { typo: false };
 }
 function triageUnknown(registry2, key, path4, out) {
@@ -134941,7 +134950,8 @@ function fingerprint(code2, symbol2, file2, message) {
 function analyze(opts) {
   const started = performance.now();
   const logger7 = opts.logger ?? silentLogger;
-  const config2 = opts.config ?? defaultConfig();
+  const configured = opts.config ?? defaultConfig();
+  const config2 = opts.only?.length === 0 ? { ...configured, rules: {}, overrides: [] } : configured;
   const publishPatterns = [
     .../* @__PURE__ */ new Set([
       ...config2.impact.publish ?? [],
@@ -135583,7 +135593,7 @@ function prepareImpact(root, headConfig, req, logger7) {
   const base = analyze({
     root,
     fs: fs8,
-    config: { ...baseConfig ?? defaultConfig(), rules: {}, overrides: [] },
+    config: baseConfig ?? defaultConfig(),
     validateSchema: false,
     only: [],
     ...req.repository ? { repository: req.repository } : {}
@@ -135964,8 +135974,8 @@ function renderMermaid(graph, opts = {}) {
 
 // ../reporters/src/json.ts
 function renderJson(result, opts = {}) {
-  return `${JSON.stringify(toJsonReport(result, opts), null, 2)}
-`;
+  return jsonSafe(`${JSON.stringify(toJsonReport(result, opts), null, 2)}
+`);
 }
 
 // ../reporters/src/impact.ts
@@ -136385,8 +136395,8 @@ function renderSarif(result, opts = {}) {
       }
     ]
   };
-  return `${JSON.stringify(sarif, null, 2)}
-`;
+  return jsonSafe(`${JSON.stringify(sarif, null, 2)}
+`);
 }
 
 // src/main.ts

@@ -110,7 +110,11 @@ function flagSpellings(def: ArgsDef) {
  */
 export function normalizeArgv(argv: string[], commands: Record<string, { args?: unknown }>): string[] {
   const [first, ...rest] = argv;
-  if (first === undefined || ['--help', '-h', '--version', '-V'].includes(first)) return argv;
+  const command = argv.findIndex((a) => !a.startsWith('-'));
+  const options = command < 0 ? argv : argv.slice(0, command);
+  // Help and the version need no command: `flowpact --no-color --help` still prints help.
+  if (first === undefined || options.some((a) => ['--help', '-h', '--version', '-V'].includes(a)))
+    return argv;
   if (first.startsWith('-')) {
     throw new UsageError(
       `Options go after the command, e.g. \`flowpact lint ${first}\` (got \`${first}\` before the command).`,
@@ -190,15 +194,6 @@ export function repeatedFlag(rawArgs: string[], def: ArgsDef, name: string): str
   );
 }
 
-function countVerbose(rawArgs: string[]): number {
-  let n = 0;
-  for (const a of rawArgs) {
-    if (a === '--verbose') n++;
-    else if (/^-v+$/.test(a)) n += a.length - 1;
-  }
-  return n;
-}
-
 export function stderrSink(color: boolean) {
   const c = pc.createColors(color);
   const tag: Record<LogRecord['level'], string> = {
@@ -251,7 +246,8 @@ export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDe
   };
   const resolved = resolveLogLevel({
     debug: Boolean(flags.debug),
-    verbose: countVerbose(rawArgs),
+    // Every -v counts, also in a cluster such as -vvo; read like any flag, so a value never does.
+    verbose: repeatedFlag(rawArgs, def, 'verbose').length,
     quiet: Boolean(flags.quiet),
   });
   // The CLI keeps info-level progress quiet unless asked for; the report itself is the output.
@@ -325,14 +321,8 @@ export const protectedTrees = (ctx: CliContext): string[] => [
 ];
 
 /**
- * JSON with `##[` written as `##\u005b`: the same data, but no legacy workflow command when a CI step prints it (and
- * nothing for the stdout guard to change). In JSON, `##[` can only occur inside strings, where the escape is valid.
- */
-export const jsonSafe = (json: string) => json.replace(/##\[/g, '##\\u005b');
-
-/**
  * Writes a report or a patch. A text report may be printed by a later CI step, so it is kept free of workflow commands;
- * JSON is passed through `jsonSafe` by whoever renders it; a patch is written as is, for `git apply`.
+ * JSON is written with `jsonSafe` by whoever renders it; a patch is written as is, for `git apply`.
  */
 export function writeOutput(file: string, content: string, ctx: CliContext, kind: 'text' | 'data' = 'text') {
   const abs = resolve(process.cwd(), file);

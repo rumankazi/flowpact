@@ -5,6 +5,7 @@ import {
   IMPACT_CODES,
   type ImpactLevel,
   ImpactSetupError,
+  jsonSafe,
   prepareImpact,
 } from '@flowpact/core';
 import {
@@ -23,7 +24,6 @@ import {
   createContext,
   displayPath,
   guard,
-  jsonSafe,
   pathArgs,
   pluginArgs,
   printBanner,
@@ -255,9 +255,9 @@ export async function runReport(
   const render = (format: Format, toFile: boolean): string => {
     switch (format) {
       case 'json':
-        return jsonSafe(renderJson(result, { includeGraph }));
+        return renderJson(result, { includeGraph });
       case 'sarif':
-        return jsonSafe(renderSarif(result, { pathPrefix }));
+        return renderSarif(result, { pathPrefix });
       case 'github':
         return renderGithub(result, { pathPrefix });
       case 'markdown':

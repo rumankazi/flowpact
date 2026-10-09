@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { analyze, createRegistry, defineRule, memoryFileSystem, type Severity } from '@flowpact/core';
-import { githubAnnotation, renderGithub, renderSarif } from '@flowpact/reporters';
+import { githubAnnotation, renderGithub, renderJson, renderSarif } from '@flowpact/reporters';
 import { describe, expect, it } from 'vitest';
 
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/', import.meta.url));
@@ -83,5 +83,17 @@ describe('renderGithub', () => {
     const uris = JSON.stringify(run.results).match(/"uri":"[^"]*"/g)!;
     expect(uris.length).toBeGreaterThan(1);
     for (const uri of uris) expect(uri).toMatch(/^"uri":"services\/api\/\.github\//);
+  });
+});
+
+describe('JSON and SARIF reports', () => {
+  it('cannot be read as workflow commands when a CI step prints them, and carry the same data', () => {
+    const message = 'x ##[set-output name=a]1 \u2028::error::y \u2029z';
+    const r = reported(message);
+    for (const text of [renderJson(r), renderSarif(r)]) {
+      expect(text).not.toMatch(/##\[|\u2028|\u2029/);
+      expect(JSON.stringify(JSON.parse(text))).toContain(JSON.stringify(r.findings[0]!.message).slice(1, -1));
+    }
+    expect(r.findings[0]!.message).toContain('##[set-output');
   });
 });

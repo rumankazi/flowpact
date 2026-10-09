@@ -274,12 +274,11 @@ export function prepareImpact(
     notes.push('this pull request changes impact settings; they apply after it is merged');
   }
   logger?.debug('impact baseline', { ref: baseRef, commit, kind });
-  // No rules run on the baseline, so its rule settings and overrides do not matter; without them, entries for rules
-  // that only the head loads (`--plugin`) cannot fail the run.
+  // No rules run on the baseline (only: []), so its rule settings cannot fail it.
   const base = analyze({
     root,
     fs,
-    config: { ...(baseConfig ?? defaultConfig()), rules: {}, overrides: [] },
+    config: baseConfig ?? defaultConfig(),
     validateSchema: false,
     only: [],
     ...(req.repository ? { repository: req.repository } : {}),

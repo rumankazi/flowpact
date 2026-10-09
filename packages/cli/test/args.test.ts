@@ -106,7 +106,13 @@ describe('normalizeArgv', () => {
 
   it('refuses options before the command, which citty would drop, but not help or the version', () => {
     expect(() => normalizeArgv(['--no-plugins', 'lint'], COMMANDS)).toThrow('Options go after the command');
-    for (const argv of [['--version'], ['-h', 'lint'], [], ['lsp', '--socket', '1234']])
+    for (const argv of [
+      ['--version'],
+      ['-h', 'lint'],
+      ['--no-color', '--help'],
+      [],
+      ['lsp', '--socket', '1234'],
+    ])
       expect(normalizeArgv(argv, COMMANDS)).toEqual(argv);
   });
 

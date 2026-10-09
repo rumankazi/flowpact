@@ -1,18 +1,9 @@
-import { resolveSymbols, type TraceDirection, trace } from '@flowpact/core';
+import { jsonSafe, resolveSymbols, type TraceDirection, trace } from '@flowpact/core';
 import { renderTrace } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import pc from 'picocolors';
 import { runAnalysis } from '../analysis';
-import {
-  commonArgs,
-  createContext,
-  EXIT,
-  guard,
-  jsonSafe,
-  pluginArgs,
-  printBanner,
-  UsageError,
-} from '../shared';
+import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
 
 export const traceCommand = defineCommand({
   meta: {

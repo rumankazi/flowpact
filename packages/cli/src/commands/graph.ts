@@ -1,16 +1,7 @@
-import { analyze } from '@flowpact/core';
+import { analyze, jsonSafe } from '@flowpact/core';
 import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import {
-  commonArgs,
-  createContext,
-  displayPath,
-  EXIT,
-  guard,
-  jsonSafe,
-  printBanner,
-  UsageError,
-} from '../shared';
+import { commonArgs, createContext, displayPath, EXIT, guard, printBanner, UsageError } from '../shared';
 
 export const graphCommand = defineCommand({
   meta: {
