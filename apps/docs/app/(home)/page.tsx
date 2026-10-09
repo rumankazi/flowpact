@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
 import { Screenshot } from '@/components/screenshot';
+import { installLinks } from '@/lib/shared';
 
 const features = [
   {
@@ -18,14 +19,6 @@ const features = [
   {
     title: 'Trace anything',
     body: '`flowpact trace pipeline.yml:config` shows where a value goes — or, with --up, where it comes from.',
-  },
-  {
-    title: 'Contracts',
-    body: 'A generated lockfile of each workflow’s and action’s interface and wiring. `flowpact check` fails on drift and marks breaking changes.',
-  },
-  {
-    title: 'Impact mode',
-    body: 'For publishers: grades what each pull request changes for consumers as major, minor, patch or none, and fails when a pull request declares less, such as a `fix:` title on a change that needs a minor or major release.',
   },
 ];
 
@@ -52,11 +45,28 @@ export default function HomePage() {
           >
             Get started
           </Link>
+          <a
+            href={installLinks.vscode}
+            className="rounded-lg border border-fd-border px-5 py-2.5 font-medium"
+          >
+            Install for VS Code
+          </a>
           <Link href="/docs/rules" className="rounded-lg border border-fd-border px-5 py-2.5 font-medium">
             Browse rules
           </Link>
         </div>
         <code className="rounded-lg bg-fd-muted px-4 py-2 font-mono text-sm">npx flowpact lint</code>
+        <p className="text-sm text-fd-muted-foreground">
+          The extension is also on{' '}
+          <a href={installLinks.openVsx} className="underline underline-offset-4">
+            Open VSX
+          </a>{' '}
+          for VSCodium, Cursor and Windsurf. In CI, use the{' '}
+          <a href={installLinks.action} className="underline underline-offset-4">
+            GitHub Action
+          </a>
+          .
+        </p>
       </section>
       <Screenshot
         name="lint-incident"
@@ -72,6 +82,32 @@ export default function HomePage() {
       </section>
       <section className="flex flex-col gap-3">
         <div className="flex flex-col items-center gap-3 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            For publishers of reusable workflows and actions
+          </h2>
+          <p className="max-w-2xl text-fd-muted-foreground">
+            Other repositories pin what you publish to a tag such as <code>@v1</code>, and a renamed job or a
+            removed output breaks them without any error in your repository. Contracts put every change to
+            inputs, secrets and outputs into the pull request as a YAML diff and mark the breaking ones.
+            Impact mode grades each pull request as major, minor, patch or none, and fails it when its title
+            declares less, such as <code>fix:</code> on a renamed job.
+          </p>
+        </div>
+        <Screenshot
+          name="impact"
+          alt="flowpact impact failing with FP810: declared patch (the title “fix: tidy the test job”), but a removed output and a renamed job require major"
+        />
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <Link href="/docs/contracts" className="font-medium underline underline-offset-4">
+            Contracts
+          </Link>
+          <Link href="/docs/impact-mode" className="font-medium underline underline-offset-4">
+            Impact mode
+          </Link>
+        </div>
+      </section>
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col items-center gap-3 text-center">
           <h2 className="text-2xl font-semibold tracking-tight">And in your editor, as you type</h2>
           <p className="max-w-2xl text-fd-muted-foreground">
             The VS Code extension reports the same findings before you push, and traces any input or output
@@ -83,9 +119,27 @@ export default function HomePage() {
           format="png"
           alt="VS Code showing FP401 on matrix.config: the windows matrix entry has no config, with the call chain and flowpact's hover card"
         />
-        <Link href="/docs/editors" className="self-center font-medium underline underline-offset-4">
-          Install the extension
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <a
+            href={installLinks.vscode}
+            className="rounded-lg bg-fd-primary px-5 py-2.5 font-medium text-fd-primary-foreground"
+          >
+            Install from the VS Code Marketplace
+          </a>
+          <a
+            href={installLinks.openVsx}
+            className="rounded-lg border border-fd-border px-5 py-2.5 font-medium"
+          >
+            Open VSX
+          </a>
+        </div>
+        <p className="text-center text-sm text-fd-muted-foreground">
+          Open VSX serves VSCodium, Cursor, Windsurf and other editors built on VS Code. Other editors use{' '}
+          <Link href="/docs/editors#other-editors" className="underline underline-offset-4">
+            flowpact lsp
+          </Link>
+          .
+        </p>
       </section>
     </main>
   );

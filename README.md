@@ -7,16 +7,20 @@
 
 <p align="center">Find the GitHub Actions values that arrive empty while the run stays green.</p>
 
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact"><b>VS Code extension</b></a> ·
+  <a href="https://open-vsx.org/extension/flowpact/vscode-flowpact">Open VSX</a> ·
+  <a href="https://github.com/marketplace/actions/flowpact">GitHub Action</a> ·
+  <a href="https://www.npmjs.com/package/flowpact">npm</a> ·
+  <a href="https://rumankazi.github.io/flowpact">Docs</a>
+</p>
+
 [![CI](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml)
 [![Release](https://github.com/rumankazi/flowpact/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/release.yml)
-[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-flowpact-blue?logo=github)](https://github.com/marketplace/actions/flowpact)
 [![npm](https://img.shields.io/npm/v/flowpact?logo=npm)](https://www.npmjs.com/package/flowpact)
-[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-0b8496)](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact)
-[![Open VSX](https://img.shields.io/open-vsx/v/flowpact/vscode-flowpact?label=Open%20VSX)](https://open-vsx.org/extension/flowpact/vscode-flowpact)
 [![Node.js](https://img.shields.io/node/v/flowpact?logo=nodedotjs)](https://www.npmjs.com/package/flowpact)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rumankazi/flowpact/badge)](https://scorecard.dev/viewer/?uri=github.com/rumankazi/flowpact)
 [![License: MIT](https://img.shields.io/github/license/rumankazi/flowpact)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-rumankazi.github.io%2Fflowpact-blue)](https://rumankazi.github.io/flowpact)
 
 **Data-flow linter for GitHub Actions.**
 
@@ -36,8 +40,8 @@ reports nothing here.*
 - **You call reusable workflows or local actions:** flowpact finds inputs callers do not pass, secrets that are never
   declared, and matrix values that are empty in some combinations.
 - **You publish actions or reusable workflows that other repositories use,** in public or inside your organization:
-  contracts flag breaking interface changes, and impact mode fails a pull request whose changes need a minor or major
-  release when it declares less.
+  contracts show interface changes in review and mark the breaking ones, and impact mode fails a pull request whose
+  title declares a smaller release than its changes need ([how](#for-publishers-of-actions-and-reusable-workflows)).
 - **You edit workflows in VS Code:** the same findings as you type, with the
   [extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact).
 
@@ -63,6 +67,9 @@ In CI, add the action; it lints by default and annotates the pull request:
 📖 **Docs:** https://rumankazi.github.io/flowpact — getting started, how it works, the CLI (`generate`, `check`,
 `graph`, `lsp`), CI and action usage, contracts, impact mode, configuration, and a page for every rule.
 
+Findings you accept go into the config as **overrides** with a reason, an owner and an expiry date; expired overrides
+bring the findings back.
+
 ## What it finds that other tools miss
 
 | Problem | actionlint | flowpact |
@@ -77,33 +84,58 @@ In a large public repository, flowpact found the third case: a reusable workflow
 while declaring no secrets, called from 31 places and none with `secrets: inherit`, so the token is always empty.
 
 Both tools report a missing or unknown input on a direct call to a local reusable workflow or action, and actionlint
-also checks shell scripts, runner labels, expression types and the inputs of popular actions such as
+also checks shell scripts, runner labels, expression types, cron schedules and the inputs of popular actions such as
 `actions/checkout`. Use flowpact next to it, and zizmor for security. The
 [comparison](https://rumankazi.github.io/flowpact/docs/comparison) shows both tools' output side by side.
 
 ## For publishers of actions and reusable workflows
 
-Other repositories pin your action or workflow to a tag such as `@v1`, and you cannot see their workflows or branch
-protection. Remove an output of your action and their steps read an empty value; rename a job of a published reusable
-workflow and their required check waits on *Expected — Waiting for status to be reported*.
+Other repositories pin your action or reusable workflow to a tag such as `@v1`, and you cannot see their workflows or
+their branch protection. Remove an output and their steps read an empty value; rename a job and their required check
+waits on *Expected — Waiting for status to be reported*. Nothing fails in your repository, and neither actionlint nor
+GitHub's Actions extension reports either change. flowpact puts both in the pull request:
 
-With [impact mode](https://rumankazi.github.io/flowpact/docs/impact-mode) on (`impact: auto` in the action, on pull
-requests), flowpact grades what each pull request changes for those consumers as major, minor, patch or none, and fails
-when the pull request declares less than a minor or major change needs. By default the declaration is the Conventional
-Commits title (`fix:` patch, `feat:` minor, `feat!:` major); labels can be used instead.
+1. **Commit the contracts.** `flowpact generate` writes one contract per workflow and local action into
+   `.github/flowpact/`: its inputs, secrets and outputs, what it calls and who calls it. Contracts are deterministic (no
+   hashes or timestamps), so a pull request that changes an interface also changes a contract, and reviewers see a
+   small YAML diff.
+2. **Check every pull request.** `flowpact check`, or the action with `mode: check`, fails until the contracts match the
+   workflows again and marks **breaking** changes, such as a removed output or a new required input. The action's job
+   summary lists every change, breaking ones in bold, and the action uploads the regenerated contracts as a patch that
+   contributors without Node.js can apply with `git apply`.
 
-## Contracts
+   ![flowpact check reporting a breaking change, an outdated contract and an orphaned contract](apps/docs/public/screenshots/check-drift.svg)
 
-`flowpact generate` writes one contract per workflow and local action — inputs, secrets, outputs, what it calls and who
-calls it — into `.github/flowpact/`. Contracts are generated only and deterministic (no hashes or
-timestamps). `flowpact check` compares them with the workflows and reports missing, outdated, orphaned and invalid
-contracts and **breaking** interface changes such as a removed output or a new required input. Contributors without
-Node.js can apply the regenerated contracts from CI as a patch.
+3. **Grade the release.** With `impact: auto`, the action compares each pull request with its base and grades what
+   consumers can see as major, minor, patch or none: a renamed job or a removed output is major, a new optional input
+   minor. It fails the pull request when its Conventional Commits title declares less (`fix:` patch, `feat:` minor,
+   `feat!:` major). When pull requests are squash-merged, that title becomes the commit message that release tools such
+   as release-please read, so the release they cut is no smaller than the change needs. Labels can declare the impact
+   instead, and release pull requests are compared with the last release tag.
 
-![flowpact check reporting a breaking change, an outdated contract and an orphaned contract](apps/docs/public/screenshots/check-drift.svg)
+   ![flowpact impact failing a pull request titled "fix: tidy the test job" with FP810: a removed output and a renamed job require a major release](apps/docs/public/screenshots/impact.svg)
 
-Findings you accept go into the config as **overrides** with a reason, an owner and an expiry date; expired overrides
-bring the findings back.
+```yaml
+on:
+  pull_request:
+    # edited / labeled: re-check when the title or the labels change
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  flowpact:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rumankazi/flowpact@v0.8
+        with:
+          mode: check   # lint, and compare with the committed contracts
+          impact: auto  # grade the change against the pull request title
+```
+
+See [contracts](https://rumankazi.github.io/flowpact/docs/contracts) and
+[impact mode](https://rumankazi.github.io/flowpact/docs/impact-mode).
 
 ## In your editor
 

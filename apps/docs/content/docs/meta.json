@@ -11,11 +11,11 @@
     "action",
     "configuration",
     "contracts",
+    "impact-mode",
     "---Reference---",
     "rules",
     "custom-rules",
     "comparison",
-    "impact-mode",
     "roadmap",
     "upgrading"
   ]

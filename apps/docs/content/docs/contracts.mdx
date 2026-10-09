@@ -3,9 +3,12 @@ title: Contracts
 description: A generated lockfile for the interface and wiring of every workflow and local action — reviewed in pull requests, checked in CI.
 ---
 
-A **contract** records what a workflow or local action accepts, what it returns, what it calls and who calls it. flowpact
-writes one contract per workflow and per local action into `.github/flowpact/`, you commit them, and
-`flowpact check` fails when the workflows no longer match.
+Remove an output from a reusable workflow or action and every caller that reads it gets an empty value, including
+callers in other repositories that flowpact cannot see. A **contract** makes such a change visible in review: it records
+what a workflow or local action accepts, what it returns, what it calls and who calls it. `flowpact generate` writes one
+per workflow and local action into `.github/flowpact/`, you commit them, and `flowpact check` fails when the workflows no
+longer match, marking the changes that break callers. To also check the release a pull request declares, see
+[impact mode](/docs/impact-mode).
 
 Think of it as a lockfile for interfaces: `package-lock.json` makes dependency changes visible in review; contracts do
 the same for the inputs, secrets and outputs that flow between workflows. When someone removes an output that another

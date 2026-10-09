@@ -3,7 +3,12 @@ title: Editors
 description: flowpact's findings, hover traces and go to definition while you edit — in VS Code and any editor that speaks LSP.
 ---
 
-flowpact ships a language server, so the analysis runs while you edit instead of only in CI:
+flowpact ships a language server, so the analysis runs while you edit instead of only in CI. In VS Code, install
+**flowpact** from the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact); in VSCodium,
+Cursor, Windsurf and other editors built on VS Code, from
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact). The extension bundles the server. Other editors
+start it with [`flowpact lsp`](#other-editors). You get:
 
 - **Diagnostics as you type** — the findings of `flowpact lint` for the whole repository, closed files included,
   updated on every edit (unsaved ones too). Editing a reusable workflow updates its callers' findings at once. When

@@ -3,14 +3,16 @@ title: Impact mode
 description: For publishers of reusable workflows and actions — check that the release impact a pull request declares covers what its changes require, so consumers never get a breaking change as a patch.
 ---
 
-Repositories that publish reusable workflows or actions version them, and consumers pin a floating tag (`@v1`). Some
-changes break those consumers without any error in the publishing repository. The classic one is renaming a job:
-consumers' branch protection requires the check `ci / Test`, the job now reports `ci / Unit tests`, and their pull
-requests wait forever on _Expected — Waiting for status to be reported_.
+Impact mode fails a pull request that declares a smaller release than its changes need, such as a `fix:` title on a
+pull request that renames a job or removes an output of a published reusable workflow. It compares the pull request with
+its base, grades every change consumers can observe as **major, minor, patch or none**, and compares that with the
+declared impact: by default the Conventional Commits title, which becomes the squash commit that release tools such as
+release-please read.
 
-Impact mode compares the pull request with its base, grades every change to what consumers can observe as **major,
-minor, patch or none**, and fails when the declared impact — usually the Conventional Commits pull request title — is
-too low.
+Consumers pin a floating tag (`@v1`) and take every release in it, and some changes break them without any error in the
+publishing repository. The classic one is renaming a job: consumers' branch protection requires the check `ci / Test`,
+the job now reports `ci / Unit tests`, and their pull requests wait forever on _Expected — Waiting for status to be
+reported_.
 
 ```sh
 flowpact impact --base origin/main --title "fix: tidy the test job"
@@ -25,6 +27,8 @@ Impact  declared patch (title "fix: tidy the test job")  ·  required MAJOR  ✖
   major  .github/workflows/ci-reusable.yml  check "… / Test" is now "… / Unit tests"; …
   baseline: origin/main (1a2b3c4)
 ```
+
+<Screenshot name="impact" alt="flowpact impact failing with FP810 for a renamed job and a removed output" caption="A fix: title on a change that requires a major release." />
 
 ## What is graded
 
