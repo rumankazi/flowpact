@@ -40,6 +40,7 @@ flowpact lint [paths…] [options]
 | `[paths…]` | Files or directories to report on. Everything is still analyzed. |
 | `--root <dir>` | Repository root (default: current directory). |
 | `--config <file>` | Config file (default: `.github/flowpact/flowpact.config.yml`). |
+| `--base-config <file>` | Defaults under the repository's config, such as an organization's, relative to the working directory. See [Base config](/docs/configuration#base-config). |
 | `--no-plugins` | Do not load the [plugins](/docs/custom-rules) the config lists; they run code from the repository. |
 | `--plugin <file>` | Also load this plugin, relative to the working directory; repeatable, and not affected by `--no-plugins`. See [Build on flowpact](/docs/integrating#organization-rules). |
 | `--format pretty\|json\|markdown\|sarif\|github` | Output on stdout (default `pretty`). See [output formats](#output-formats). |
@@ -165,7 +166,7 @@ flowpact generate [paths…] [--dry-run] [--patch <file>] [--out <dir>]
 | `--patch <file>` | Write the changes as a `git apply`-able patch instead of applying them. |
 | `--out <dir>` | Write all contracts (changed or not) under `<dir>`, keeping their relative paths, instead of the repository. Nothing is deleted. |
 
-It also accepts `--root`, `--config` and the logging and color options. The table lists every contract file as new,
+It also accepts `--root`, `--config`, `--base-config` and the logging and color options. The table lists every contract file as new,
 changed, removed or unchanged, with the semantic changes underneath; breaking changes are marked. Running it twice
 in a row changes nothing.
 

@@ -165,7 +165,8 @@ impact:
 
 The impact settings are read from the **baseline** (the same `--config` path, or the default locations), so a pull
 request cannot relax its own check; changed settings apply once it is merged. When the baseline has no config, or an
-invalid one, the defaults apply.
+invalid one, the defaults apply. A [base config](/docs/configuration#base-config) applies under the baseline's config
+too.
 
 ## How check names are formed
 

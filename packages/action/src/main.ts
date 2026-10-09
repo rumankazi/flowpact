@@ -531,13 +531,12 @@ export async function run(): Promise<void> {
         logger,
         registry,
         checkContracts: inputs.mode === 'check',
-        pluginsSkipped: loaded.config.plugins.length > 0 && !inputs.plugins,
         ...(impact.options ? { impact: impact.options } : {}),
       });
     });
     if (result.unloadedRules?.length) {
       core.warning(
-        `Ignoring config entries for rules that are not loaded (plugins skipped): ${result.unloadedRules.join('; ')}`,
+        `Ignoring config entries for rules that are not loaded: ${result.unloadedRules.join('; ')}`,
       );
     }
     const s = result.summary;

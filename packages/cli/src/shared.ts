@@ -29,6 +29,12 @@ export const commonArgs = {
     description: 'Config file (default: .github/flowpact/flowpact.config.yml)',
     valueHint: 'file',
   },
+  'base-config': {
+    type: 'string',
+    description:
+      "Defaults under the repository's config, e.g. an organization's (relative to the working directory)",
+    valueHint: 'file',
+  },
   debug: { type: 'boolean', description: 'Debug logging (also FLOWPACT_DEBUG=1)', alias: 'd' },
   verbose: { type: 'boolean', description: 'Verbose logging; repeat for trace (-vv)', alias: 'v' },
   quiet: { type: 'boolean', description: 'Only print errors and the report', alias: 'q' },
@@ -54,6 +60,7 @@ export const pluginArgs = {
 export interface CommonFlags {
   root?: string | undefined;
   config?: string | undefined;
+  'base-config'?: string | undefined;
   debug?: boolean | undefined;
   verbose?: boolean | undefined;
   quiet?: boolean | undefined;
@@ -162,13 +169,16 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
   const level: LogLevel = resolved === 'info' ? 'warn' : resolved;
   const logger = createLogger({ level, sink: stderrSink(color) });
   const root = resolve(flags.root ?? process.cwd());
-  const loaded = loadConfig(root, flags.config);
+  const loaded = loadConfig(root, flags.config, {
+    ...(flags['base-config'] !== undefined ? { base: flags['base-config'] } : {}),
+  });
   logger.debug('cli context', {
     root,
     level,
     color,
     width: render.width,
     config: loaded.file ?? '(defaults)',
+    ...(loaded.base ? { base: loaded.base.file } : {}),
   });
   return {
     root,

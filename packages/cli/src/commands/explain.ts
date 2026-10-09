@@ -1,7 +1,7 @@
 import { didYouMean, resolveSeverities } from '@flowpact/core';
 import { renderExplain } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
-import { loadRegistry, pluginsSkipped } from '../analysis';
+import { loadRegistry } from '../analysis';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, UsageError } from '../shared';
 
 export const explainCommand = defineCommand({
@@ -32,10 +32,7 @@ export const explainCommand = defineCommand({
           `Unknown rule "${args.code}".${guess ? ` Did you mean ${guess}?` : ''} Run \`flowpact rules\` for the list.`,
         );
       }
-      const severity =
-        resolveSeverities(registry, ctx.loaded.config, { allowUnknown: pluginsSkipped(ctx) }).get(
-          rule.code,
-        ) ?? rule.defaultSeverity;
+      const severity = resolveSeverities(registry, ctx.loaded.config).get(rule.code) ?? rule.defaultSeverity;
       ctx.stdout(renderExplain(rule, registry.docsUrl(rule), severity, ctx.render));
       return EXIT.ok;
     }),

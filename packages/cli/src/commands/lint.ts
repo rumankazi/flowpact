@@ -193,6 +193,7 @@ function setupImpact(ctx: ReturnType<typeof createContext>, args: ReportArgs) {
           : {}),
         ...(process.env.GITHUB_ACTIONS === 'true' ? { event: githubEvent() } : {}),
         ...(ctx.loaded.file ? { configPath: ctx.loaded.file } : {}),
+        ...(ctx.loaded.base ? { baseConfig: ctx.loaded.base.data } : {}),
       },
       ctx.logger,
     );
@@ -209,7 +210,10 @@ export async function runReport(
   command: 'lint' | 'check' | 'impact',
 ): Promise<number> {
   const ctx = createContext(args, rawArgs);
-  printBanner(ctx, `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}`);
+  printBanner(
+    ctx,
+    `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}${ctx.loaded.base ? ` · base ${ctx.loaded.base.file}` : ''}`,
+  );
   const paths = pathArgs(args._, command, ctx.root);
   const only = args.only
     ? args.only

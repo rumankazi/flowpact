@@ -1,6 +1,6 @@
 ---
 title: Build on flowpact
-description: Run flowpact inside your own action, CI template or tool — the interfaces that stay stable, a reference wrapper action, organization rules as plugins, and keeping the version current.
+description: Run flowpact inside your own action, CI template or tool — the interfaces that stay stable, a reference wrapper action, organization defaults and rules, and keeping the version current.
 ---
 
 Organizations that cannot use a third-party action, or that want their own defaults, rules and reports, can wrap
@@ -38,7 +38,8 @@ acme/flowpact-action
 ├── action.yml
 ├── package.json        # flowpact, pinned to an exact version
 ├── package-lock.json   # and its integrity hash
-└── rules/acme.mjs      # optional: organization rules
+├── acme.base.yml       # optional: organization defaults (below)
+└── rules/acme.mjs      # optional: organization rules (below)
 ```
 
 Create `package.json` and the lockfile with `npm install --save-exact flowpact@0.8`. The flowpact package has no
@@ -69,6 +70,7 @@ runs:
       run: >-
         "$GITHUB_ACTION_PATH/node_modules/.bin/flowpact" "$COMMAND"
         --format github
+        --base-config "$GITHUB_ACTION_PATH/acme.base.yml"
         --plugin "$GITHUB_ACTION_PATH/rules/acme.mjs"
         $NO_PLUGINS
         -o markdown:"$GITHUB_STEP_SUMMARY"
@@ -77,6 +79,7 @@ runs:
 
 From one run, this gives:
 
+- the organization's defaults and rules, under each repository's own config;
 - an annotation on the file and line of each finding, in the run and the pull request (`--format github`);
 - the Markdown report in the job summary (`-o markdown:"$GITHUB_STEP_SUMMARY"`);
 - `flowpact.sarif`, for `github/codeql-action/upload-sarif` in the calling job or in the wrapper;
@@ -91,18 +94,54 @@ Without access to the npm registry, install the npm package from a release inste
 (`npm install --save-exact ./flowpact-X.Y.Z.tgz`). To run the flowpact action itself from an internal repository,
 mirror its release archive, `flowpact-action-X.Y.Z.tar.gz`, the same way.
 
+## Organization defaults
+
+A [base config](/docs/configuration#base-config) holds settings for every repository, and each repository's own config
+goes on top of it. The wrapper passes it with `--base-config`:
+
+```yaml title="acme.base.yml"
+rules:
+  FP105: error                     # stricter than flowpact's default
+  needs-without-data: info         # an opt-in rule, on for everyone
+  prod-deploy-needs-approval: error
+ignore:
+  - .github/workflows/generated/
+impact:
+  declaredBy: labels               # Acme declares release impact with labels
+```
+
+- `rules`, `limits` and `impact` settings merge key by key, and the repository's value wins: a repository can still set
+  `FP105: warning`. `ignore` and `generated` lists add up.
+- Settings that name files of one repository (`overrides`, `matrixShapes`, `repository`, `impact.publish`) and
+  `plugins` are config errors in a base config.
+- In [impact mode](/docs/impact-mode), the base config also applies under the baseline's config.
+
+Repositories keep a config that works on its own: locally and in the editor, without the wrapper, flowpact uses the
+repository's config and its defaults.
+
 ## Organization rules
 
-Write your rules as [plugins](/docs/custom-rules) and ship them in the wrapper:
+Write your rules as [plugins](/docs/custom-rules) and ship them in the wrapper, such as `rules/acme.mjs` with the
+`prod-deploy-needs-approval` rule from [Custom rules](/docs/custom-rules):
 
 - `--plugin <file>` loads a plugin in addition to those the repository's config lists. It is relative to the working
   directory, and can be repeated.
 - `--no-plugins` skips the repository's plugins, which run the repository's code, but not the ones given with
   `--plugin`. The wrapper's rules keep running on untrusted events.
-- A plugin rule sets its own default severity, so the wrapper decides how strict each rule is. A repository can change
-  that under `rules:` or accept a finding with an [override](/docs/configuration#overrides) like for built-in rules,
-  but then needs the rule loaded wherever flowpact runs on it: otherwise `flowpact lint` stops with a config error
-  (unknown rule), and the editor shows it.
+- The base config sets how strict each rule is, and a repository can change that under `rules:` or accept a finding
+  with an [override](/docs/configuration#overrides), like for built-in rules. Where the rule is not loaded (plain
+  `flowpact lint`, the editor), those entries are [ignored with a warning](/docs/configuration#rules-that-are-not-loaded).
+
+```yaml title=".github/flowpact/flowpact.config.yml (in one repository)"
+rules:
+  FP105: warning                   # this repository wins over the base config
+overrides:
+  - rule: prod-deploy-needs-approval
+    target: .github/workflows/deploy.yml#jobs.hotfix
+    reason: Hotfix deploys are approved in the incident channel (INC-142)
+    expires: 2026-12-31
+    owner: '@acme/sre'
+```
 
 ## Reading the results
 
@@ -143,6 +182,16 @@ Renovate updates the wrapper's npm dependency, and pinned action references wher
 - `npm audit signatures` in the wrapper's CI checks that the installed version was published from this repository's
   release workflow.
 - Dependabot works the same way, with the `npm` and `github-actions` ecosystems.
+
+## Why not extends
+
+Tools such as ESLint let a config extend another file. flowpact's base config comes from the command line instead,
+for two reasons:
+
+- A repository's config that extends a file in the wrapper, or in a private package, points at something that is not
+  there when a developer runs `flowpact lint` or opens the editor, so the config would fail everywhere but in CI. Passed
+  by the wrapper, the base config applies where the wrapper runs, and the repository's config still works alone.
+- The organization applies its defaults: a repository cannot leave them out by deleting a line.
 
 ## Why not a fork
 

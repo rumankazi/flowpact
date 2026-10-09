@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -381,6 +389,47 @@ describe('plugins in rules / explain', () => {
     const listed = JSON.parse(rules.stdout).map((r: { code: string }) => r.code);
     expect(listed).toContain('ORG601');
     expect(listed).not.toContain('REPO601');
+  });
+});
+
+describe('base config', () => {
+  it('puts the repository config on top of --base-config', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'flowpact-base-'));
+    const root = join(dir, 'repo');
+    cpSync(fixture('incident-matrix'), root, { recursive: true });
+    const base = join(dir, 'acme.base.yml');
+    writeFileSync(base, 'rules:\n  FP401: warning\n  acme-rule: error\n');
+    const severity = async (...args: string[]) => {
+      const r = await flowpact(['lint', '--root', root, '--format', 'json', '-q', ...args]);
+      return { exit: r.exitCode, severity: JSON.parse(r.stdout).findings[0].severity };
+    };
+    expect(await severity()).toEqual({ exit: 1, severity: 'error' });
+    expect(await severity('--base-config', base)).toEqual({ exit: 0, severity: 'warning' });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'rules:\n  FP401: info\n');
+    expect(await severity('--base-config', base)).toEqual({ exit: 0, severity: 'info' });
+
+    const pretty = await flowpact(['lint', '--root', root, '--base-config', base]);
+    expect(pretty.stderr).toContain(`config .github/flowpact/flowpact.config.yml · base ${base}`);
+    // An organization rule that this run does not load is ignored, not an error.
+    expect(pretty.stderr).toContain(
+      'ignoring config entries for rules that are not loaded: rules.acme-rule: unknown rule "acme-rule"',
+    );
+
+    writeFileSync(base, 'plugins: [./acme.mjs]\n');
+    const refused = await flowpact(['lint', '--root', root, '--base-config', base]);
+    expect(refused.exitCode).toBe(2);
+    expect(refused.stderr).toContain('plugins: not in a base config; load organization rules with --plugin');
+  });
+
+  it('keeps a typo of a built-in rule an error', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-typo-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'rules:\n  unused-inptu: off\n');
+    const r = await flowpact(['lint', '--root', root]);
+    expect(r.exitCode).toBe(2);
+    expect(r.stderr).toContain('rules.unused-inptu: unknown rule (did you mean unused-input?)');
   });
 });
 

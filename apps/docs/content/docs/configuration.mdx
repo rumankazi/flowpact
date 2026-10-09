@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Configure severities, limits, ignored paths, overrides, matrix shapes, generated files and plugins in .github/flowpact/flowpact.config.yml.
+description: Configure severities, limits, ignored paths, overrides, matrix shapes, generated files and plugins in .github/flowpact/flowpact.config.yml, and share defaults across repositories with a base config.
 ---
 
 flowpact works without configuration. To change behaviour, create
@@ -215,9 +215,53 @@ The GitHub Action skips plugins on `pull_request_target` and `workflow_run` even
 to `true`; the CLI skips them with `--no-plugins`.
 </Callout>
 
-When plugins are skipped, `rules:` and `overrides:` entries for rules that are not loaded are ignored for that run and
-listed in a warning. A name that starts with `FP` or is close to a built-in rule (`unused-inptu`) is still a config
-error, so a typo is never hidden.
+### Rules that are not loaded
+
+`rules:` and `overrides:` entries for a rule that is not loaded in a run are ignored for that run and listed in a
+warning. That happens when plugins are skipped, or when a repository configures an
+[organization rule](/docs/integrating#organization-rules) that only its organization's wrapper loads: the entry takes
+effect in the wrapper, and plain `flowpact lint` or the editor ignore it. A name that starts with `FP` or is close to a
+loaded rule (`unused-inptu`) is still a config error, so a typo is never hidden.
+
+## Base config
+
+A base config holds defaults for many repositories, such as an organization's. It is passed with `--base-config <file>`,
+usually by an organization's [wrapper](/docs/integrating#organization-defaults), and each repository's own config goes on
+top of it:
+
+```yaml title="acme.base.yml (in the wrapper)"
+rules:
+  FP105: error             # stricter than the default everywhere
+  needs-without-data: info # an opt-in rule, on for everyone
+  acme-deploy-env: error   # an organization rule, loaded with --plugin
+ignore:
+  - .github/workflows/generated/
+impact:
+  declaredBy: labels
+```
+
+```yaml title=".github/flowpact/flowpact.config.yml (in one repository)"
+rules:
+  FP105: warning           # this repository wins
+ignore:
+  - .github/workflows/legacy-*.yml
+```
+
+```sh
+flowpact lint --base-config acme.base.yml
+```
+
+| Key | In a base config | Combined with the repository's |
+| --- | --- | --- |
+| `rules`, `limits`, `impact` | allowed | key by key; the repository's value wins (`impact.types` and `impact.labels` entry by entry) |
+| `ignore`, `generated` | allowed | both lists apply |
+| `repository`, `overrides`, `matrixShapes`, `impact.publish` | config error | they name files of one repository |
+| `plugins` | config error | plugins run code; a wrapper loads organization rules with [`--plugin`](/docs/cli#flowpact-lint) |
+
+The repository's config still works on its own: run without the base config, as locally and in the editor, flowpact
+uses the repository's config and the defaults. The base config's path is relative to the working directory, and the
+banner shows it (`config .github/flowpact/flowpact.config.yml · base acme.base.yml`). A repository's config cannot
+point at a base config itself; see [why](/docs/integrating#why-not-extends).
 
 ## Reference
 
