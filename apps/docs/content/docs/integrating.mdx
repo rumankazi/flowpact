@@ -1,0 +1,152 @@
+---
+title: Build on flowpact
+description: Run flowpact inside your own action, CI template or tool — the interfaces that stay stable, a reference wrapper action, organization rules as plugins, and keeping the version current.
+---
+
+Organizations that cannot use a third-party action, or that want their own defaults, rules and reports, can wrap
+flowpact instead of forking it: an internal action or CI template that runs the CLI from npm. The wrapper owns the
+policy (rules, when to fail, where reports go); flowpact stays an unmodified dependency that you verify and update with
+a version bump.
+
+## What is stable
+
+Build on these. A release that changes one in an incompatible way says so under **Breaking changes** in its release
+notes, with [upgrade notes](/docs/upgrading). Before 1.0, that can happen in a minor release (0.8 → 0.9), never in a
+patch release.
+
+| Interface | Reference |
+| --- | --- |
+| CLI commands, flags and exit codes | [CLI](/docs/cli) |
+| JSON report | [`/schemas/report/v1.json`](/schemas/report/v1.json); an incompatible change makes it v2, and `meta.schemas.report` says which a report follows |
+| SARIF | SARIF 2.1.0, with stable fingerprints in `partialFingerprints["flowpact/v1"]` |
+| Annotations | `--format github`: GitHub workflow commands |
+| Config and contracts | [`/schemas/config/v1.json`](/schemas/config/v1.json), [`/schemas/contract/v1.json`](/schemas/contract/v1.json) |
+| Rule codes and names | [Rules](/docs/rules); configs, overrides and `--only` refer to them |
+| Plugin rules | The rule object in [Custom rules](/docs/custom-rules) |
+| GitHub Action inputs and outputs | [GitHub Action](/docs/action) |
+
+Not stable: the terminal output and the wording of messages and Markdown reports, which are written for people (parse
+JSON or SARIF instead), and the `@flowpact/*` packages inside the repository, which are not published. flowpact has no
+library API; the CLI is the interface.
+
+## A wrapper action
+
+An internal repository with a composite action that installs a pinned flowpact and runs it with your defaults:
+
+```text
+acme/flowpact-action
+├── action.yml
+├── package.json        # flowpact, pinned to an exact version
+├── package-lock.json   # and its integrity hash
+└── rules/acme.mjs      # optional: organization rules
+```
+
+Create `package.json` and the lockfile with `npm install --save-exact flowpact@0.8`. The flowpact package has no
+dependencies of its own: it is one bundled file, with its license notices and an SBOM next to it.
+
+```yaml title="action.yml"
+name: Acme flowpact
+description: flowpact with Acme's rules and reports
+inputs:
+  command:
+    description: lint, or check when the repository commits contracts
+    default: lint
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7 # pin to a commit SHA
+      with:
+        node-version: 22
+    - name: Install flowpact
+      shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH" --ignore-scripts
+    - name: Run flowpact
+      shell: bash
+      env:
+        COMMAND: ${{ inputs.command }}
+        # The repository's own plugins run its code: not on events that run a fork's code with secrets.
+        NO_PLUGINS: ${{ contains(fromJSON('["pull_request_target", "workflow_run"]'), github.event_name) && '--no-plugins' || '' }}
+      run: >-
+        "$GITHUB_ACTION_PATH/node_modules/.bin/flowpact" "$COMMAND"
+        --format github
+        --plugin "$GITHUB_ACTION_PATH/rules/acme.mjs"
+        $NO_PLUGINS
+        -o markdown:"$GITHUB_STEP_SUMMARY"
+        -o flowpact.sarif
+```
+
+From one run, this gives:
+
+- an annotation on the file and line of each finding, in the run and the pull request (`--format github`);
+- the Markdown report in the job summary (`-o markdown:"$GITHUB_STEP_SUMMARY"`);
+- `flowpact.sarif`, for `github/codeql-action/upload-sarif` in the calling job or in the wrapper;
+- a failed step when there are errors (exit code `1`); add `--fail-on warning` or `--fail-on never` to change that.
+
+Repositories use it like any action, after `actions/checkout`. With `--root` (a repository in a subdirectory of the
+workspace), the paths in annotations, SARIF and Markdown links stay relative to the repository.
+
+Without access to the npm registry, install the npm package from a release instead: each
+[GitHub release](https://github.com/rumankazi/flowpact/releases) has `flowpact-X.Y.Z.tgz` with build provenance.
+[Verify it](/docs/security#verify-a-release), commit it to the wrapper and depend on the file
+(`npm install --save-exact ./flowpact-X.Y.Z.tgz`). To run the flowpact action itself from an internal repository,
+mirror its release archive, `flowpact-action-X.Y.Z.tar.gz`, the same way.
+
+## Organization rules
+
+Write your rules as [plugins](/docs/custom-rules) and ship them in the wrapper:
+
+- `--plugin <file>` loads a plugin in addition to those the repository's config lists. It is relative to the working
+  directory, and can be repeated.
+- `--no-plugins` skips the repository's plugins, which run the repository's code, but not the ones given with
+  `--plugin`. The wrapper's rules keep running on untrusted events.
+- A plugin rule sets its own default severity, so the wrapper decides how strict each rule is. A repository can change
+  that under `rules:` or accept a finding with an [override](/docs/configuration#overrides) like for built-in rules,
+  but then needs the rule loaded wherever flowpact runs on it: otherwise `flowpact lint` stops with a config error
+  (unknown rule), and the editor shows it.
+
+## Reading the results
+
+For a wrapper that decides by itself, run with `--fail-on never` and read the JSON report:
+
+```sh
+flowpact lint --fail-on never --format json > flowpact.json
+jq -r '.findings[] | "\(.severity) \(.code) \(.loc.file):\(.loc.line)"' flowpact.json
+jq '.summary.errors' flowpact.json
+```
+
+- Exit codes: `0` no findings at or above `--fail-on`, `1` findings, `2` usage or config error, `3` internal error.
+- `fingerprint` stays the same across unrelated edits, so a finding can be tracked over time or compared with a
+  baseline.
+- `symbol` names what the finding is about; it is the `target` of an override.
+- Logs go to stderr and never mix with the report on stdout.
+
+## Keeping it current
+
+Renovate updates the wrapper's npm dependency, and pinned action references wherever flowpact's own action is used:
+
+```json title="renovate.json"
+{
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "packageRules": [
+    {
+      "matchPackageNames": ["flowpact", "rumankazi/flowpact"],
+      "groupName": "flowpact",
+      "minimumReleaseAge": "3 days"
+    }
+  ]
+}
+```
+
+- `minimumReleaseAge` waits a few days after a release before proposing it.
+- Before 1.0, read the **Breaking changes** section of a minor update before merging it; patch updates can be merged
+  automatically (`"matchUpdateTypes": ["patch"], "automerge": true`).
+- `npm audit signatures` in the wrapper's CI checks that the installed version was published from this repository's
+  release workflow.
+- Dependabot works the same way, with the `npm` and `github-actions` ecosystems.
+
+## Why not a fork
+
+A fork that changes flowpact's code has to be rebuilt, re-verified and merged on every release, and its bundle no
+longer matches the signed release. A wrapper keeps flowpact unmodified and adds what your organization needs around it.
+If it needs something flowpact does not offer — a flag, an output, an extension point —
+[open an issue](https://github.com/rumankazi/flowpact/issues).

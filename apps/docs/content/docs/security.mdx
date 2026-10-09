@@ -49,7 +49,8 @@ the permissions and environment of whatever runs flowpact. flowpact never downlo
   repository's code may come from an untrusted fork while the job holds secrets.
 - The VS Code extension loads them only in a [trusted workspace](/docs/editors#workspace-trust), and only for
   repositories inside the workspace folders.
-- The CLI loads the plugins the config lists. Run it with plugins only on code you trust.
+- The CLI loads the plugins the config lists unless you pass `--no-plugins`; pass it on code you do not trust. Plugins
+  given with `--plugin`, such as the rules of a [wrapper](/docs/integrating#organization-rules), still load.
 
 If you do not use plugins, set `plugins: false` in the action.
 

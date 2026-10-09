@@ -8,10 +8,20 @@ import {
 } from '@flowpact/core';
 import type { CliContext } from './shared';
 
-/** Built-in rules plus the plugins listed in the config. */
+/** Whether the config lists plugins that `--no-plugins` keeps from loading. */
+export const pluginsSkipped = (ctx: CliContext) =>
+  !ctx.plugins.config && ctx.loaded.config.plugins.length > 0;
+
+/** Built-in rules, the plugins listed in the config (unless `--no-plugins`) and those given with `--plugin`. */
 export async function loadRegistry(ctx: CliContext): Promise<RuleRegistry> {
   const registry = createRegistry();
-  await loadPlugins(ctx.root, ctx.loaded.config, registry, ctx.logger);
+  if (ctx.plugins.config) await loadPlugins(ctx.root, ctx.loaded.config, registry, ctx.logger);
+  else if (pluginsSkipped(ctx))
+    ctx.logger.warn(
+      `not loading ${ctx.loaded.config.plugins.length} plugin(s) from the config (--no-plugins)`,
+    );
+  if (ctx.plugins.extra.length)
+    await loadPlugins(ctx.root, { ...ctx.loaded.config, plugins: ctx.plugins.extra }, registry, ctx.logger);
   return registry;
 }
 
@@ -29,6 +39,7 @@ export async function runAnalysis(
     ...(ctx.loaded.overrideLocs ? { overrideLocs: ctx.loaded.overrideLocs } : {}),
     logger: ctx.logger,
     registry,
+    ...(pluginsSkipped(ctx) ? { pluginsSkipped: true } : {}),
     ...(process.env.FLOWPACT_NOW ? { now: new Date(process.env.FLOWPACT_NOW) } : {}),
     ...opts,
   });

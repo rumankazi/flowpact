@@ -18,6 +18,7 @@ import {
   EXIT,
   guard,
   pathArgs,
+  pluginArgs,
   printBanner,
   UsageError,
   writeOutput,
@@ -37,6 +38,7 @@ export const generateCommand = defineCommand({
       required: false,
     },
     ...commonArgs,
+    ...pluginArgs,
     'dry-run': {
       type: 'boolean',
       description: 'Show what would change (with a diff) without writing anything',

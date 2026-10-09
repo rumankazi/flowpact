@@ -7,6 +7,7 @@ import {
   type Severity,
   type SuppressedFinding,
 } from '@flowpact/core';
+import { inRepository } from './github';
 
 const SARIF_SCHEMA = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -34,8 +35,8 @@ const region = (loc: Loc) => ({
   endColumn: loc.endColumn,
 });
 
-const physicalLocation = (loc: Loc) => ({
-  artifactLocation: { uri: loc.file, uriBaseId: '%SRCROOT%' },
+const physicalLocation = (loc: Loc, pathPrefix?: string) => ({
+  artifactLocation: { uri: inRepository(loc.file, pathPrefix), uriBaseId: '%SRCROOT%' },
   region: region(loc),
 });
 
@@ -45,6 +46,11 @@ export interface SarifOptions {
    * scanning ignores `suppressions` and would open an alert for every accepted finding.
    */
   includeSuppressed?: boolean;
+  /**
+   * The flowpact root relative to the repository, when it is a subdirectory of it: code scanning resolves `%SRCROOT%`
+   * against the repository.
+   */
+  pathPrefix?: string;
 }
 
 /** SARIF 2.1.0 for GitHub code scanning and other SARIF viewers. */
@@ -97,13 +103,13 @@ export function renderSarif(result: AnalysisResult, opts: SarifOptions = {}): st
     ruleIndex: ruleIndex.get(f.code)!,
     level: LEVEL[f.severity],
     message: { text: f.message },
-    locations: [{ physicalLocation: physicalLocation(f.loc) }],
+    locations: [{ physicalLocation: physicalLocation(f.loc, opts.pathPrefix) }],
     ...(f.related.length
       ? {
           relatedLocations: f.related.map((r, id) => ({
             id,
             message: { text: r.message },
-            physicalLocation: physicalLocation(r.loc),
+            physicalLocation: physicalLocation(r.loc, opts.pathPrefix),
           })),
         }
       : {}),

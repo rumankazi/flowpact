@@ -9,6 +9,7 @@ import {
 } from '@flowpact/core';
 import {
   type MarkdownOptions,
+  renderGithub,
   renderJson,
   renderMarkdown,
   renderPretty,
@@ -23,9 +24,13 @@ import {
   displayPath,
   guard,
   pathArgs,
+  pluginArgs,
   printBanner,
+  repeatedFlag,
   UsageError,
+  workspacePrefix,
   writeOutput,
+  writeWorkflowCommands,
 } from '../shared';
 
 /** Flags shared by `lint` and `check`. */
@@ -36,18 +41,19 @@ export const reportArgs = {
     required: false,
   },
   ...commonArgs,
+  ...pluginArgs,
   format: {
     type: 'enum',
-    options: ['pretty', 'json', 'markdown', 'sarif'],
+    options: ['pretty', 'json', 'markdown', 'sarif', 'github'],
     default: 'pretty',
     description:
-      'Output format on stdout: pretty, json, markdown (job summaries, PR comments) or sarif (code scanning)',
+      'Output format on stdout: pretty, json, markdown (job summaries, PR comments), sarif (code scanning) or github (annotations in GitHub Actions)',
   },
   output: {
     type: 'string',
     alias: 'o',
     description:
-      'Also write the report to a file, format by extension: .sarif/.sarif.json → SARIF, .json → JSON, .md → Markdown, otherwise plain text',
+      'Also write the report to a file (repeatable), format by extension: .sarif/.sarif.json → SARIF, .json → JSON, .md → Markdown, otherwise plain text; or name it: markdown:<file>',
     valueHint: 'file',
   },
   'fail-on': {
@@ -131,7 +137,7 @@ type ReportFlags = {
 
 export type ReportArgs = ReportFlags & Parameters<typeof createContext>[0];
 
-type Format = 'pretty' | 'json' | 'markdown' | 'sarif';
+type Format = 'pretty' | 'json' | 'markdown' | 'sarif' | 'github';
 
 /** The format `-o` writes, chosen by the file extension. */
 export function formatForFile(file: string): Format {
@@ -142,11 +148,29 @@ export function formatForFile(file: string): Format {
   return 'pretty';
 }
 
+/**
+ * A `-o` value: `<file>`, format by extension, or `<format>:<file>` for files without a telling name, such as
+ * `markdown:$GITHUB_STEP_SUMMARY`. A one-letter prefix is a Windows drive, not a format.
+ */
+export function parseOutput(spec: string): { format: Format; file: string } {
+  const named = /^(pretty|json|markdown|sarif|github):(.+)$/.exec(spec);
+  if (!named) return { format: formatForFile(spec), file: spec };
+  if (named[1] === 'github')
+    throw new UsageError(
+      'The github format is for the job log: use --format github instead of -o github:<file>.',
+    );
+  return { format: named[1] as Format, file: named[2]! };
+}
+
 /** In GitHub Actions, link Markdown locations to the files at the commit being checked. */
-function markdownOptionsFromEnv(env: NodeJS.ProcessEnv = process.env): MarkdownOptions {
+function markdownOptionsFromEnv(pathPrefix: string, env: NodeJS.ProcessEnv = process.env): MarkdownOptions {
   const { GITHUB_ACTIONS, GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_SHA } = env;
   if (GITHUB_ACTIONS !== 'true' || !GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_SHA) return {};
-  return { repoUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`, sha: GITHUB_SHA };
+  // Links are `<repo>/blob/<sha>/<file>` with root-relative files, so a root in a subdirectory joins the sha.
+  return {
+    repoUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`,
+    sha: pathPrefix ? `${GITHUB_SHA}/${pathPrefix}` : GITHUB_SHA,
+  };
 }
 
 /** Resolves the baseline and the declaration for impact mode; setup problems are usage errors (exit 2). */
@@ -193,6 +217,10 @@ export async function runReport(
         .map((s) => s.trim())
         .filter(Boolean)
     : undefined;
+  // Before the analysis, so a bad -o fails fast.
+  const outputs = repeatedFlag(rawArgs, 'output', 'o');
+  if (!outputs.length && args.output) outputs.push(args.output);
+  const files = outputs.map(parseOutput);
   const wantImpact = command === 'impact' || Boolean(args.impact);
   let impact: ReturnType<typeof setupImpact> | undefined;
   if (wantImpact) {
@@ -217,22 +245,26 @@ export async function runReport(
     );
   }
   const includeGraph = Boolean(args['include-graph']);
+  const pathPrefix = workspacePrefix(ctx.root);
   const render = (format: Format, toFile: boolean): string => {
     switch (format) {
       case 'json':
         return renderJson(result, { includeGraph });
       case 'sarif':
-        return renderSarif(result);
+        return renderSarif(result, { pathPrefix });
+      case 'github':
+        return renderGithub(result, { pathPrefix });
       case 'markdown':
-        return renderMarkdown(result, { ...markdownOptionsFromEnv(), includeGraph });
+        return renderMarkdown(result, { ...markdownOptionsFromEnv(pathPrefix), includeGraph });
       default:
         return toFile
           ? renderPretty(result, { ...ctx.plain, hideInfo: false })
           : renderPretty(result, { ...ctx.render, hideInfo: Boolean(args['hide-info']) });
     }
   };
-  ctx.stdout(render(args.format as Format, false));
-  if (args.output) writeOutput(args.output, render(formatForFile(args.output), true), ctx);
+  if (args.format === 'github') writeWorkflowCommands(render('github', false));
+  else ctx.stdout(render(args.format as Format, false));
+  for (const { format, file } of files) writeOutput(file, render(format, true), ctx);
   if (args['dump-graph'])
     writeOutput(args['dump-graph'], `${JSON.stringify(result.index.toJSON(), null, 2)}\n`, ctx);
   if (args.patch && result.contracts?.drift) writeOutput(args.patch, contractPatch(result.contracts), ctx);

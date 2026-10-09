@@ -212,7 +212,7 @@ format. Plugins are loaded by `flowpact lint`, `flowpact check` and `flowpact ge
 <Callout type="warn" title="Plugins run code from the repository">
 Loading a plugin executes it, with the permissions of whoever runs flowpact. Only run flowpact with plugins on code you trust.
 The GitHub Action skips plugins on `pull_request_target` and `workflow_run` events unless its `plugins` input is set
-to `true`.
+to `true`; the CLI skips them with `--no-plugins`.
 </Callout>
 
 When plugins are skipped, `rules:` and `overrides:` entries for rules that are not loaded are ignored for that run and

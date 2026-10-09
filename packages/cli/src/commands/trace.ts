@@ -3,7 +3,7 @@ import { renderTrace } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 import { runAnalysis } from '../analysis';
-import { commonArgs, createContext, EXIT, guard, printBanner, UsageError } from '../shared';
+import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
 
 export const traceCommand = defineCommand({
   meta: {
@@ -18,6 +18,7 @@ export const traceCommand = defineCommand({
         'e.g. pipeline.yml#inputs.config, pipeline.yml:config, or pipeline.yml for its whole interface',
     },
     ...commonArgs,
+    ...pluginArgs,
     up: { type: 'boolean', description: 'Trace upstream: who provides the value' },
     depth: { type: 'string', default: '12', description: 'Maximum depth', valueHint: 'n' },
     format: { type: 'enum', options: ['pretty', 'json'], default: 'pretty', description: 'Output format' },

@@ -40,8 +40,10 @@ flowpact lint [paths…] [options]
 | `[paths…]` | Files or directories to report on. Everything is still analyzed. |
 | `--root <dir>` | Repository root (default: current directory). |
 | `--config <file>` | Config file (default: `.github/flowpact/flowpact.config.yml`). |
-| `--format pretty\|json\|markdown\|sarif` | Output on stdout (default `pretty`). See [output formats](#output-formats). |
-| `-o, --output <file>` | Also write the report to a file, format by extension: `.sarif` / `.sarif.json` → SARIF, `.json` → JSON, `.md` → Markdown, anything else → plain text. |
+| `--no-plugins` | Do not load the [plugins](/docs/custom-rules) the config lists; they run code from the repository. |
+| `--plugin <file>` | Also load this plugin, relative to the working directory; repeatable, and not affected by `--no-plugins`. See [Build on flowpact](/docs/integrating#organization-rules). |
+| `--format pretty\|json\|markdown\|sarif\|github` | Output on stdout (default `pretty`). See [output formats](#output-formats). |
+| `-o, --output <file>` | Also write the report to a file, format by extension: `.sarif` / `.sarif.json` → SARIF, `.json` → JSON, `.md` → Markdown, anything else → plain text. Name the format for other names, as in `-o markdown:"$GITHUB_STEP_SUMMARY"`. Repeat it to write several reports from one run. |
 | `--fail-on error\|warning\|never` | Exit `1` when findings at this level exist (default `error`). |
 | `--only <codes>` | Comma-separated codes or names to run, e.g. `FP401,unused-input`. |
 | `--hide-info` | Pretty terminal output only: do not list info findings (they are still counted). JSON, Markdown and SARIF always include them. |
@@ -67,6 +69,10 @@ The summary card at the end:
 | `json` | Tooling. Follows [`/schemas/report/v1.json`](/schemas/report/v1.json) (below). |
 | `markdown` | Job summaries and pull request comments: counts, findings grouped by severity with docs links, and contract changes in `flowpact check`. Inside GitHub Actions, locations link to the file at the commit being checked. |
 | `sarif` | [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html) for GitHub code scanning and other SARIF viewers. Findings accepted by overrides are left out (code scanning ignores SARIF suppressions); the JSON report lists them under `suppressed`. |
+| `github` | GitHub Actions: one [workflow command](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands) per finding, which GitHub shows as an error, warning or notice annotation on the file and line, in the run and the pull request — the same annotations as the [action](/docs/action#annotations). Stdout only. |
+
+Inside GitHub Actions, when `--root` is a subdirectory of the repository, the paths in `github` annotations, SARIF and
+the Markdown links are made relative to the repository (`GITHUB_WORKSPACE`), where GitHub resolves them.
 
 ```sh
 flowpact lint -o flowpact-report.json           # JSON file + pretty output in the terminal
@@ -74,6 +80,9 @@ flowpact lint -o flowpact.sarif                 # SARIF file for code scanning
 flowpact lint -o flowpact-report.md             # Markdown file, e.g. for $GITHUB_STEP_SUMMARY
 flowpact lint -o flowpact-report.txt            # plain-text copy of the pretty report
 flowpact lint --format json > report.json  # JSON only
+
+# In GitHub Actions: annotations, the job summary and SARIF, from one run
+flowpact lint --format github -o markdown:"$GITHUB_STEP_SUMMARY" -o flowpact.sarif
 ```
 
 ### JSON report
