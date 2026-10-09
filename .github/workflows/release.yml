@@ -187,8 +187,9 @@ jobs:
 
   major-tag:
     name: Move the floating tag
-    needs: resolve
-    if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.prerelease == 'false' }}
+    # Only once the release is public, with every signed asset attached.
+    needs: [resolve, publish-release]
+    if: ${{ !cancelled() && needs.publish-release.result == 'success' && needs.resolve.outputs.prerelease == 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -328,6 +329,91 @@ jobs:
           # The signed in-toto statement (DSSE envelope), one per line.
           node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$tgz.intoto.jsonl"
           gh release upload "$TAG" "$tgz" "$tgz.sigstore.json" "$tgz.intoto.jsonl" --clobber --repo "$GITHUB_REPOSITORY"
+
+  action-archive:
+    # The GitHub Action as released: action.yml and its committed bundle in a reproducible archive with provenance, so a
+    # mirror can check that it copies exactly what this workflow built (`gh attestation verify <archive> --repo
+    # rumankazi/flowpact`).
+    name: Attach the signed action to the release
+    needs: resolve
+    if: ${{ !cancelled() && needs.resolve.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          persist-credentials: false
+      - id: asset
+        name: Already attached?
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          archive="flowpact-action-$VERSION.tar.gz"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          # A re-run keeps what an earlier run attached; a published, immutable release could not take it again anyway.
+          # Tags from before 0.8.3 have no scripts/action-archive.sh and get no archive.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qx "$archive" \
+            || [ ! -x scripts/action-archive.sh ]; then
+            echo "attached=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build the archive
+        if: steps.asset.outputs.attached != 'true'
+        env:
+          ARCHIVE: ${{ steps.asset.outputs.archive }}
+        run: |
+          scripts/action-archive.sh "$ARCHIVE"
+          tar -tzvf "$ARCHIVE"
+      - id: attest
+        if: steps.asset.outputs.attached != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.asset.outputs.archive }}
+      - name: Upload the archive, signature bundle and provenance
+        if: steps.asset.outputs.attached != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          ARCHIVE: ${{ steps.asset.outputs.archive }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          cp "$BUNDLE" "$ARCHIVE.sigstore.json"
+          node -e 'const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(JSON.stringify(b.dsseEnvelope))' "$BUNDLE" > "$ARCHIVE.intoto.jsonl"
+          gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sigstore.json" "$ARCHIVE.intoto.jsonl" --repo "$GITHUB_REPOSITORY"
+
+  publish-release:
+    # release-please creates the release as a draft (release-please-config.json: draft, force-tag-creation), so it is
+    # public only once every signed asset is attached. With immutable releases enabled, nothing in it changes after that.
+    name: Publish the release
+    needs: [resolve, release-assets, action-archive, vscode-release-asset]
+    if: >-
+      ${{ !cancelled() && needs.release-assets.result == 'success' && needs.action-archive.result == 'success' &&
+      (needs.vscode-release-asset.result == 'success' || needs.vscode-release-asset.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
+        run: |
+          if [ "$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != true ]; then
+            echo "$TAG is already published."
+            exit 0
+          fi
+          if [ "$PRERELEASE" = true ]; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets \
+            --jq '"published: draft=\(.isDraft) assets=\([.assets[].name] | join(", "))"'
 
   vscode-package:
     # The extension, built and packaged from the tag and smoke-tested as shipped. This job runs the build and a
