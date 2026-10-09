@@ -2,12 +2,16 @@
 
 # flowpact (`flowpact`)
 
-**Lint, trace and lock the data flow between your GitHub Actions workflows.**
+**Data-flow linter for GitHub Actions:** find the inputs, secrets and matrix values that arrive empty while the run
+stays green.
 
-flowpact follows every input, secret, env var, matrix key and output across nested reusable workflows and composite
-actions, and reports what gets lost in between — missing or unknown inputs, values forwarded from optional into
-required inputs, dead outputs, what `secrets: inherit` really needs, contexts GitHub does not allow in a field, and
-matrix legs that silently run with an empty value.
+GitHub Actions evaluates a missing matrix key, an undeclared secret or an optional input without a default to an empty
+value: no error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
+or an upload stops running without anyone noticing. flowpact follows every input, secret, env var, matrix key and
+output across those calls, evaluates every combination of the matrices written in your workflows, and reports where a
+value goes missing. Use it next to actionlint, which checks each file in depth.
+
+![flowpact lint reporting a matrix combination that passes an empty input](https://rumankazi.github.io/flowpact/screenshots/lint-incident.svg)
 
 ```sh
 npx flowpact lint                         # lint .github/workflows and local actions

@@ -1,13 +1,18 @@
 {
   "name": "vscode-flowpact",
-  "displayName": "flowpact",
-  "description": "Diagnostics, hover traces and go to definition across GitHub Actions workflow calls: inputs, secrets, outputs and matrices checked as you type.",
+  "displayName": "flowpact: data-flow linter for GitHub Actions",
+  "description": "Finds GitHub Actions inputs, secrets and matrix values that arrive empty across reusable workflows and local actions, as you type. Works alongside GitHub's Actions extension.",
   "version": "0.7.0",
   "private": true,
   "publisher": "flowpact",
   "license": "MIT",
   "author": "Ruman Kazi",
   "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#0a7a8a",
+    "theme": "dark"
+  },
+  "qna": "https://github.com/rumankazi/flowpact/issues",
   "homepage": "https://rumankazi.github.io/flowpact/docs/editors",
   "bugs": {
     "url": "https://github.com/rumankazi/flowpact/issues"
@@ -26,13 +31,31 @@
   ],
   "keywords": [
     "github-actions",
-    "workflow",
-    "reusable-workflows",
     "actions",
-    "ci",
+    "workflow",
+    "workflows",
+    "reusable-workflows",
+    "workflow_call",
+    "linter",
     "lint",
+    "yaml",
+    "ci",
+    "ci-cd",
     "matrix",
-    "language-server"
+    "secrets",
+    "inputs",
+    "outputs",
+    "composite-actions",
+    "data-flow",
+    "static-analysis",
+    "language-server",
+    "lsp",
+    "devops",
+    "gha",
+    "go-to-definition",
+    "hover",
+    "references",
+    "contracts"
   ],
   "activationEvents": [
     "workspaceContains:.github/workflows",

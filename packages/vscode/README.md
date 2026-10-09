@@ -1,10 +1,21 @@
 # flowpact for VS Code
 
-[flowpact](https://rumankazi.github.io/flowpact) checks the data flow between your GitHub Actions workflows: the
-inputs, secrets and outputs that cross reusable-workflow calls and local actions, per matrix combination. This
-extension runs it while you edit.
+GitHub Actions turns a missing matrix value, an undeclared secret or an optional input without a default into an empty value,
+and the run stays green. [flowpact](https://rumankazi.github.io/flowpact) finds these across reusable workflows, local
+actions and every combination of the matrices written in your workflows, and shows them as you type. It helps most when
+your workflows call reusable workflows or local actions, or use `include` matrices.
 
 ![A finding as you type: the windows matrix entry passes an empty config to a reusable workflow, with the call chain and flowpact's hover card](../../apps/docs/public/screenshots/editor-diagnostics.png)
+
+## What it catches
+
+- An input that is empty in some matrix combinations, because one `include` entry lacks the key it reads.
+- A secret that a reusable workflow reads but never declares, so it is empty unless the caller passes `secrets: inherit`.
+- Inputs that callers do not pass, outputs nothing reads, and `uses: ./` paths that do not exist where the step runs.
+
+It works next to GitHub's GitHub Actions extension, which checks each file's syntax and expressions. By default, in
+the files you open, flowpact hides its four checks that repeat that extension's (`FP502`–`FP505`), so nothing is
+reported twice.
 
 ## Features
 
@@ -16,7 +27,7 @@ extension runs it while you edit.
 - **Go to definition** across workflow calls and local actions: from `with: config:` to the callee's input, from
   `needs.build.outputs.url` to the reusable workflow's output, from `steps.x.outputs.y` to the action's output.
 - **Find references** and **highlights** across files.
-- **Contract drift** (`FP801`–`FP805`) as you edit, when the repository [locks its contracts](https://rumankazi.github.io/flowpact/docs/contracts).
+- **Contract drift** as you edit, when the repository [locks its contracts](https://rumankazi.github.io/flowpact/docs/contracts).
 
 ![Hover on an input: a required string that comes from pipeline.yml and goes on to package.yml](../../apps/docs/public/screenshots/editor-hover.png)
 
@@ -24,6 +35,12 @@ extension runs it while you edit.
 
 Your [flowpact config](https://rumankazi.github.io/flowpact/docs/configuration) applies as in the CLI and in CI:
 severities, overrides, ignores and plugins.
+
+## Also in CI
+
+The same checks run in CI with `npx flowpact lint` (`npx flowpact check` adds contract drift) or the
+[GitHub Action](https://github.com/marketplace/actions/flowpact) (`mode: check` for drift), which annotates pull
+requests.
 
 ## Requirements
 
