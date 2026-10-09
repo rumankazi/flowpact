@@ -22,7 +22,8 @@ export const FILES = [
   'CONTRIBUTING.md',
   'packages/cli/README.md',
   ...readdirSync(join(ROOT, DOCS))
-    .filter((f) => f.endsWith('.mdx'))
+    // The upgrading notes name the versions they are about.
+    .filter((f) => f.endsWith('.mdx') && f !== 'upgrading.mdx')
     .map((f) => `${DOCS}/${f}`),
   ...readdirSync(join(ROOT, SHOTS))
     .filter((f) => f.endsWith('.svg'))
