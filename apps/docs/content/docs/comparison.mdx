@@ -28,8 +28,14 @@ What each tool reports, from small test repositories and the tools' own document
 | A workflow reads an `env` variable that nothing sets | — | ✓ also warns on a valid `$GITHUB_ENV` write earlier in the job | only if no action step, such as `actions/checkout`, comes before the read ([`FP501`](/docs/rules/fp501)) |
 | A call to a local reusable workflow or local action leaves out a required input or secret, or passes an unknown input or a literal of the wrong type | ✓ | local reusable workflows only, when signed in; no type check | ✓ suggests the declared name ([`FP101`](/docs/rules/fp101)–[`FP103`](/docs/rules/fp103), [`FP201`](/docs/rules/fp201)) |
 | A matrix key that no combination defines | ✓ | ✓ | ✓ [`FP404`](/docs/rules/fp404) |
+| A `${{ }}` expression that does not parse, or calls a function with the wrong number of arguments | ✓ | ✓ | ✓ [`FP502`](/docs/rules/fp502) |
+| A context used where GitHub does not allow it, such as `secrets` in a job's `if:` | ✓ | ✓ | ✓ [`FP505`](/docs/rules/fp505) |
 | A call to an action or reusable workflow in another repository passes an unknown input | ✓ for popular actions such as `actions/checkout`; not for reusable workflows | not compared | — (a call to a reusable workflow in another repository is reported as unverified, [`FP603`](/docs/rules/fp603)) |
-| Shell scripts (shellcheck), runner labels, expression types, cron syntax | ✓ | not compared | — |
+| A property that a built-in context does not have, such as `github.reff` or `runner.oss` | ✓ | ✓ as a warning | — |
+| An expression whose type does not fit, such as `${{ github.ref_name }}` (a string) in `timeout-minutes`, or an object in `${{ }}` | ✓ | — (only a literal such as `${{ 'abc' }}`) | — (only a literal, [`FP503`](/docs/rules/fp503)) |
+| A cron schedule that is invalid (hour 25) or runs more often than every 5 minutes | ✓ | ✓ | — |
+| A runner label that does not exist, such as `ubuntu-latst`, or was retired, such as `ubuntu-18.04` | ✓ | — | — |
+| Bugs in `run:` scripts, such as an unquoted variable | ✓ runs shellcheck when it is installed | — | — |
 | Security: script injection, permissions, pinning ([zizmor](https://github.com/zizmorcore/zizmor) covers these) | script injection and hard-coded credentials | not compared | — |
 
 ¹ GitHub Actions extension 0.31.5, run through its language server. It checks calls to local reusable workflows only
@@ -646,7 +652,7 @@ The repositories under [`fixtures/`](https://github.com/rumankazi/flowpact/tree/
 | Tool | Use it for | Overlap with flowpact |
 | --- | --- | --- |
 | [actionlint](https://github.com/rhysd/actionlint) | Each file in depth: expression types, shell scripts (shellcheck), runner labels, cron syntax, script injection, inputs of popular actions | Direct calls to local reusable workflows and local actions, `needs` outputs, matrix keys no combination defines, and undeclared secrets in a workflow that declares some |
-| [GitHub Actions extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions) (VS Code) | Writing workflows: completion, documentation on hover, validation; runs and logs | Direct calls to local reusable workflows (when signed in), missing outputs, `env` variables nothing sets, matrix keys no combination defines; YAML, schema and expression errors (`FP502`–`FP505`) |
+| [GitHub Actions extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions) (VS Code) | Writing workflows: completion, documentation on hover, validation (including cron schedules and properties of built-in contexts); runs and logs | Direct calls to local reusable workflows (when signed in), missing outputs, `env` variables nothing sets, matrix keys no combination defines; YAML, schema and expression errors (`FP502`–`FP505`) |
 | [zizmor](https://github.com/zizmorcore/zizmor), ghalint | Security: injection, permissions, pinning | `secrets: inherit`, which zizmor's `secrets-inherit` audit and ghalint's `deny_inherit_secrets` policy flag; flowpact's `FP204` lists the secrets the callee reads |
 | gh-actions-lockfile, ghasum, actionspack, GitHub's `dependencies:` lock | Pin action and workflow **versions** (SHAs, hashes) | None — they lock *what code runs*, flowpact checks *what data flows* |
 

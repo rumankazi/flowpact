@@ -20,5 +20,13 @@ export function getPageMarkdownUrl(page: { slugs: string[]; locale?: string }) {
   return { segments, url: getContentUrl(segments, page.locale) };
 }
 
+/** Where flowpact is published. */
+export const installLinks = {
+  vscode: 'https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact',
+  openVsx: 'https://open-vsx.org/extension/flowpact/vscode-flowpact',
+  action: 'https://github.com/marketplace/actions/flowpact',
+  npm: 'https://www.npmjs.com/package/flowpact',
+} as const;
+
 /** Prefixes a public asset path with the deployment base path. */
 export const asset = (path: string) => `${basePath}${path}`;
