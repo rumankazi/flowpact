@@ -28,6 +28,15 @@ const SELECTOR = [
   { scheme: 'file', pattern: '**/.github/flowpact/**/*.{yml,yaml}' },
 ];
 
+/** At a workspace folder's root, these make the server worth starting; checked by path, without a search. */
+const AT_ROOT = ['.github/workflows', 'action.yml', 'action.yaml'];
+/**
+ * The same anywhere in the workspace (nested repositories). VS Code gives up the search behind a `workspaceContains`
+ * glob after 7 seconds and then does not activate at all, so the extension also activates after startup and runs this
+ * search itself, in the background: a file search can stall while VS Code starts.
+ */
+const NESTED = ['**/.github/workflows/*.{yml,yaml}', '**/action.{yml,yaml}'];
+
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -152,11 +161,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
     return c;
   };
+  let starting: Promise<void> | undefined;
+  /** Starts the server once; later calls wait for that start. */
+  const start = (): Promise<void> =>
+    (starting ??= (async () => {
+      client = create();
+      await client.start();
+    })());
+  const startOrLog = () =>
+    start().catch((err: unknown) => output.error(`could not start the server: ${String(err)}`));
   let restarting: Promise<void> | undefined;
   /** One restart at a time; a start in progress is waited out, so no second server is left running. */
   const restart = (): Promise<void> =>
     (restarting ??= (async () => {
       try {
+        if (!client) return await start();
         if (client?.state === State.Starting) await client.start().catch(() => undefined);
         if (client?.state === State.Running) {
           await client.restart();
@@ -186,11 +205,52 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.workspace.onDidOpenTextDocument((d) => {
       noteOpened(d);
       if (hiding) refilter(d.uri);
+      if (!starting && vscode.languages.match(SELECTOR, d) > 0) startOrLog();
+    }),
+    vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+      if (!starting && ((await atRoot()) || (await nested()))) startOrLog();
     }),
   );
 
-  client = create();
-  await client.start();
+  // Also activated after startup in any workspace: start only where there are workflows or action metadata, or once
+  // such a file is opened.
+  if (
+    vscode.workspace.textDocuments.some((d) => vscode.languages.match(SELECTOR, d) > 0) ||
+    (await atRoot())
+  ) {
+    await start();
+    return;
+  }
+  output.info(
+    'no workflows or action.yml at the workspace root; searching the workspace, or waiting for one to open',
+  );
+  nested().then(
+    (found) => {
+      if (found && !starting) startOrLog();
+    },
+    (err: unknown) => output.warn(`could not search the workspace: ${String(err)}`),
+  );
+}
+
+async function atRoot(): Promise<boolean> {
+  const checks = (vscode.workspace.workspaceFolders ?? []).flatMap((folder) =>
+    AT_ROOT.map((path) =>
+      vscode.workspace.fs.stat(vscode.Uri.joinPath(folder.uri, path)).then(
+        () => true,
+        () => false,
+      ),
+    ),
+  );
+  return (await Promise.all(checks)).some(Boolean);
+}
+
+async function nested(): Promise<boolean> {
+  const found = await Promise.all(
+    NESTED.map((glob) =>
+      vscode.workspace.findFiles(glob, '**/node_modules/**', 1).then((uris) => uris.length > 0),
+    ),
+  );
+  return found.some(Boolean);
 }
 
 export function deactivate(): Promise<void> | undefined {

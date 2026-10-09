@@ -35,9 +35,14 @@
     "language-server"
   ],
   "activationEvents": [
+    "workspaceContains:.github/workflows",
+    "workspaceContains:action.yml",
+    "workspaceContains:action.yaml",
     "workspaceContains:**/.github/workflows/**",
     "workspaceContains:**/action.yml",
-    "workspaceContains:**/action.yaml"
+    "workspaceContains:**/action.yaml",
+    "onLanguage:github-actions-workflow",
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "extensionKind": [

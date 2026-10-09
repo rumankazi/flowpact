@@ -25,6 +25,8 @@ exports.run = async () => {
   const id = process.env.FLOWPACT_EXTENSION_ID;
   const extension = id && vscode.extensions.getExtension(id);
   assert.ok(extension, `the extension ${id} is not installed`);
+  // Through its activation events (a .github/workflows folder at the root), not the explicit call below.
+  await waitFor('activation by the workspace', () => extension.isActive, 30_000);
   await extension.activate();
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder, 'no workspace folder is open');

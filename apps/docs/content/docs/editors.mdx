@@ -43,7 +43,9 @@ built on VS Code:
 code --install-extension flowpact.vscode-flowpact
 ```
 
-It bundles the language server, so nothing else needs to be installed, and works in VS Code 1.101 and later.
+It bundles the language server, so nothing else needs to be installed, and works in VS Code 1.101 and later. The
+server starts when the workspace has workflows or an `action.yml`, at a folder's root or nested deeper, or when you open
+one; other workspaces only load the extension.
 
 It complements GitHub's [GitHub Actions](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions)
 extension, which completes and validates workflow syntax file by file: flowpact adds what crosses files (the data flow
@@ -62,6 +64,9 @@ four rules both would report (`flowpact.overlappingRules`).
 
 **Logs:** the **flowpact** output channel (**flowpact: Show Output**). Its log level (**Developer: Set Log Level…**) is
 also the server's: set it to Debug to see every stage of the analysis, or to Trace for the protocol messages too.
+VS Code's own extension host log can say `Not activating extension 'flowpact.vscode-flowpact': Timed out while
+searching…` in a large workspace even though flowpact runs: it then starts after VS Code's startup instead. The output
+channel and the language status item show its real state.
 
 **Commands:** **flowpact: Restart Language Server** — also needed after you edit a plugin, since a loaded plugin stays
 loaded — and **flowpact: Show Output**.
