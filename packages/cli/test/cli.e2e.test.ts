@@ -461,7 +461,7 @@ describe('untrusted values', () => {
     );
     const json = await flowpact(['lint', '--root', root, '--format', 'json', '--no-schema', '-q']);
     expect(json.stdout).not.toContain('##[');
-    expect(JSON.stringify(JSON.parse(json.stdout).findings)).toContain(name.replace(/"/g, '\\"'));
+    expect(JSON.stringify(JSON.parse(json.stdout).findings)).toContain(JSON.stringify(name).slice(1, -1));
     const patch = join(root, 'contracts.patch');
     const r = await flowpact(['generate', '--root', root, '--patch', patch, '-q']);
     expect(r.exitCode).toBe(0);
