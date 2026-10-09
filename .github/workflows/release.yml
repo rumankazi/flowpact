@@ -383,10 +383,11 @@ jobs:
           # The tag's commit time as the archive timestamps: packaging the tag again gives the same bytes.
           SOURCE_DATE_EPOCH=$(git log -1 --format=%ct HEAD)
           export SOURCE_DATE_EPOCH
-          # Relative README links point into packages/vscode at this tag (vsce ignores repository.directory).
+          # Relative README links point into packages/vscode at this tag (vsce ignores repository.directory). Images come
+          # from raw.githubusercontent.com itself: github.com's /raw/ redirect to it intermittently answers 504.
           (cd packages/vscode && pnpm exec vsce package --no-dependencies --out "$RUNNER_TEMP/$vsix" \
             --baseContentUrl "https://github.com/$GITHUB_REPOSITORY/blob/$TAG/packages/vscode" \
-            --baseImagesUrl "https://github.com/$GITHUB_REPOSITORY/raw/$TAG/packages/vscode")
+            --baseImagesUrl "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$TAG/packages/vscode")
           unzip -q "$RUNNER_TEMP/$vsix" -d "$RUNNER_TEMP/vsix"
           test -s "$RUNNER_TEMP/vsix/extension/dist/server.mjs"
           echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
