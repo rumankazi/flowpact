@@ -246,6 +246,13 @@ export function renderSummary(result: AnalysisResult, opts: RenderOptions, infoH
       ),
     );
   }
+  if (s.skippedInGenerated) {
+    lines.push(
+      c.dim(
+        `${s.skippedInGenerated} finding${s.skippedInGenerated === 1 ? '' : 's'} not reported in generated files (-v lists the files)`,
+      ),
+    );
+  }
   if (result.contracts) {
     const k = result.contracts.counts;
     lines.push(
@@ -328,6 +335,16 @@ export function renderExplain(
   out.push(...labeled(t, 'why', rule.docs.why, w));
   out.push('');
   out.push(...labeled(t, 'fix', rule.docs.fix, w, c.green));
+  const scope = [
+    rule.docs.scope,
+    rule.generatedFiles === 'skip' ? 'Not reported in generated files, which are not edited by hand.' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  if (scope) {
+    out.push('');
+    out.push(...labeled(t, 'scope', scope, w));
+  }
   if (rule.docs.examples) {
     out.push('');
     out.push(c.red(c.bold('✗ problem')));

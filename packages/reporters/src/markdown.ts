@@ -1,6 +1,7 @@
 import {
   type AnalysisResult,
   type ContractPlan,
+  DOCS_BASE_URL,
   type Finding,
   type ImpactResult,
   type Loc,
@@ -313,6 +314,12 @@ export function renderMarkdown(result: AnalysisResult, opts: MarkdownOptions = {
   out.push(
     `| ${s.errors} | ${s.warnings} | ${s.infos} | ${s.suppressed} | ${s.workflows} | ${s.actions} | ${s.jobs} | ${s.matrixCombinations} |`,
   );
+  if (s.skippedInGenerated) {
+    out.push('');
+    out.push(
+      `<sub>${plural(s.skippedInGenerated, 'finding')} about the internals of [generated files](${DOCS_BASE_URL}/docs/configuration#generated-files) ${s.skippedInGenerated === 1 ? 'is' : 'are'} not reported.</sub>`,
+    );
+  }
 
   const max = Math.max(0, opts.maxFindings ?? 50);
   let shown = 0;
