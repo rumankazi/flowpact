@@ -68,6 +68,15 @@ Node.js can apply the regenerated contracts from CI as a patch.
 Findings you accept go into the config as **overrides** with a reason, an owner and an expiry date; expired overrides
 bring the findings back.
 
+## In your editor
+
+The [VS Code extension](https://marketplace.visualstudio.com/items?itemName=flowpact.vscode-flowpact) (also on
+[Open VSX](https://open-vsx.org/extension/flowpact/vscode-flowpact)) reports the same findings as you type, traces
+inputs, secrets and outputs on hover, and goes to definitions and references across workflow calls. Other editors can
+use the language server, `flowpact lsp` ([editors](https://rumankazi.github.io/flowpact/docs/editors)).
+
+![VS Code showing a finding as you type: the windows matrix entry passes an empty config to a reusable workflow](apps/docs/public/screenshots/editor-diagnostics.png)
+
 ## Repository layout
 
 | Path | What |
@@ -76,6 +85,8 @@ bring the findings back.
 | `packages/reporters` | Terminal (pretty), JSON, Markdown, SARIF, trace, graph and contract renderers |
 | `packages/cli` | The `flowpact` command (published as `flowpact`) |
 | `packages/action` | The GitHub Action (`action.yml` at the root runs `packages/action/dist/index.js`): job summary, annotations, SARIF, contract patch artifact |
+| `packages/language-server` | The language server (`flowpact lsp`): diagnostics, hover, definitions and references |
+| `packages/vscode` | The VS Code extension, bundling the language server |
 | `apps/docs` | Fumadocs site, deployed to GitHub Pages |
 | `fixtures/` | Small repositories used by tests, screenshots and docs |
 | `scripts/` | Rule-doc, schema and screenshot generators; link checker |
@@ -90,6 +101,7 @@ pnpm typecheck && pnpm lint
 pnpm build           # bundles the CLI to packages/cli/dist/index.js
 pnpm docs:dev        # docs site with generated rule pages
 pnpm docs:screenshots # regenerate terminal screenshots from real CLI output
+pnpm --filter vscode-flowpact screenshots # regenerate editor screenshots in a real VS Code (after pnpm build)
 ```
 
 Rule pages under `apps/docs/content/docs/rules/` are generated from the rule definitions (`pnpm docs:gen`); a test

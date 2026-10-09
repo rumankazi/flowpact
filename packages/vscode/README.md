@@ -4,6 +4,8 @@
 inputs, secrets and outputs that cross reusable-workflow calls and local actions, per matrix combination. This
 extension runs it while you edit.
 
+![A finding as you type: the windows matrix entry passes an empty config to a reusable workflow, with the call chain and flowpact's hover card](../../apps/docs/public/screenshots/editor-diagnostics.png)
+
 ## Features
 
 - **Diagnostics as you type** for the whole repository, closed files included. Editing a reusable workflow updates its
@@ -15,6 +17,10 @@ extension runs it while you edit.
   `needs.build.outputs.url` to the reusable workflow's output, from `steps.x.outputs.y` to the action's output.
 - **Find references** and **highlights** across files.
 - **Contract drift** (`FP801`–`FP805`) as you edit, when the repository [locks its contracts](https://rumankazi.github.io/flowpact/docs/contracts).
+
+![Hover on an input: a required string that comes from pipeline.yml and goes on to package.yml](../../apps/docs/public/screenshots/editor-hover.png)
+
+![Peek References on an input: its declaration, two reads, and the caller that passes it](../../apps/docs/public/screenshots/editor-references.png)
 
 Your [flowpact config](https://rumankazi.github.io/flowpact/docs/configuration) applies as in the CLI and in CI:
 severities, overrides, ignores and plugins.
