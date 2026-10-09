@@ -12,7 +12,15 @@ const fail = (message) => {
 const files = JSON.parse(execSync('npm pack --dry-run --json', { encoding: 'utf8' }))[0]
   .files.map((f) => f.path)
   .sort();
-const expected = ['LICENSE', 'README.md', 'dist/index.js', 'package.json'];
+// THIRD_PARTY_LICENSES.txt and sbom.cdx.json say what the bundle contains (scripts/bundle-licenses.ts).
+const expected = [
+  'LICENSE',
+  'README.md',
+  'dist/THIRD_PARTY_LICENSES.txt',
+  'dist/index.js',
+  'dist/sbom.cdx.json',
+  'package.json',
+];
 if (JSON.stringify(files) !== JSON.stringify(expected))
   fail(`unexpected tarball contents: ${files.join(', ')} (expected ${expected.join(', ')})`);
 

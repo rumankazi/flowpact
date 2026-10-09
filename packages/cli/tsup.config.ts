@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import { bundleLicenses } from '../../scripts/bundle-licenses';
+import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
   entry: ['src/index.ts'],
@@ -16,4 +18,8 @@ export default defineConfig({
   esbuildOptions(options) {
     options.conditions = ['source'];
   },
+  // dist/THIRD_PARTY_LICENSES.txt and dist/sbom.cdx.json: what the bundle contains, shipped in the npm package.
+  esbuildPlugins: [
+    bundleLicenses({ name: 'flowpact', version: pkg.version, description: 'The flowpact command-line tool' }),
+  ],
 });

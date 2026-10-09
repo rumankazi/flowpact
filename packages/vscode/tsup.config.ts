@@ -1,10 +1,19 @@
 import { defineConfig } from 'tsup';
+import { bundleLicenses } from '../../scripts/bundle-licenses';
+import pkg from './package.json' with { type: 'json' };
 
 // Everything but `vscode` (which the editor provides) is bundled, so the .vsix needs no node_modules. Not `/.*/`, which
 // would override `external: ['vscode']`.
 const bundleAll = [/^(?!vscode$)/];
 
 /** Smaller bundles that load faster, with names kept so stack traces in bug reports stay readable. */
+/** dist/THIRD_PARTY_LICENSES.txt and dist/sbom.cdx.json, merged over the client and the server, shipped in the .vsix. */
+const licenses = bundleLicenses({
+  name: 'vscode-flowpact',
+  version: pkg.version,
+  description: 'The flowpact extension for VS Code',
+});
+
 const compact = (options: { minifyWhitespace?: boolean; minifySyntax?: boolean }) => {
   options.minifyWhitespace = true;
   options.minifySyntax = true;
@@ -21,6 +30,7 @@ export default defineConfig([
     external: ['vscode'],
     noExternal: bundleAll,
     esbuildOptions: compact,
+    esbuildPlugins: [licenses],
   },
   {
     // The server: a separate process, ESM like the CLI. No `clean` here or above: the two builds run in parallel into
@@ -39,5 +49,6 @@ export default defineConfig([
       compact(options);
       options.conditions = ['source'];
     },
+    esbuildPlugins: [licenses],
   },
 ]);
