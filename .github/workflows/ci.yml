@@ -145,6 +145,13 @@ jobs:
             echo "::error::packages/action/dist is out of date. Run 'pnpm --filter @flowpact/action build' and commit the result."
             exit 1
           fi
+      - name: The release archive of the action is reproducible
+        run: |
+          scripts/action-archive.sh "$RUNNER_TEMP/a.tar.gz"
+          sleep 1
+          scripts/action-archive.sh "$RUNNER_TEMP/b.tar.gz"
+          cmp "$RUNNER_TEMP/a.tar.gz" "$RUNNER_TEMP/b.tar.gz"
+          tar -tzvf "$RUNNER_TEMP/a.tar.gz"
 
   action-dogfood:
     name: Action on this repository

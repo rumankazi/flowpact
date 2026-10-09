@@ -81,7 +81,8 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 1. Every push to `main` updates a **release pull request** that bumps the version in every package, rebuilds the
    action bundle, moves the version references in the docs and READMEs to the new release line
    (`scripts/sync-version-refs.mjs`) and adds the changelog entry from the commits since the last release.
-2. Merging it tags the release (`vX.Y.Z`) and creates the GitHub release.
+2. Merging it tags the release (`vX.Y.Z`) and creates the GitHub release as a **draft**
+   (`release-please-config.json`: `draft`, `force-tag-creation`).
 3. The release workflow then publishes `flowpact` to npm with provenance through npm trusted publishing (no
    token; only the very first publish of a new package name needs a short-lived `NPM_TOKEN` secret, because a trusted
    publisher can be configured only once the package exists), moves the floating tag used by
@@ -90,9 +91,14 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 
 4. For stable releases it also packages the VS Code extension, smoke-tests the package in VS Code, attaches the
    signed `.vsix` to the GitHub release, and publishes that file to the registries set up below.
+5. It attaches the signed assets to the draft: the npm tarball, the `.vsix` and the action archive
+   (`flowpact-action-X.Y.Z.tar.gz`: `action.yml`, the bundle and the license, built reproducibly by
+   `scripts/action-archive.sh`), each with its Sigstore bundle and in-toto provenance. Only then does it publish the
+   release, and only after that does it move the floating tag. With **immutable releases** enabled in the repository
+   settings, a published release's tag and assets cannot change, so what a mirror verified stays what was released.
 
-If publishing fails after the tag exists, run the **Release** workflow manually with that tag; versions already on
-npm, the Marketplace or Open VSX are skipped. The same re-run publishes a release to a registry that was set up after
+If publishing fails after the tag exists, run the **Release** workflow manually with that tag: the release stays a
+draft until every asset is attached, and versions already on npm, the Marketplace or Open VSX are skipped. The same re-run publishes a release to a registry that was set up after
 it went out.
 
 ### Publishing the VS Code extension (one-time setup)
