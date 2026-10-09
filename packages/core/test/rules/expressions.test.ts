@@ -208,6 +208,96 @@ describe('FP502 / FP503: an invalid expression is reported once', () => {
       `FP502 ${WF}/w.yml:15:27 Invalid expression "contains(github.ref)": Too few parameters supplied: 'contains'`,
     ]);
   });
+
+  it('reports an invalid expression in a boolean, number or matrix field once, without the type error that follows', () => {
+    expect(
+      report({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          concurrency:
+            group: g
+            cancel-in-progress: \${{ contains(github.ref) }}
+          jobs:
+            j:
+              runs-on: x
+              timeout-minutes: \${{ a + b }}
+              continue-on-error: \${{ fromJSON(1, 2) }}
+              strategy:
+                fail-fast: \${{ startsWith(github.ref) }}
+                matrix:
+                  n: \${{ contains(github.ref) }}
+              steps:
+                - run: echo
+                  timeout-minutes: \${{ format() }}
+        `,
+      }),
+    ).toEqual([
+      `FP502 ${WF}/w.yml:4:27 Invalid expression "contains(github.ref)": Too few parameters supplied: 'contains'`,
+      `FP502 ${WF}/w.yml:8:28 Invalid expression "a + b": Unexpected symbol: '+'`,
+      `FP502 ${WF}/w.yml:9:28 Invalid expression "fromJSON(1, 2)": Too many parameters supplied: 'fromJSON'`,
+      `FP502 ${WF}/w.yml:11:22 Invalid expression "startsWith(github.ref)": Too few parameters supplied: 'startsWith'`,
+      `FP502 ${WF}/w.yml:13:16 Invalid expression "contains(github.ref)": Too few parameters supplied: 'contains'`,
+      `FP502 ${WF}/w.yml:16:30 Invalid expression "format()": Too few parameters supplied: 'format'`,
+    ]);
+  });
+
+  it('accepts a valid multi-line expression in a boolean field that the parser misreads', () => {
+    expect(
+      report({
+        [`${WF}/w.yml`]: yaml`
+          on: push
+          jobs:
+            j:
+              runs-on: x
+              continue-on-error: '\${{ github.ref ==
+                ''refs/heads/main'' }}'
+              steps: [{ run: echo }]
+        `,
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports invalid expressions as FP503 when FP502 does not run, once each', () => {
+    const files = {
+      [`${WF}/w.yml`]: yaml`
+        on: push
+        jobs:
+          j:
+            runs-on: x
+            timeout-minutes: \${{ fromJSON(1, 2) }}
+            steps:
+              - run: echo \${{ contains(github.ref) }}
+      `,
+    };
+    const fp503 = (opts: Parameters<typeof lint>[1]) =>
+      lint(files, { schema: true, ...opts })
+        .findings.filter((f) => ['FP502', 'FP503'].includes(f.code))
+        .map((f) => `${f.code} ${at(f)} ${f.message}`);
+    const expected = [
+      `FP503 ${WF}/w.yml:5:22 Too many parameters supplied: 'fromJSON'`,
+      `FP503 ${WF}/w.yml:7:19 Too few parameters supplied: 'contains'`,
+    ];
+    expect(fp503({ config: { rules: { FP502: 'off' } } })).toEqual(expected);
+    expect(fp503({ only: ['FP503'] })).toEqual(expected);
+  });
+
+  it('reports an invalid expression once in a file whose path contains a colon', () => {
+    expect(
+      report({
+        [`${WF}/deploy:prod.yml`]: yaml`
+          on: push
+          jobs:
+            j:
+              runs-on: x
+              steps:
+                - run: echo \${{ contains(github.ref) }} \${{ a + b }}
+        `,
+      }),
+    ).toEqual([
+      `FP502 ${WF}/deploy:prod.yml:6:23 Invalid expression "contains(github.ref)": Too few parameters supplied: 'contains'`,
+      `FP502 ${WF}/deploy:prod.yml:6:53 Invalid expression "a + b": Unexpected symbol: '+'`,
+    ]);
+  });
 });
 
 describe('FP503 schema-violation / FP504 yaml-syntax-error', () => {

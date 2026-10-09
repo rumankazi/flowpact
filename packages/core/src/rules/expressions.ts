@@ -148,8 +148,11 @@ runs:
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
+      // Invalid expressions are FP502's, which shows the expression and the position in it; they are reported here
+      // only when FP502 does not run.
+      const fp502 = ctx.runs('FP502');
       for (const e of unit.schemaErrors) {
-        if (e.kind === 'context') continue;
+        if (e.kind === 'context' || (e.kind === 'expression' && fp502)) continue;
         ctx.report({
           message: e.message,
           loc: e.loc,

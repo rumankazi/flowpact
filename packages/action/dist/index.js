@@ -55167,8 +55167,8 @@ var require_compose_scalar = __commonJS({
       onError(tagToken, "TAG_RESOLVE_FAILED", `Unresolved tag: ${tagName}`, tagName !== "tag:yaml.org,2002:str");
       return schema3[identity.SCALAR];
     }
-    function findScalarTagByTest({ atKey, directives, schema: schema3 }, value, token, onError) {
-      const tag = schema3.tags.find((tag2) => (tag2.default === true || atKey && tag2.default === "key") && tag2.test?.test(value)) || schema3[identity.SCALAR];
+    function findScalarTagByTest({ atKey: atKey2, directives, schema: schema3 }, value, token, onError) {
+      const tag = schema3.tags.find((tag2) => (tag2.default === true || atKey2 && tag2.default === "key") && tag2.test?.test(value)) || schema3[identity.SCALAR];
       if (schema3.compat) {
         const compat = schema3.compat.find((tag2) => tag2.default && tag2.test?.test(value)) ?? schema3[identity.SCALAR];
         if (tag.tag !== compat.tag) {
@@ -55226,7 +55226,7 @@ var require_compose_node = __commonJS({
     var utilEmptyScalarPosition = require_util_empty_scalar_position();
     var CN = { composeNode, composeEmptyNode };
     function composeNode(ctx, token, props, onError) {
-      const atKey = ctx.atKey;
+      const atKey2 = ctx.atKey;
       const { spaceBefore, comment, anchor: anchor2, tag } = props;
       let node2;
       let isSrcToken = true;
@@ -55265,7 +55265,7 @@ var require_compose_node = __commonJS({
       node2 ?? (node2 = composeEmptyNode(ctx, token.offset, void 0, null, props, onError));
       if (anchor2 && node2.anchor === "")
         onError(anchor2, "BAD_ALIAS", "Anchor cannot be an empty string");
-      if (atKey && ctx.options.stringKeys && (!identity.isScalar(node2) || typeof node2.value !== "string" || node2.tag && node2.tag !== "tag:yaml.org,2002:str")) {
+      if (atKey2 && ctx.options.stringKeys && (!identity.isScalar(node2) || typeof node2.value !== "string" || node2.tag && node2.tag !== "tag:yaml.org,2002:str")) {
         const msg = "With stringKeys, all keys must be strings";
         onError(tag ?? token, "NON_STRING_KEY", msg);
       }
@@ -130744,6 +130744,7 @@ function mappingsAt(schema3, root, path4) {
 // ../core/src/validate.ts
 var EXPRESSION_ERROR = /^(?:Unexpected symbol|Unexpected end of expression|Unrecognized named-value|Unrecognized function|Too few parameters supplied|Too many parameters supplied|Even number of parameters supplied|Exceeded max expression (?:depth|length)|ErrorExceededMaxLength|The expression is not closed)\b/;
 var UNCLOSED = /^The expression is not closed\b/;
+var UNPARSED_VALUE = /^Unexpected value '[\s\S]*\$\{\{/;
 var LOCAL_ACTION_NOISE = /Required property is missing: (name|description)\b/i;
 var CONTEXT_NAMES = new Set(KNOWN_CONTEXTS);
 var FUNCTION_NAMES = new Set(CONTEXT_FUNCTIONS.map((f) => f.name.toLowerCase()));
@@ -130764,13 +130765,31 @@ function isContextError(message) {
   const fn = /Unrecognized function: '([^']+)'/i.exec(message);
   return fn ? FUNCTION_NAMES.has(fn[1].toLowerCase()) : false;
 }
-function reportedByFP502(unit, d) {
-  if (d.kind === "context" || !d.at || !EXPRESSION_ERROR.test(d.message)) return false;
-  const site = siteAt(unit.sites, d.at);
-  if (!site) return false;
-  if (site.loc.endLine > site.loc.line) return true;
+function againstFP502(unit, d) {
+  const site = d.at && siteAt(unit.sites, d.at);
+  if (!site) return "own";
+  if (site.loc.endLine > site.loc.line) {
+    return site.segments.some((seg) => seg.expr.error) ? "fp502" : "misread";
+  }
   const message = UNCLOSED.test(d.message) ? UNTERMINATED_EXPRESSION : d.message;
-  return site.segments.some((seg) => seg.expr.error?.message === message);
+  return site.segments.some((seg) => seg.expr.error?.message === message) ? "fp502" : "own";
+}
+var isExpressionError = (d) => d.kind !== "context" && !!d.at && EXPRESSION_ERROR.test(d.message);
+var atKey = (d) => d.at ? `${d.at.line}:${d.at.column}` : "";
+function classifyExpressions(unit, diagnostics) {
+  const failed = new Set(diagnostics.filter(isExpressionError).map(atKey));
+  const out = [];
+  for (const d of diagnostics) {
+    if (!d.kind && d.at && failed.has(atKey(d)) && UNPARSED_VALUE.test(d.message)) continue;
+    if (!isExpressionError(d)) {
+      out.push(d);
+      continue;
+    }
+    const relation = againstFP502(unit, d);
+    if (relation === "misread") continue;
+    out.push(relation === "fp502" ? { ...d, kind: "expression" } : d);
+  }
+  return out;
 }
 function workflowContext() {
   const context5 = new TemplateContext(
@@ -130789,7 +130808,7 @@ function validateSchema(unit, logger7) {
     const diagnostics = errors.filter((e) => !(unit.kind === "action" && LOCAL_ACTION_NOISE.test(e.message))).map((e) => {
       const r = e.range;
       const at = /\(Line: (\d+), Col: (\d+)\)/.exec(e.message);
-      const message = e.message.replace(/^[^:]*\.ya?ml(?: \(Line: \d+, Col: \d+\))?:\s*/, "").replace(/\.\s*Located at position \d+ within expression:.*$/s, "");
+      const message = (e.message.startsWith(unit.file) ? e.message.slice(unit.file.length) : e.message).replace(/^(?: \(Line: \d+, Col: \d+\))?:\s*/, "").replace(/\.\s*Located at position \d+ within expression:.*$/s, "");
       return {
         message,
         ...isContextError(message) ? { kind: "context" } : {},
@@ -130802,8 +130821,8 @@ function validateSchema(unit, logger7) {
           endColumn: r.end.column
         } : { file: unit.file, line: 1, column: 1, endLine: 1, endColumn: 1 }
       };
-    }).filter((d) => !reportedByFP502(unit, d));
-    return explain(unit, diagnostics);
+    });
+    return explain(unit, classifyExpressions(unit, diagnostics));
   } catch (err) {
     logger7.debug(`schema validation skipped for ${unit.file}`, { reason: err.message });
     return [];
@@ -134359,8 +134378,9 @@ runs:
   },
   check(ctx) {
     for (const unit of ctx.index.units()) {
+      const fp502 = ctx.runs("FP502");
       for (const e of unit.schemaErrors) {
-        if (e.kind === "context") continue;
+        if (e.kind === "context" || e.kind === "expression" && fp502) continue;
         ctx.report({
           message: e.message,
           loc: e.loc,
@@ -136780,6 +136800,11 @@ function analyze(opts) {
       opts.impact.policy
     )
   ) : void 0;
+  const runs = (code2) => {
+    const rule = registry2.get(code2);
+    if (!rule) return false;
+    return (severities.get(rule.code) ?? rule.defaultSeverity) !== "off" && (!only || only.includes(rule.code));
+  };
   const runRules = (phase, extra) => {
     const out = [];
     for (const rule of registry2.all()) {
@@ -136795,6 +136820,7 @@ function analyze(opts) {
         config: config2,
         logger: ruleLog.child(rule.code),
         matrix: matrix2,
+        runs,
         ...opts.configFile ? { configFile: opts.configFile } : {},
         ...contracts ? { contracts } : {},
         ...impact ? { impact } : {},
