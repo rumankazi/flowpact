@@ -65,13 +65,21 @@ In CI, add the action; it lints by default and annotates the pull request:
 
 ## What it finds that other tools miss
 
-actionlint checks one file and one call level at a time; flowpact builds a graph of the whole repository and evaluates
-bindings per matrix combination. In large public repositories it found a reusable workflow that declares no secrets but
-reads `secrets.CODECOV_TOKEN`, called from 31 places and none with `secrets: inherit`, so the token is always empty;
-and an opt-in job that checks the repository out into a subdirectory and then runs `./.github/actions/...` from a path
-where those actions can never be found. actionlint reports neither. Use flowpact next to actionlint (shell scripts,
-runner labels, expression types) and zizmor (security): see the
-[comparison](https://rumankazi.github.io/flowpact/docs/comparison).
+| Problem | actionlint | flowpact |
+| --- | --- | --- |
+| One matrix `include` entry lacks a key that is passed to a reusable workflow or action | — | `FP401`, naming the combination |
+| An optional input with no default is left out, so a step is skipped or a required input further down is empty | — | `FP105`, `FP107` |
+| A reusable workflow that declares no secrets reads one, and a caller does not use `secrets: inherit` | — | `FP205` |
+| A step runs `./.github/actions/...` after checking the repository out into a subdirectory | — | `FP606` |
+| A published workflow removes an output or renames a job, which can break consumers in other repositories | — | `FP803` (against the committed contracts), `FP810` (impact mode, against the base commit) |
+
+In a large public repository, flowpact found the third case: a reusable workflow that reads `secrets.CODECOV_TOKEN`
+while declaring no secrets, called from 31 places and none with `secrets: inherit`, so the token is always empty.
+
+Both tools report a missing or unknown input on a direct call to a local reusable workflow or action, and actionlint
+also checks shell scripts, runner labels, expression types and the inputs of popular actions such as
+`actions/checkout`. Use flowpact next to it, and zizmor for security. The
+[comparison](https://rumankazi.github.io/flowpact/docs/comparison) shows both tools' output side by side.
 
 ## For publishers of actions and reusable workflows
 
