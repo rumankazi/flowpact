@@ -1,6 +1,6 @@
 {
   "name": "@flowpact/reporters",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "private": true,
   "description": "Output formatters for flowpact analysis results (pretty terminal, JSON).",
   "type": "module",
