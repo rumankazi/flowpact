@@ -4,6 +4,30 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.8.0](https://github.com/rumankazi/flowpact/compare/v0.7.0...v0.8.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** FP105, FP205, FP401, FP402 and FP404 no longer report empty values the workflow handles, so overrides for those findings are reported by FP902 ([#58](https://github.com/rumankazi/flowpact/issues/58)). Some of their messages changed, so those code-scanning alerts close and reopen once. See https://rumankazi.github.io/flowpact/docs/upgrading.
+* **core:** run `flowpact generate` after upgrading if you lock contracts ([#56](https://github.com/rumankazi/flowpact/issues/56)): a read of a whole outputs object such as `toJSON(needs.build.outputs)` now counts every output in it, so `flowpact check` reports contracts written by 0.7 as outdated (FP802). FP303 no longer reports outputs of published units, and rules about the internals of generated files are skipped there, so overrides for those findings are reported by FP902. See https://rumankazi.github.io/flowpact/docs/upgrading.
+* **core:** a step's `uses: ./path` now resolves against the runner's workspace, as GitHub does ([#55](https://github.com/rumankazi/flowpact/issues/55)). Contracts of repositories that use actions through a checkout `path:` or `$/` gain `uses` entries, so `flowpact check` reports FP802 until you run `flowpact generate`; overrides for the old false FP606 findings are reported by FP902. See https://rumankazi.github.io/flowpact/docs/upgrading.
+
+### Features
+
+* **core:** precise output tracking for FP303/FP304, and quiet internals of generated files ([#56](https://github.com/rumankazi/flowpact/issues/56)) ([ac647a7](https://github.com/rumankazi/flowpact/commit/ac647a7691a127063ec183a1956ef6e2a4762c95))
+* **core:** resolve step `uses: ./` against the workspace and support `$/` ([#55](https://github.com/rumankazi/flowpact/issues/55)) ([22fa1eb](https://github.com/rumankazi/flowpact/commit/22fa1eb6c6f7f59ee4a7190f9190480ead5a1253))
+* **lsp:** a compact hover card with a flowpact header and docs link ([#49](https://github.com/rumankazi/flowpact/issues/49)) ([ecf6405](https://github.com/rumankazi/flowpact/commit/ecf64050a7d328c444968759ce1ad91daa8883ca))
+
+
+### Bug Fixes
+
+* **cli:** generate only the contracts of the given paths, and link the docs from --help ([#50](https://github.com/rumankazi/flowpact/issues/50)) ([bafeb74](https://github.com/rumankazi/flowpact/commit/bafeb74f6df5d3c9b92996d3ac07af05298f1e59))
+* **core:** accept background steps and cache-mode, warn on keys GitHub ignores ([#52](https://github.com/rumankazi/flowpact/issues/52)) ([c58aaa6](https://github.com/rumankazi/flowpact/commit/c58aaa694137cd44f647a13eef76334c9a8443fc))
+* **core:** stop reporting empty values the workflow already handles ([#58](https://github.com/rumankazi/flowpact/issues/58)) ([8f7c946](https://github.com/rumankazi/flowpact/commit/8f7c9465b456ded90bf04163a7a87782ec471624))
+* **rules:** allow a job-level if to read jobs it depends on indirectly (FP302) ([#57](https://github.com/rumankazi/flowpact/issues/57)) ([d70dabc](https://github.com/rumankazi/flowpact/commit/d70dabca3387891b744b2f77dd23fd0195277199))
+* **vscode:** activate without a workspace search when workflows are at the root ([#53](https://github.com/rumankazi/flowpact/issues/53)) ([5ea2e64](https://github.com/rumankazi/flowpact/commit/5ea2e648edb359e30008711767beb4e018e6fa25))
+
 ## [0.7.0](https://github.com/rumankazi/flowpact/compare/v0.6.0...v0.7.0) (2026-10-08)
 
 
