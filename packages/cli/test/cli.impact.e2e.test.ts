@@ -222,6 +222,21 @@ describe('flowpact impact baselines and policy', () => {
     expect(r.stderr).toContain('they apply after it is merged');
   });
 
+  it('takes the policy from the base config too, under the baseline config', async () => {
+    const config = '.github/flowpact/flowpact.config.yml';
+    const root = repo(
+      { [WF]: reusable('Test'), [config]: 'impact:\n  uncertain: warn\n' },
+      { [WF]: reusable('Unit tests'), [config]: 'impact:\n  uncertain: warn\n' },
+    );
+    const base = join(mkdtempSync(join(tmpdir(), 'flowpact-impact-base-')), 'acme.base.yml');
+    // An organization where every `fix:` is a major release: the rename is then declared.
+    writeFileSync(base, 'impact:\n  types: { fix: major }\n');
+    expect((await flowpact(root, ['impact', '--base', 'main', '--title', 'fix: x'])).exitCode).toBe(1);
+    const r = await flowpact(root, ['impact', '--base', 'main', '--title', 'fix: x', '--base-config', base]);
+    expect(r.exitCode).toBe(0);
+    expect(r.stderr).not.toContain('they apply after it is merged');
+  });
+
   it('falls back to the default policy when the baseline config is invalid', async () => {
     const config = '.github/flowpact/flowpact.config.yml';
     const root = repo(

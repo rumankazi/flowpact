@@ -375,11 +375,11 @@ describe('logging and errors', () => {
 
   it('fails with the config problem and its issues', async () => {
     const { workspace } = repoFrom('incident-matrix');
-    writeFileSync(join(workspace, 'bad.yml'), 'rules:\n  nope: error\n');
+    writeFileSync(join(workspace, 'bad.yml'), 'rules:\n  unused-inptu: error\n');
     const s = await action(workspace, { config: 'bad.yml' });
     expect(s.failed).toHaveLength(1);
     expect(s.failed[0]).toMatch(/unknown rules/);
-    expect(s.failed[0]).toContain('  - rules.nope: unknown rule');
+    expect(s.failed[0]).toContain('  - rules.unused-inptu: unknown rule (did you mean unused-input?)');
   });
 
   it('fails when the config file does not exist', async () => {

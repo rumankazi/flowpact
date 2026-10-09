@@ -254,7 +254,7 @@ export class Workspace {
       return r === '' || (r !== '..' && !r.startsWith(`..${sep}`) && !isAbsolute(r));
     });
     const loadable = this.settings.plugins && inFolders;
-    let pluginsSkipped = loaded.config.plugins.length > 0 && !loadable;
+    const pluginsSkipped = loaded.config.plugins.length > 0 && !loadable;
     if (pluginsSkipped && !root.pluginsNoted) {
       const why = this.settings.plugins
         ? 'the repository is outside the workspace folders'
@@ -269,7 +269,6 @@ export class Workspace {
         if (!(err instanceof ConfigError || err instanceof RuleRegistryError)) throw err;
         problem(err);
         registry = createRegistry();
-        pluginsSkipped = true;
       }
     }
 
@@ -290,7 +289,6 @@ export class Workspace {
           registry,
           logger: this.host.analysisLogger,
           checkContracts,
-          pluginsSkipped,
         });
         if (candidate === loaded && problems.length === 0) root.goodConfig = loaded;
         break;

@@ -1,7 +1,7 @@
 import { resolveSeverities } from '@flowpact/core';
 import { renderRuleList } from '@flowpact/reporters';
 import { defineCommand } from 'citty';
-import { loadRegistry, pluginsSkipped } from '../analysis';
+import { loadRegistry } from '../analysis';
 import { commonArgs, createContext, EXIT, guard, pluginArgs } from '../shared';
 
 export const rulesCommand = defineCommand({
@@ -15,9 +15,7 @@ export const rulesCommand = defineCommand({
     guard(async () => {
       const ctx = createContext(args, rawArgs);
       const registry = await loadRegistry(ctx);
-      const severities = resolveSeverities(registry, ctx.loaded.config, {
-        allowUnknown: pluginsSkipped(ctx),
-      });
+      const severities = resolveSeverities(registry, ctx.loaded.config);
       if (args.format === 'json') {
         ctx.stdout(
           JSON.stringify(
