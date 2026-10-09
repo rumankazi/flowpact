@@ -19,6 +19,14 @@ const features = [
     title: 'Trace anything',
     body: '`flowpact trace pipeline.yml:config` shows where a value goes — or, with --up, where it comes from.',
   },
+  {
+    title: 'Contracts',
+    body: 'A generated lockfile of each workflow’s and action’s interface and wiring. `flowpact check` fails on drift and marks breaking changes.',
+  },
+  {
+    title: 'Impact mode',
+    body: 'For publishers: grades what each pull request changes for consumers as major, minor, patch or none, and fails when a change that needs a minor or major release is declared as less.',
+  },
 ];
 
 export default function HomePage() {
@@ -27,14 +35,15 @@ export default function HomePage() {
       <section className="flex flex-col items-center gap-6 text-center">
         <Logo className="size-16" />
         <span className="rounded-full border border-fd-border px-3 py-1 font-mono text-xs text-fd-muted-foreground">
-          flowpact · workflow contracts for GitHub Actions
+          flowpact · data-flow linter for GitHub Actions
         </span>
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
           Know exactly what flows between your workflows.
         </h1>
         <p className="max-w-2xl text-lg text-fd-muted-foreground">
-          A linter and tracer for deeply nested reusable workflows: missing inputs, dead outputs, inherited
-          secrets and matrix legs that quietly run with empty values.
+          GitHub Actions turns a missing matrix value, an undeclared secret or an omitted optional input into
+          an empty value and keeps the run green. flowpact finds them across reusable workflows, local actions
+          and every combination of the matrices written in your workflows.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link

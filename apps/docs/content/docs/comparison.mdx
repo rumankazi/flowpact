@@ -1,11 +1,12 @@
 ---
 title: Comparison
-description: How flowpact relates to actionlint, zizmor and the lockfile tools for GitHub Actions.
+description: How flowpact relates to actionlint, zizmor, GitHub's VS Code extension and the lockfile tools for GitHub Actions.
 ---
 
 | Tool | Focus | Overlap with flowpact |
 | --- | --- | --- |
-| [actionlint](https://github.com/rhysd/actionlint) | Deep single-file checks: expression types, shell scripts (shellcheck), runner labels, action inputs, one level of local `workflow_call` | Missing/unknown inputs and secrets on direct calls, `needs` references |
+| [actionlint](https://github.com/rhysd/actionlint) | Deep single-file checks: expression types, shell scripts (shellcheck), runner labels, action inputs, one level of local `workflow_call` | Missing, unknown and mistyped inputs on direct calls; reads of undeclared `inputs.*` and `needs.*.outputs` in workflows, and of matrix keys no combination defines (`FP404`); undeclared secrets in a workflow that declares some |
+| [GitHub Actions extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions) (VS Code) | Each workflow file as you edit: syntax, schema, expressions, completion | YAML, schema and expression errors (`FP502`–`FP505`); flowpact's extension hides its own in the files you open while that extension runs |
 | [zizmor](https://github.com/zizmorcore/zizmor), ghalint | Security: injection, permissions, pinning | None |
 | gh-actions-lockfile, ghasum, actionspack, GitHub's `dependencies:` lock | Pin action and workflow **versions** (SHAs, hashes) | None — they lock *what code runs*, flowpact checks *what data flows* |
 
@@ -14,7 +15,8 @@ combinations.
 
 ## Measured on the fixture repositories
 
-The repositories under [`fixtures/`](https://github.com/rumankazi/flowpact/tree/main/fixtures) were linted with both tools:
+The repositories under [`fixtures/`](https://github.com/rumankazi/flowpact/tree/main/fixtures) were linted with both tools
+(actionlint 1.7.12):
 
 | Fixture | actionlint | flowpact |
 | --- | --- | --- |
@@ -26,9 +28,14 @@ The repositories under [`fixtures/`](https://github.com/rumankazi/flowpact/tree/
 ## What only flowpact reports
 
 - per-matrix-combination evaluation of bindings (`FP401`, `FP402`);
+- secrets that a reusable workflow reads while it declares none, and that some callers do not pass (`FP205`);
+- local actions (`uses: ./…`) that do not exist where the step runs: a typo in the path, or a job that checks the
+  repository out into a subdirectory (`FP606`);
 - values forwarded from optional inputs into required ones (`FP107`);
 - dead inputs, secrets and outputs computed across all callers (`FP104`, `FP106`, `FP203`, `FP303`);
 - step outputs read but never written to `$GITHUB_OUTPUT` (`FP304`);
 - what `secrets: inherit` actually needs (`FP204`);
 - call cycles and nesting depth across the whole repository (`FP601`, `FP602`);
-- `flowpact trace` for any value, in both directions.
+- `flowpact trace` for any value, in both directions;
+- [contracts](/docs/contracts) that version each workflow's and action's interface, and
+  [impact mode](/docs/impact-mode), which grades what a pull request changes for the repositories that use them.

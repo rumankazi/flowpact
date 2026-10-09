@@ -11,10 +11,31 @@ pnpm test         # unit, property and end-to-end tests
 pnpm lint         # Biome
 pnpm typecheck
 pnpm docs:gen     # regenerate rule pages and JSON schemas after changing a rule or schema
+pnpm coverage     # tests with coverage thresholds (core ≥ 90 % lines)
+pnpm docs:dev     # docs site with generated rule pages
+pnpm docs:screenshots                      # terminal screenshots from real CLI output
+pnpm --filter vscode-flowpact screenshots  # editor screenshots in a real VS Code (after pnpm build; opens windows)
 ```
 
 `packages/action/dist` is committed (GitHub runs the action from it). Rebuild it with `pnpm build` and commit the
 result whenever `packages/core`, `packages/reporters` or `packages/action` change; CI fails otherwise.
+
+## Repository layout
+
+| Path | What |
+| --- | --- |
+| `packages/core` | Engine: YAML → IR → expressions → graph → matrix expansion → rules |
+| `packages/reporters` | Terminal (pretty), JSON, Markdown, SARIF, trace, graph and contract renderers |
+| `packages/cli` | The `flowpact` command (published as `flowpact`) |
+| `packages/action` | The GitHub Action (`action.yml` at the root runs `packages/action/dist/index.js`): job summary, annotations, SARIF, contract patch artifact |
+| `packages/language-server` | The language server (`flowpact lsp`): diagnostics, hover, definitions and references |
+| `packages/vscode` | The VS Code extension, bundling the language server |
+| `apps/docs` | Fumadocs site, deployed to GitHub Pages |
+| `fixtures/` | Small repositories used by tests, screenshots and docs |
+| `scripts/` | Rule-doc, schema and screenshot generators; link checker |
+
+Rule pages under `apps/docs/content/docs/rules/` are generated from the rule definitions (`pnpm docs:gen`); a test
+fails when they are out of date.
 
 ## Pull requests
 

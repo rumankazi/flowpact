@@ -1,18 +1,20 @@
 {
   "name": "flowpact",
   "version": "0.7.0",
-  "description": "flowpact — lint, trace and lock the data flow between your GitHub Actions workflows.",
+  "description": "Data-flow linter for GitHub Actions: finds inputs, secrets and matrix values that arrive empty across reusable workflows and composite actions.",
   "keywords": [
     "github-actions",
-    "workflow",
-    "reusable-workflows",
     "linter",
-    "lint",
-    "ci",
+    "reusable-workflows",
+    "workflow-call",
+    "composite-actions",
     "matrix",
-    "contracts",
+    "secrets",
+    "static-analysis",
+    "ci",
     "sarif",
-    "actions"
+    "semver",
+    "contracts"
   ],
   "homepage": "https://rumankazi.github.io/flowpact",
   "bugs": {

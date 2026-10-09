@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-<p align="center">Workflow contracts for GitHub Actions</p>
+<p align="center">Find the GitHub Actions values that arrive empty while the run stays green.</p>
 
 [![CI](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/ci.yml)
 [![Release](https://github.com/rumankazi/flowpact/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/rumankazi/flowpact/actions/workflows/release.yml)
@@ -18,42 +18,66 @@
 [![License: MIT](https://img.shields.io/github/license/rumankazi/flowpact)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-rumankazi.github.io%2Fflowpact-blue)](https://rumankazi.github.io/flowpact)
 
-**Lint, trace and lock the data flow between your GitHub Actions workflows.**
+**Data-flow linter for GitHub Actions.**
 
-flowpact follows every input, secret, env var, matrix key and output across nested reusable workflows and composite
-actions, and reports what gets lost in between: missing or unknown inputs, values forwarded from optional into required
-inputs, dead outputs, what `secrets: inherit` really needs — and matrix legs that silently run with an empty value.
-Generated **contracts** lock each workflow's interface and wiring, so breaking changes show up in review and fail CI.
+GitHub Actions evaluates a missing matrix key, an undeclared secret or an omitted optional input to an empty value: no
+error, no warning, a green run. When workflows call reusable workflows and local actions, that is how a test variant
+or an upload stops running without anyone noticing. flowpact follows every input, secret, env var, matrix key and
+output across those calls, evaluates every combination of the matrices written in your workflows, and reports where a
+value goes missing. It runs as a CLI, a GitHub Action and a VS Code extension, and complements actionlint.
 
 ![flowpact lint reporting a matrix combination that passes an empty input](apps/docs/public/screenshots/lint-incident.svg)
 
+*The incident that started flowpact: one matrix entry had no `config`, so that test variant never ran. actionlint
+reports nothing here.*
+
+## Is this for me?
+
+- **You call reusable workflows or local actions:** flowpact finds inputs callers do not pass, secrets that are never
+  declared, and matrix values that are empty in some combinations.
+- **You publish an action or a reusable workflow:** contracts flag breaking interface changes, and impact mode checks
+  that a pull request declares the version bump its changes need.
+- **You edit workflows in VS Code:** the same findings as you type.
+
+It adds little to a few standalone workflows, and calls to workflows in other repositories are reported as unverified
+(cross-repository resolution is on the [roadmap](https://rumankazi.github.io/flowpact/docs/roadmap)).
+
+## Get started
+
 ```sh
-npx flowpact lint                       # lint the repository
-npx flowpact generate                   # write contracts to .github/flowpact/
-npx flowpact check                      # lint + compare with the committed contracts
+npx flowpact lint                       # lint .github/workflows and local actions
+npx flowpact explain FP401              # why does this matter, how do I fix it?
 npx flowpact trace pipeline.yml:config  # where does this input go?
-npx flowpact graph --format mermaid     # who calls whom, as a Mermaid diagram
-npx flowpact explain FP401             # why does this matter, how do I fix it?
 ```
 
-In CI, use the action:
+In CI, add the action; it lints by default and annotates the pull request:
 
 ```yaml
 - uses: actions/checkout@v7
 - uses: rumankazi/flowpact@v0.7
-  with:
-    mode: check
 ```
 
-📖 **Docs:** https://rumankazi.github.io/flowpact — getting started, how it works, CLI, CI and action usage, contracts,
-configuration, and a page for every rule.
+📖 **Docs:** https://rumankazi.github.io/flowpact — getting started, how it works, the CLI (`generate`, `check`,
+`graph`, `lsp`), CI and action usage, contracts, impact mode, configuration, and a page for every rule.
 
-## Why
+## What it finds that other tools miss
 
-GitHub evaluates a missing matrix key, an undeclared secret or an omitted optional input to an **empty string** — no
-error, no warning, a green run. In a pipeline with hundreds of inputs fanning out through several levels of reusable
-workflows, that is how a test variant stops running without anyone noticing. actionlint checks one file and one call
-level at a time; flowpact builds a graph of the whole repository and evaluates bindings per matrix combination.
+actionlint checks one file and one call level at a time; flowpact builds a graph of the whole repository and evaluates
+bindings per matrix combination. In large public repositories it found a reusable workflow that declares no secrets but
+reads `secrets.CODECOV_TOKEN`, called from 31 places and none with `secrets: inherit`, so the token is always empty;
+and an opt-in job that checks the repository out into a subdirectory and then runs `./.github/actions/...` from a path
+where those actions can never be found. actionlint reports neither. Use flowpact next to actionlint (shell scripts,
+runner labels, expression types) and zizmor (security): see the
+[comparison](https://rumankazi.github.io/flowpact/docs/comparison).
+
+## For publishers of actions and reusable workflows
+
+Other repositories pin your workflow to a tag such as `@v1`, and you cannot see their branch protection. Rename a job
+of a published reusable workflow and their required check waits on *Expected — Waiting for status to be reported*.
+With [impact mode](https://rumankazi.github.io/flowpact/docs/impact-mode) on (`impact: auto` in the action, for
+repositories that publish workflows or actions), flowpact grades what each pull request changes for those consumers
+as major, minor, patch or none, and fails when a change that needs a minor or major release is declared as less, by
+default in the Conventional Commits title.
 
 ## Contracts
 
@@ -76,36 +100,6 @@ inputs, secrets and outputs on hover, and goes to definitions and references acr
 use the language server, `flowpact lsp` ([editors](https://rumankazi.github.io/flowpact/docs/editors)).
 
 ![VS Code showing a finding as you type: the windows matrix entry passes an empty config to a reusable workflow](apps/docs/public/screenshots/editor-diagnostics.png)
-
-## Repository layout
-
-| Path | What |
-| --- | --- |
-| `packages/core` | Engine: YAML → IR → expressions → graph → matrix expansion → rules |
-| `packages/reporters` | Terminal (pretty), JSON, Markdown, SARIF, trace, graph and contract renderers |
-| `packages/cli` | The `flowpact` command (published as `flowpact`) |
-| `packages/action` | The GitHub Action (`action.yml` at the root runs `packages/action/dist/index.js`): job summary, annotations, SARIF, contract patch artifact |
-| `packages/language-server` | The language server (`flowpact lsp`): diagnostics, hover, definitions and references |
-| `packages/vscode` | The VS Code extension, bundling the language server |
-| `apps/docs` | Fumadocs site, deployed to GitHub Pages |
-| `fixtures/` | Small repositories used by tests, screenshots and docs |
-| `scripts/` | Rule-doc, schema and screenshot generators; link checker |
-
-## Development
-
-```sh
-pnpm install
-pnpm test            # unit, property-based, fixture, reporter and CLI end-to-end tests
-pnpm coverage        # with coverage thresholds (core ≥ 90 % lines)
-pnpm typecheck && pnpm lint
-pnpm build           # bundles the CLI to packages/cli/dist/index.js
-pnpm docs:dev        # docs site with generated rule pages
-pnpm docs:screenshots # regenerate terminal screenshots from real CLI output
-pnpm --filter vscode-flowpact screenshots # regenerate editor screenshots in a real VS Code (after pnpm build)
-```
-
-Rule pages under `apps/docs/content/docs/rules/` are generated from the rule definitions (`pnpm docs:gen`); a test
-fails when they are out of date.
 
 ## Status
 
