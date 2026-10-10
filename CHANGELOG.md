@@ -4,6 +4,23 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.9.0](https://github.com/rumankazi/flowpact/compare/v0.8.2...v0.9.0) (2026-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* Options now go after the command. Before 0.9, an option written before it (`flowpact --no-plugins lint`) was silently dropped; it is now a usage error (exit 2). Write `flowpact lint --no-plugins`; `flowpact --help` and `flowpact --version` work as before. See https://rumankazi.github.io/flowpact/docs/upgrading.
+
+### Features
+
+* **cli:** annotations, several reports in one run and plugin flags, for wrappers built on flowpact ([#70](https://github.com/rumankazi/flowpact/issues/70)) ([a9e81cc](https://github.com/rumankazi/flowpact/commit/a9e81ccb358842daf274a2d43e45eee7a782f5e7))
+* **config:** organization defaults with --base-config, and rules that are not loaded no longer stop a run ([#73](https://github.com/rumankazi/flowpact/issues/73)) ([665f687](https://github.com/rumankazi/flowpact/commit/665f687187af93a400427e9a084e37f1028bf023))
+
+
+### Bug Fixes
+
+* harden 0.9.0 before its release: flag values, plugins, report paths and release assets ([#74](https://github.com/rumankazi/flowpact/issues/74)) ([1dca54a](https://github.com/rumankazi/flowpact/commit/1dca54ac5f5843b0b8d80f1467eeffd94756943d))
+
 ## [0.8.2](https://github.com/rumankazi/flowpact/compare/v0.8.1...v0.8.2) (2026-10-09)
 
 
