@@ -40,10 +40,13 @@ flowpact has **no telemetry** and sends nothing anywhere.
 - The GitHub Action makes two kinds, both to GitHub and both optional:
   - in impact mode, when the checkout is shallow, a `git fetch` of the base commit (and, for release pull requests, the
     release tags) from the repository's own `origin`, with the `token` input as a one-off authorization header;
-  - in `mode: check` with `upload-contracts`, the artifact upload, through the runner's artifact service.
+  - in `mode: check` with `upload-contracts`, the upload of the contract drift artifact, made the way
+    `actions/upload-artifact` makes it: to the runner's artifact service, and the zip itself to the storage address
+    that service signs for it. It uses the runner's own token for the artifact service, not the `token` input.
 
-On GitHub Enterprise Server, the `git fetch` goes to the enterprise server, and the contracts upload is not available
-(it is skipped with a warning; set `upload-contracts: false`), so nothing goes to github.com.
+On GitHub Enterprise Server, the `git fetch` goes to the enterprise server, never to github.com. The artifact upload is
+not available there: the action warns that it could not upload the artifact and still writes the patch (the `patch`
+output). Set `upload-contracts: false` there.
 
 ## Permissions
 
