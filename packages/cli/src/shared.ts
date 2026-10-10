@@ -4,22 +4,22 @@ import { parseArgs } from 'node:util';
 import {
   assertSafeWritePath,
   ConfigError,
-  createLogger,
   type LoadedConfig,
   type Logger,
   type LogLevel,
   type LogRecord,
-  loadConfig,
   neutralizeWorkflowCommands,
-  type Project,
-  RuleRegistryError,
   resolveLogLevel,
   toolMeta,
-  UnsafePathError,
 } from '@flowpact/core';
 import { type RenderOptions, renderBanner } from '@flowpact/reporters';
 import type { ArgsDef } from 'citty';
 import pc from 'picocolors';
+import { FlowpactError, toFlowpactError } from './lib/errors';
+import { openSession, type Session } from './lib/session';
+import { displayPath, protectedTrees } from './lib/targets';
+
+export { displayPath };
 
 export const EXIT = { ok: 0, findings: 1, usage: 2, internal: 3 } as const;
 
@@ -79,8 +79,8 @@ export interface CliContext {
   /** Render options for files: never colored, no hyperlinks. */
   plain: RenderOptions;
   loaded: LoadedConfig;
-  /** Whether the plugins the config lists are loaded, and the plugins given with `--plugin` (absolute paths). */
-  plugins: { config: boolean; extra: string[] };
+  /** What the API's functions run with: the root, the logger, the config and the plugins to load. */
+  session: Session;
   stdout: (s: string) => void;
   stderr: (s: string) => void;
 }
@@ -252,11 +252,16 @@ export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDe
   });
   // The CLI keeps info-level progress quiet unless asked for; the report itself is the output.
   const level: LogLevel = resolved === 'info' ? 'warn' : resolved;
-  const logger = createLogger({ level, sink: stderrSink(color) });
-  const root = resolve(flags.root ?? process.cwd());
-  const loaded = loadConfig(root, flags.config, {
-    ...(flags['base-config'] !== undefined ? { base: flags['base-config'] } : {}),
+  const session = openSession({
+    ...(flags.root !== undefined ? { root: flags.root } : {}),
+    ...(flags.config !== undefined ? { config: flags.config } : {}),
+    ...(flags['base-config'] !== undefined ? { baseConfig: flags['base-config'] } : {}),
+    log: { level, ...stderrSink(color) },
+    // `--no-plugins` anywhere disables them, even where citty would not see it: failing safe.
+    repositoryPlugins: flags.plugins !== false && !rawArgs.includes('--no-plugins'),
+    plugins: repeatedFlag(rawArgs, def, 'plugin').filter(Boolean),
   });
+  const { root, logger, loaded } = session;
   logger.debug('cli context', {
     root,
     level,
@@ -272,23 +277,10 @@ export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDe
     render,
     plain: { ...render, color: false, hyperlinks: false },
     loaded,
-    plugins: {
-      // `--no-plugins` anywhere disables them, even where citty would not see it: failing safe.
-      config: flags.plugins !== false && !rawArgs.includes('--no-plugins'),
-      extra: repeatedFlag(rawArgs, def, 'plugin')
-        .filter(Boolean)
-        .map((p) => resolve(process.cwd(), p)),
-    },
+    session,
     stdout: (s) => process.stdout.write(s.endsWith('\n') ? s : `${s}\n`),
     stderr: (s) => process.stderr.write(s.endsWith('\n') ? s : `${s}\n`),
   };
-}
-
-/** Shows paths relative to the working directory when they are inside it. */
-export function displayPath(abs: string): string {
-  const rel = relative(process.cwd(), abs);
-  if (rel === '') return '.';
-  return rel.startsWith('..') || isAbsolute(rel) ? abs : rel;
 }
 
 export function printBanner(ctx: CliContext, extra?: string) {
@@ -314,19 +306,13 @@ export function workspacePrefix(root: string, env: NodeJS.ProcessEnv = process.e
   return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel.split(sep).join('/') : '';
 }
 
-/** Where files are never written through a symlink a pull request could have committed: the repository, the workspace. */
-export const protectedTrees = (ctx: CliContext): string[] => [
-  ctx.root,
-  ...(process.env.GITHUB_WORKSPACE ? [process.env.GITHUB_WORKSPACE] : []),
-];
-
 /**
  * Writes a report or a patch. A text report may be printed by a later CI step, so it is kept free of workflow commands;
  * JSON is written with `jsonSafe` by whoever renders it; a patch is written as is, for `git apply`.
  */
 export function writeOutput(file: string, content: string, ctx: CliContext, kind: 'text' | 'data' = 'text') {
   const abs = resolve(process.cwd(), file);
-  assertSafeWritePath(abs, protectedTrees(ctx));
+  assertSafeWritePath(abs, protectedTrees(ctx.root));
   try {
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, kind === 'text' ? neutralizeWorkflowCommands(content) : content);
@@ -341,9 +327,12 @@ export function writeOutput(file: string, content: string, ctx: CliContext, kind
 export async function guard(fn: () => Promise<number> | number): Promise<void> {
   try {
     process.exitCode = await fn();
-  } catch (err) {
+  } catch (thrown) {
     const c = pc.createColors(colorEnabled(!process.argv.includes('--no-color')));
-    if (err instanceof ConfigError) {
+    const err = toFlowpactError(thrown);
+    // What the engine reports as a config error (the config, a plugin it cannot load) comes with each problem and the
+    // docs.
+    if (err instanceof FlowpactError && err.cause instanceof ConfigError) {
       process.stderr.write(
         `${c.red(c.bold('Config error'))}${err.file ? c.dim(` (${err.file})`) : ''}: ${err.message}\n`,
       );
@@ -352,12 +341,14 @@ export async function guard(fn: () => Promise<number> | number): Promise<void> {
       process.exitCode = EXIT.usage;
       return;
     }
-    if (err instanceof UsageError || err instanceof RuleRegistryError || err instanceof UnsafePathError) {
+    if (err instanceof FlowpactError || err instanceof UsageError) {
       process.stderr.write(`${c.red(c.bold('Error'))}: ${err.message}\n`);
       process.exitCode = EXIT.usage;
       return;
     }
-    process.stderr.write(`${c.red(c.bold('flowpact crashed'))}: ${(err as Error).stack ?? String(err)}\n`);
+    process.stderr.write(
+      `${c.red(c.bold('flowpact crashed'))}: ${(thrown as Error).stack ?? String(thrown)}\n`,
+    );
     process.stderr.write(
       c.dim('Please report this at https://github.com/rumankazi/flowpact/issues with the --debug output.\n'),
     );
@@ -379,19 +370,4 @@ export function pathArgs(positionals: string[], command: string, root: string): 
         ? p
         : resolve(process.cwd(), p),
     );
-}
-
-/** Refuses paths that do not exist, or that name no workflow or action. */
-export function checkTargets(project: Project, paths: string[], root: string): void {
-  const missing = project.missingTargets ?? [];
-  if (missing.length) {
-    throw new UsageError(
-      `Path${missing.length > 1 ? 's' : ''} not found under ${displayPath(root)}: ${missing.join(', ')}`,
-    );
-  }
-  if (paths.length && project.targets.size === 0 && !project.wholeRepository) {
-    throw new UsageError(
-      `None of the paths is a workflow (.github/workflows/*.yml) or an action (action.yml): ${(project.ignoredTargets ?? paths).join(', ')}`,
-    );
-  }
 }

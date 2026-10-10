@@ -279,7 +279,9 @@ jobs:
           tar -xzf "flowpact-$VERSION.tgz" -C flowpact-package
           cd flowpact-package/package
           npm link --ignore-scripts --no-audit --no-fund
-      - run: node scripts/smoke.mjs --version "$VERSION"
+      # The `flowpact` command, then the API: a project that depends on the published package imports it and runs lint()
+      # on a fixture.
+      - run: node scripts/smoke.mjs --version "$VERSION" --package "$RUNNER_TEMP/flowpact-package/package"
         # Tags from before the smoke test existed (v0.1.0) have nothing to run.
         if: hashFiles('scripts/smoke.mjs') != ''
         shell: bash

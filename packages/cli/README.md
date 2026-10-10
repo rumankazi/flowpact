@@ -34,6 +34,22 @@ configuration error, `3` internal error.
 In GitHub Actions, use the action instead: `uses: rumankazi/flowpact@v0.9` (job summary, annotations, SARIF and a
 downloadable patch when contracts drift).
 
+## API
+
+The package is also a library with one function per command (`lint`, `check`, `impact`, `generate`, `graph`, `trace`,
+`rules`, `explain`), for programs that run flowpact themselves, such as your organization's own JavaScript action:
+
+```js
+import { lint } from 'flowpact';
+
+const analysis = await lint({ root: '.' });
+for (const a of analysis.annotations()) console.log(`${a.file}:${a.startLine} ${a.title}`);
+process.exitCode = analysis.exitCode(); // 1 when there are errors, as for `flowpact lint`
+```
+
+The results give the JSON report, GitHub annotations, SARIF, Markdown and the terminal report; the types are included.
+Reference and a complete action: https://rumankazi.github.io/flowpact/docs/api
+
 📖 **Docs:** https://rumankazi.github.io/flowpact — every rule has its own page.
 
 MIT licensed.

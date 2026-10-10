@@ -291,10 +291,32 @@ export function renderRuleList(
   severities: Map<string, string> | undefined,
   opts: RenderOptions,
 ): string {
+  return renderRules(
+    registry.all().map((r) => ({
+      code: r.code,
+      name: r.name,
+      category: r.category,
+      severity: severities?.get(r.code) ?? r.defaultSeverity,
+      summary: r.docs.summary,
+    })),
+    opts,
+  );
+}
+
+/** A rule as `flowpact rules` lists it, with its effective severity. */
+export interface RuleRow {
+  code: string;
+  name: string;
+  category: string;
+  severity: string;
+  summary: string;
+}
+
+/** The `flowpact rules` table, grouped by category; `rules` sorted by code. */
+export function renderRules(rules: RuleRow[], opts: RenderOptions): string {
   const t = createTheme(opts);
   const { c } = t;
   const out: string[] = [];
-  const rules = registry.all();
   const nameW = Math.max(...rules.map((r) => r.name.length));
   let lastCat = '';
   for (const r of rules) {
@@ -304,11 +326,10 @@ export function renderRuleList(
       out.push(c.bold(c.underline(cat.title)));
       lastCat = cat.id;
     }
-    const sev = severities?.get(r.code) ?? r.defaultSeverity;
+    const sev = r.severity;
     const sevText = sev === 'off' ? c.dim('off    ') : t.severity[sev as Severity](sev.padEnd(7));
     const room = opts.width - nameW - 22;
-    const summary =
-      r.docs.summary.length > room ? `${r.docs.summary.slice(0, Math.max(10, room - 1))}…` : r.docs.summary;
+    const summary = r.summary.length > room ? `${r.summary.slice(0, Math.max(10, room - 1))}…` : r.summary;
     out.push(`  ${c.bold(r.code)}  ${sevText}  ${padEnd(r.name, nameW)}  ${c.dim(summary)}`);
   }
   out.push('');
@@ -316,8 +337,14 @@ export function renderRuleList(
   return finalize(out.join('\n'), opts);
 }
 
+/** What `flowpact explain` shows of a rule. */
+export type ExplainedRule = Pick<
+  RuleDefinition,
+  'code' | 'name' | 'category' | 'defaultSeverity' | 'docs' | 'generatedFiles'
+>;
+
 export function renderExplain(
-  rule: RuleDefinition,
+  rule: ExplainedRule,
   docsUrl: string,
   severity: string,
   opts: RenderOptions,

@@ -26,7 +26,7 @@ result whenever `packages/core`, `packages/reporters` or `packages/action` chang
 | --- | --- |
 | `packages/core` | Engine: YAML → IR → expressions → graph → matrix expansion → rules |
 | `packages/reporters` | Terminal (pretty), JSON, Markdown, SARIF, trace, graph and contract renderers |
-| `packages/cli` | The `flowpact` command (published as `flowpact`) |
+| `packages/cli` | The `flowpact` command and the API (published as `flowpact`): `src/lib` implements each command once, `src/api.ts` exports it as a function and `src/commands` prints it; the API's types are hand-written in `api.d.ts` |
 | `packages/action` | The GitHub Action (`action.yml` at the root runs `packages/action/dist/index.js`): job summary, annotations, SARIF, contract patch artifact |
 | `packages/language-server` | The language server (`flowpact lsp`): diagnostics, hover, definitions and references |
 | `packages/vscode` | The VS Code extension, bundling the language server |

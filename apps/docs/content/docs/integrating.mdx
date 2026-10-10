@@ -1,12 +1,13 @@
 ---
 title: Build on flowpact
-description: Run flowpact under your organization's policies — a copy of the action, a plain run step or your own wrapper — with the interfaces that stay stable, organization defaults and rules, and keeping the version current.
+description: Run flowpact under your organization's policies — a copy of the action, a plain run step, your own action or a wrapper — with the interfaces that stay stable, organization defaults and rules, and keeping the version current.
 ---
 
 Organizations that cannot use a third-party action, or that want their own defaults, rules and reports, can run
-flowpact their way without forking it: [copy the action](#copy-the-action), [run the CLI in a step](#run-the-cli-in-a-step)
-or [write a composite action](#a-composite-action). The organization owns the policy (rules, when to fail, where reports
-go); flowpact stays unmodified, verified, and updated with a version bump.
+flowpact their way without forking it: [copy the action](#copy-the-action), [run the CLI in a step](#run-the-cli-in-a-step),
+[write your own action](#write-your-own-action) on the API, or [write a composite action](#a-composite-action). The
+organization owns the policy (rules, when to fail, where reports go); flowpact stays unmodified, verified, and updated
+with a version bump.
 
 ## What is stable
 
@@ -24,10 +25,11 @@ patch release.
 | Rule codes and names | [Rules](/docs/rules); configs, overrides and `--only` refer to them |
 | Plugin rules | The rule object in [Custom rules](/docs/custom-rules) |
 | GitHub Action inputs and outputs | [GitHub Action](/docs/action) |
+| API: the functions, their options, results and errors (`import { lint } from 'flowpact'`) | [API](/docs/api) |
 
 Not stable: the terminal output and the wording of messages and Markdown reports, which are written for people (parse
-JSON or SARIF instead), and the `@flowpact/*` packages inside the repository, which are not published. flowpact has no
-library API; the CLI is the interface.
+JSON or SARIF instead); the types of the data-flow graph a plugin rule reads through `ctx.index`; and the `@flowpact/*`
+packages inside the repository, which are not published (use the [API](/docs/api)).
 
 ## Copy the action
 
@@ -71,8 +73,8 @@ regenerated contracts, which GitHub Enterprise Server does not support (set `upl
 
 ## Run the CLI in a step
 
-A `run:` step is not an action, so no action policy applies to it. The CLI has no dependencies and needs only Node.js
-22 or later, which GitHub-hosted runners have:
+A `run:` step is not an action, so no action policy applies to it. The CLI is bundled with everything it needs and
+installs nothing; it needs only Node.js 22 or later, which GitHub-hosted runners have:
 
 ```yaml title=".github/workflows/flowpact.yml"
 jobs:
@@ -104,11 +106,19 @@ On GitHub Enterprise Cloud, an organization
 can require such a workflow in every repository, whichever of these ways it uses; the workflow must run on
 `pull_request`, `pull_request_target` or `merge_group`, and its repository must allow access from the others.
 
+## Write your own action
+
+A JavaScript action of your own can run flowpact through its [API](/docs/api): `lint()`, `check()` and the other
+commands as functions, which return the report and render the annotations, the job summary and SARIF. It applies your
+defaults and rules like the CLI does (`baseConfig`, `plugins`), with the inputs and reports you choose, and its bundle
+installs nothing when it runs. [Write your own action](/docs/api#write-your-own-action) has a complete one.
+
 ## A composite action
 
 An internal repository with a composite action that installs a pinned flowpact and runs it with your defaults. It uses
 `actions/setup-node` and installs from npm when it runs, so where your policy allows only your organization's actions or
-blocks network access, [copy the action](#copy-the-action) or [run the CLI in a step](#run-the-cli-in-a-step) instead.
+blocks network access, [copy the action](#copy-the-action), [run the CLI in a step](#run-the-cli-in-a-step) or
+[write your own action](#write-your-own-action) instead.
 
 ```text
 acme/flowpact-action
@@ -120,7 +130,7 @@ acme/flowpact-action
 ```
 
 Create `package.json` and the lockfile with `npm install --save-exact flowpact@0.9`. The flowpact package has no
-dependencies of its own: it is one bundled file, with its license notices and an SBOM next to it.
+dependencies of its own: everything it runs is bundled, with its license notices and an SBOM next to it.
 
 ```yaml title="action.yml"
 name: Acme flowpact
@@ -173,7 +183,7 @@ Without access to the npm registry, install the npm package from a release inste
 ## Organization defaults
 
 A [base config](/docs/configuration#base-config) holds settings for every repository, and each repository's own config
-goes on top of it. Pass it with the action's `base-config` input or the CLI's `--base-config`:
+goes on top of it. Pass it with the action's `base-config` input, the CLI's `--base-config` or the API's `baseConfig`:
 
 ```yaml title="acme.base.yml"
 rules:
@@ -200,12 +210,12 @@ repository's config and its defaults.
 Write your rules as [plugins](/docs/custom-rules) and ship them with your copy of the action or your wrapper, such as
 `rules/acme.mjs` with the `prod-deploy-needs-approval` rule from [Custom rules](/docs/custom-rules):
 
-- The action's `plugin` input and the CLI's `--plugin <file>` load a plugin in addition to those the repository's
-  config lists (the input reads relative paths from the action's directory, the flag from the working directory; both
-  take several).
+- The action's `plugin` input, the CLI's `--plugin <file>` and the API's `plugins` load a plugin in addition to those
+  the repository's config lists (the input reads relative paths from the action's directory, the flag and the API from
+  the working directory; all take several).
 - The repository's own plugins run the repository's code, so the action skips them on untrusted events
-  (`plugins: auto`) and the CLI with `--no-plugins`. Your rules keep running: the action skips a `plugin` file only
-  when it is in the checkout.
+  (`plugins: auto`), the CLI with `--no-plugins` and the API with `repositoryPlugins: false`. Your rules keep running:
+  the action skips a `plugin` file only when it is in the checkout.
 - The base config sets how strict each rule is, and a repository can change that under `rules:` or accept a finding
   with an [override](/docs/configuration#overrides), like for built-in rules. Where the rule is not loaded (plain
   `flowpact lint`, the editor), those entries are [ignored with a warning](/docs/configuration#rules-that-are-not-loaded).
@@ -260,6 +270,7 @@ Renovate updates the wrapper's npm dependency, and pinned action references wher
 - `npm audit signatures` in the wrapper's CI checks that the installed version was published from this repository's
   release workflow.
 - Dependabot works the same way, with the `npm` and `github-actions` ecosystems.
+- [Your own action](#write-your-own-action) gets the same update of its npm dependency; rebuild its bundle with it.
 - A [copy of the action](#copy-the-action) or a [CLI run in a step](#run-the-cli-in-a-step) is updated by copying or
   downloading the next release the same way, verified again; for the step, that is the `FLOWPACT_VERSION` line.
 

@@ -41842,7 +41842,10 @@ async function loadPlugins(root, config2, registry2, logger = silentLogger) {
       throw new ConfigError(`Plugin not found: ${spec}`, void 0, [`plugins: ${abs} does not exist`]);
     let mod;
     try {
-      mod = await import(pathToFileURL(abs).href);
+      mod = await import(
+        /* webpackIgnore: true */
+        pathToFileURL(abs).href
+      );
     } catch (err) {
       throw new ConfigError(`Plugin ${spec} failed to load: ${err.message}`);
     }

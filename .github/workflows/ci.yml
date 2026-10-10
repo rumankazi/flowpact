@@ -86,7 +86,9 @@ jobs:
           tar -xzf "$tarball" -C flowpact-package
           cd flowpact-package/package
           npm link --ignore-scripts --no-audit --no-fund
-      - run: node scripts/smoke.mjs
+      # The command, and the API imported from a project that depends on the package.
+      - run: node scripts/smoke.mjs --package "$RUNNER_TEMP/flowpact-package/package"
+        shell: bash
 
   vscode:
     # The packaged extension, unpacked as VS Code would install it, in the oldest VS Code it supports and the current one.

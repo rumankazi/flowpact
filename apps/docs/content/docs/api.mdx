@@ -1,0 +1,337 @@
+---
+title: API
+description: Run flowpact from JavaScript, one function per CLI command, and build your own GitHub Action on it.
+---
+
+The `flowpact` npm package is also a library. It has one function per CLI command, and the CLI is built on these
+functions, so both give the same results. Use it to run flowpact inside your own program, such as your organization's
+own [JavaScript action](#write-your-own-action).
+
+```sh
+npm install --save-exact flowpact@0.9
+```
+
+```js
+import { lint } from 'flowpact';
+
+const analysis = await lint({ root: 'path/to/repository' });
+console.log(`${analysis.report.summary.errors} error(s)`);
+process.exitCode = analysis.exitCode();
+```
+
+- The package is an ES module (`import`, not `require()`) for Node.js 22 or later. Its types are included, and it has no
+  dependencies.
+- Options are the command's flags in camelCase. Relative paths in options are read from the working directory, like the
+  flags; `paths` are relative to `root`.
+- The functions print nothing and never exit. They return their results, and throw a [`FlowpactError`](#errors) for a
+  problem with the options, the config or a plugin.
+- Nothing is logged unless you pass `log`.
+
+## Functions
+
+| Function | Command | Returns |
+| --- | --- | --- |
+| `lint(options?)` | `flowpact lint` | [`Analysis`](#analysis) |
+| `check(options?)` | `flowpact check` | `Analysis`, with `contracts` |
+| `impact(options?)` | `flowpact impact` | `Analysis`, with `impact` |
+| `generate(options?)` | `flowpact generate` | [`ContractGeneration`](#generate) |
+| `graph(options?)` | `flowpact graph --format json` | [`CallGraph`](#graph-trace-rules-and-explain) |
+| `trace(options)` | `flowpact trace --format json` | `TraceResult` |
+| `rules(options?)` | `flowpact rules --format json` | `RuleInfo[]` |
+| `explain(codeOrName, options?)` | `flowpact explain` | `RuleDocs` |
+
+Each returns a promise. `flowpact lsp` has no function: editors start the language server through the CLI.
+
+Every function takes these options:
+
+| Option | Flag | Description |
+| --- | --- | --- |
+| `root` | `--root` | Repository root. Default: the working directory. |
+| `config` | `--config` | Config file. Default: `.github/flowpact/flowpact.config.yml` under the root, when it exists. |
+| `baseConfig` | `--base-config` | [Organization defaults](/docs/integrating#organization-defaults) under the repository's config. |
+| `plugins` | `--plugin` | Plugins to load besides those the config lists, such as your [organization rules](/docs/integrating#organization-rules). `repositoryPlugins` does not affect them. |
+| `repositoryPlugins` | `--no-plugins` | `false` skips the plugins the config lists, which run the repository's code. Default: `true`. |
+| `log` | `--debug`, `-v`, `-q` | `{ level, write(record) }`: receives each log record at `level` (default `info`) or above, with its `level`, `scope`, `message`, `data` and `time`. |
+
+`graph` takes only `root`, `config`, `baseConfig` and `log`: it runs no rules.
+
+## lint, check and impact
+
+```js
+import { check } from 'flowpact';
+
+const analysis = await check({ paths: ['.github/workflows/deploy.yml'], only: ['FP401'] });
+```
+
+| Option | Flag | Description |
+| --- | --- | --- |
+| `paths` | `[paths…]` | Workflow and action files or directories to report on, relative to the root. Default: all. Not for `impact`. |
+| `only` | `--only` | Rule codes or names to run. |
+| `schema` | `--no-schema` | `false` skips the validation against GitHub's workflow schema. Not for `impact`. |
+| `impact` | `--impact` | `lint` and `check`: also check the [release impact](/docs/impact-mode) of the changes. |
+| `base`, `expect`, `title`, `labels` | `--base`, `--expect`, `--title`, `--labels` | Impact mode's baseline and declared impact; `labels` is an array. In GitHub Actions, impact mode reads them from the pull request, as the CLI does. |
+| `now` | `FLOWPACT_NOW` | The current time, a `Date`, for the expiry of [overrides](/docs/configuration#overrides). |
+
+Impact mode compares with the baseline commit, which must be in the clone: check out with `fetch-depth: 0`. On
+`merge_group` it is skipped (`notes` says so), and `impact()` then reports nothing.
+
+### Analysis
+
+| Member | Description |
+| --- | --- |
+| `report` | The [JSON report](/docs/cli#json-report): what `--format json` prints, as an object. |
+| `exitCode(failOn?)` | The CLI's exit code for `--fail-on` (`'error'` by default, `'warning'` or `'never'`): `1` when there are findings at that level, else `0`. |
+| `annotations({ pathPrefix }?)` | One [annotation](/docs/action#annotations) per finding, for `@actions/core`'s `error()`, `warning()` and `notice()`: `level`, `message`, `title`, `file`, `startLine`, `endLine`, and for a finding on one line `startColumn` and `endColumn`. |
+| `sarif({ pathPrefix }?)` | SARIF 2.1.0 for code scanning, as text. |
+| `markdown(options?)` | The Markdown report, for job summaries and pull request comments. Options: `title`, `maxFindings` (default 50), `repoUrl` and `sha` (to link locations to the files at that commit), `includeGraph`. |
+| `json({ includeGraph }?)` | The JSON report as `--format json` prints it. |
+| `pretty(options?)` | The terminal report. Options: `color`, `width` (default 100), `ascii`, `hideInfo`, `hyperlinks`. |
+| `contracts` | `check` only: `drift`, `breaking`, and `patch()`, the regenerated contracts as a patch for `git apply` when they drifted (`--patch`). |
+| `impact` | Impact mode's verdict, as in the report: `required`, `declared`, `ok`, `changes` and `baseline`. |
+| `notes` | What the CLI prints as `impact: …` lines: impact mode skipped, or notes about its baseline. |
+
+`pathPrefix` is the root relative to the repository, when the root is a subdirectory of it. GitHub resolves annotation
+and SARIF paths against the repository; flowpact reports them relative to the root.
+
+## generate
+
+```js
+import { writeFile } from 'node:fs/promises';
+import { generate } from 'flowpact';
+
+const result = await generate({ dryRun: true });
+if (result.drift) await writeFile('contracts.patch', result.patch());
+```
+
+The options are `paths`, `dryRun` (`--dry-run`) and `out` (`--out`); for `--patch`, run with `dryRun` and write `patch()`
+yourself. The result has:
+
+- `drift` and `breaking`: whether any contract changes, and how many of the changes are breaking;
+- `counts` and `entries`: each contract file with its status (`create`, `update`, `delete`, `unchanged`) and changes;
+- `written`: the files written, relative to the root (or to `out`); none with `dryRun`;
+- `skipped`: workflows and actions with YAML syntax errors, whose contracts were kept;
+- `patch()`: the changes as a patch for `git apply`, or `undefined` when nothing changes.
+
+Like the CLI, `generate` refuses to write through a symlink or out of the repository.
+
+## graph, trace, rules and explain
+
+They return what the command prints as JSON:
+
+```js
+import { explain, graph, rules, trace } from 'flowpact';
+
+const { nodes, edges } = await graph();
+const { traces } = await trace({ symbol: 'pipeline.yml#inputs.config', up: true, depth: 5 });
+const enabled = (await rules()).filter((rule) => rule.severity !== 'off');
+const { summary, why, fix, docsUrl } = await explain('FP401');
+```
+
+- `graph()`: `nodes` (workflows, actions, remote workflows, missing targets) and `edges`, who calls whom `via` which job
+  or step.
+- `trace({ symbol, up, depth })`: one tree per matching symbol, as in [`flowpact trace`](/docs/cli#flowpact-trace);
+  `traces` is empty for a workflow or action without inputs, secrets or outputs.
+- `rules()`: each rule's `code`, `name`, `category`, `defaultSeverity`, `severity` after the config, `summary` and
+  `docsUrl`.
+- `explain(codeOrName)`: the same for one rule, with `why`, `fix`, `scope`, `examples` and `generatedFiles`.
+
+## Errors
+
+```js
+import { FlowpactError, lint } from 'flowpact';
+
+try {
+  await lint();
+} catch (err) {
+  if (!(err instanceof FlowpactError)) throw err;
+  console.error(`${err.kind}: ${err.message}`, err.issues);
+}
+```
+
+A `FlowpactError` is what the CLI reports with exit code `2`. Act on its `kind`; the `message` is written for people
+and can name the CLI's flags. `issues` lists the individual problems (one per invalid config entry), and `file` names the
+config file when there is one.
+
+| `kind` | What went wrong |
+| --- | --- |
+| `usage` | An option or path that cannot work: a path that does not exist, a root without workflows, a rule `explain` does not know, a symbol `trace` cannot find. |
+| `config` | The config or base config is invalid, or names a rule that does not exist. |
+| `plugin` | A plugin is missing, fails to load, exports no rules or registers an invalid rule. |
+| `unsafe-path` | `generate` refused to write through a symlink or out of the repository. |
+| `impact-setup` | Impact mode has no baseline, or cannot read it. |
+
+Any other error is a bug ([report it](https://github.com/rumankazi/flowpact/issues)) or a plugin rule that threw.
+
+## TypeScript
+
+The package's types describe the options and results above, the report (`Report`, `Finding`, `Loc`, `Severity`) and
+`Annotation`. They also type [plugin rules](/docs/custom-rules): a type-only import keeps the compiled plugin free of
+imports, so it loads wherever flowpact runs.
+
+```ts title="rules/acme.ts"
+import type { RuleDefinition } from 'flowpact';
+
+const prodNeedsApproval: RuleDefinition = {
+  code: 'ACME601',
+  name: 'prod-deploy-needs-approval',
+  category: 'structure',
+  defaultSeverity: 'error',
+  docsUrl: 'https://wiki.acme.dev/ci/ACME601',
+  docs: { summary: '…', why: '…', fix: '…' },
+  check(ctx) {
+    for (const wf of ctx.index.project.workflows.values()) {
+      // …
+    }
+  },
+};
+
+export default [prodNeedsApproval];
+```
+
+`defineRule(rule)` does the same as a function that returns the rule, for a plugin that has flowpact installed where it
+runs. Compile the plugin to JavaScript before listing it: flowpact loads plugins with Node's `import()`.
+
+`ctx.index`, the data-flow graph, follows flowpact's internals: its types can change in any minor release, without the
+notice the rest of the API gets. Use the members listed in [Custom rules](/docs/custom-rules#what-a-rule-can-use).
+
+## Write your own action
+
+A JavaScript action of your own runs flowpact with your defaults, rules, inputs and reports, where your policy allows only
+your organization's actions. It uses no other actions and installs nothing when it runs: the bundle holds flowpact and
+`@actions/core`.
+
+```text
+acme/flowpact-action
+├── action.yml
+├── src/main.js
+├── build.mjs
+├── dist/index.js         # the bundle, committed
+├── acme.base.yml         # organization defaults
+└── rules/acme.mjs        # organization rules
+```
+
+```sh
+npm install --save-exact flowpact@0.9 @actions/core
+npm install --save-dev esbuild
+node build.mjs            # after every update; commit dist/index.js
+```
+
+`acme.base.yml` and `rules/acme.mjs` are the [base config](/docs/integrating#organization-defaults) and the
+[plugin](/docs/custom-rules) of Build on flowpact.
+
+```yaml title="action.yml"
+name: Acme flowpact
+description: flowpact with Acme's defaults, rules and reports
+inputs:
+  command:
+    description: lint, or check when the repository commits contracts
+    default: lint
+  fail-on:
+    description: Fail the step on findings at this level (error, warning or never)
+    default: error
+  sarif:
+    description: Write SARIF for code scanning to this file, relative to the workspace (empty for none)
+    default: flowpact.sarif
+outputs:
+  errors:
+    description: Number of errors
+  warnings:
+    description: Number of warnings
+  patch:
+    description: The regenerated contracts as a patch, when they drifted (check)
+runs:
+  using: node24
+  main: dist/index.js
+```
+
+```js title="src/main.js"
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import * as core from '@actions/core';
+import { check, FlowpactError, lint } from 'flowpact';
+
+// This file runs as dist/index.js; the defaults and rules ship next to it, in the action's directory.
+const action = join(import.meta.dirname, '..');
+// The repository's own plugins run its code: not on events that run a fork's code with secrets.
+const UNTRUSTED = ['pull_request_target', 'workflow_run'];
+
+try {
+  const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+  const run = core.getInput('command') === 'check' ? check : lint;
+  const analysis = await run({
+    root: workspace,
+    baseConfig: join(action, 'acme.base.yml'),
+    plugins: [join(action, 'rules/acme.mjs')],
+    repositoryPlugins: !UNTRUSTED.includes(process.env.GITHUB_EVENT_NAME ?? ''),
+    log: { level: 'warn', write: (record) => core.info(`${record.level}: ${record.message}`) },
+  });
+
+  // An annotation on the file and line of each finding.
+  for (const { level, message, ...properties } of analysis.annotations()) {
+    if (level === 'error') core.error(message, properties);
+    else if (level === 'warning') core.warning(message, properties);
+    else core.notice(message, properties);
+  }
+
+  // The Markdown report as the job summary, linking to the files at this commit.
+  const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_SHA } = process.env;
+  const repoUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`;
+  await core.summary.addRaw(analysis.markdown({ title: 'Acme flowpact', repoUrl, sha: GITHUB_SHA })).write();
+
+  // SARIF for code scanning, and the regenerated contracts as a patch when they drifted (check).
+  const sarif = core.getInput('sarif');
+  if (sarif) {
+    mkdirSync(dirname(resolve(workspace, sarif)), { recursive: true });
+    writeFileSync(resolve(workspace, sarif), analysis.sarif());
+  }
+  const patch = analysis.contracts?.patch();
+  if (patch) {
+    const file = join(process.env.RUNNER_TEMP, 'flowpact-contracts.patch');
+    writeFileSync(file, patch);
+    core.setOutput('patch', file);
+  }
+
+  const { errors, warnings } = analysis.report.summary;
+  core.setOutput('errors', errors);
+  core.setOutput('warnings', warnings);
+  if (analysis.exitCode(core.getInput('fail-on')) === 1)
+    core.setFailed(`flowpact found ${errors} error(s) and ${warnings} warning(s)`);
+} catch (err) {
+  // A config, plugin or path problem: its message and each issue. Anything else is a bug, with its stack.
+  if (!(err instanceof FlowpactError)) throw err;
+  core.setFailed([err.message, ...err.issues.map((issue) => `  - ${issue}`)].join('\n'));
+}
+```
+
+```js title="build.mjs"
+import { build } from 'esbuild';
+
+await build({
+  entryPoints: ['src/main.js'],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node24',
+  outfile: 'dist/index.js',
+  // Some of @actions/core's dependencies are CommonJS and call require().
+  banner: { js: "import { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);" },
+});
+```
+
+From one run, this gives the annotations, the job summary, the SARIF file for `github/codeql-action/upload-sarif`, a
+failed step at `fail-on`, the patch when contracts drifted, and the counts as outputs. Repositories use it after
+`actions/checkout`, as `uses: acme/flowpact-action@<commit-sha>`.
+
+- [`@vercel/ncc`](https://github.com/vercel/ncc) works as well: `ncc build src/main.js -o dist` writes `dist/index.js` and
+  a `dist/package.json` that marks it as an ES module; commit both.
+- A bundler's license report lists flowpact as one package. flowpact's own notices and SBOM list what it bundles: copy
+  `node_modules/flowpact/dist/THIRD_PARTY_LICENSES.txt` and `sbom.cdx.json` next to yours.
+- When flowpact is updated (Renovate or Dependabot, as in [Keeping it current](/docs/integrating#keeping-it-current)),
+  rebuild and commit the bundle. A CI job that rebuilds it and fails on a difference keeps the committed bundle in step
+  with the source.
+
+## Stability
+
+The API follows the same policy as the CLI (see [What is stable](/docs/integrating#what-is-stable)): before 1.0, a minor
+release can change it in an incompatible way and says so under **Breaking changes** in its release notes; a patch release
+never does. `RuleContext.index` and the types it leads to are the exception above.

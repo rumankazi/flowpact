@@ -1,7 +1,7 @@
-import { didYouMean, resolveSeverities } from '@flowpact/core';
 import { renderExplain } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import { loadRegistry } from '../analysis';
+import { FlowpactError } from '../lib/errors';
+import { explainRule } from '../lib/inspect';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, UsageError } from '../shared';
 
 export const explainCommand = defineCommand({
@@ -21,19 +21,37 @@ export const explainCommand = defineCommand({
   run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
       const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
-      const registry = await loadRegistry(ctx);
-      const rule = registry.get(args.code);
-      if (!rule) {
-        const guess = didYouMean(
-          args.code,
-          registry.all().flatMap((r) => [r.code, r.name]),
-        );
-        throw new UsageError(
-          `Unknown rule "${args.code}".${guess ? ` Did you mean ${guess}?` : ''} Run \`flowpact rules\` for the list.`,
-        );
+      let rule: Awaited<ReturnType<typeof explainRule>>;
+      try {
+        rule = await explainRule(ctx.session, args.code);
+      } catch (err) {
+        // An unknown rule: point at the list.
+        if (err instanceof FlowpactError && err.kind === 'usage')
+          throw new UsageError(`${err.message} Run \`flowpact rules\` for the list.`);
+        throw err;
       }
-      const severity = resolveSeverities(registry, ctx.loaded.config).get(rule.code) ?? rule.defaultSeverity;
-      ctx.stdout(renderExplain(rule, registry.docsUrl(rule), severity, ctx.render));
+      const { summary, why, fix, scope, examples } = rule;
+      ctx.stdout(
+        renderExplain(
+          {
+            code: rule.code,
+            name: rule.name,
+            category: rule.category,
+            defaultSeverity: rule.defaultSeverity,
+            generatedFiles: rule.generatedFiles,
+            docs: {
+              summary,
+              why,
+              fix,
+              ...(scope !== undefined ? { scope } : {}),
+              ...(examples ? { examples } : {}),
+            },
+          },
+          rule.docsUrl,
+          rule.severity,
+          ctx.render,
+        ),
+      );
       return EXIT.ok;
     }),
 });

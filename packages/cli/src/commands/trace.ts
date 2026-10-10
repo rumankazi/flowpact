@@ -1,8 +1,9 @@
-import { jsonSafe, resolveSymbols, type TraceDirection, trace } from '@flowpact/core';
+import { jsonSafe } from '@flowpact/core';
 import { renderTrace } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import pc from 'picocolors';
-import { runAnalysis } from '../analysis';
+import { FlowpactError } from '../lib/errors';
+import { traceSymbol } from '../lib/inspect';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
 
 export const traceCommand = defineCommand({
@@ -30,44 +31,28 @@ export const traceCommand = defineCommand({
       const depth = Number(args.depth);
       if (!Number.isInteger(depth) || depth < 1)
         throw new UsageError(`--depth must be a positive integer (got ${args.depth})`);
-      const result = await runAnalysis(ctx, { validateSchema: false, only: [] });
-      const matches = resolveSymbols(result.index, args.symbol);
-      if (matches.length === 0) {
-        const unit = result.index
-          .units()
-          .find((u) => u.path === args.symbol || u.path.endsWith(`/${args.symbol}`));
-        const direction: TraceDirection = args.up ? 'up' : 'down';
-        if (unit) {
-          if (args.format === 'json')
-            ctx.stdout(jsonSafe(JSON.stringify({ query: args.symbol, direction, traces: [] }, null, 2)));
-          else ctx.stdout(`${unit.path} declares no inputs, secrets or outputs — nothing to trace.`);
-          return EXIT.ok;
-        }
+      let traced: Awaited<ReturnType<typeof traceSymbol>>;
+      try {
+        traced = await traceSymbol(ctx.session, { symbol: args.symbol, up: Boolean(args.up), depth });
+      } catch (err) {
+        // No match: the API lists the files that have an interface to trace; suggest commands for them.
+        if (!(err instanceof FlowpactError && err.kind === 'usage' && err.issues.length)) throw err;
         const c = pc.createColors(ctx.render.color);
-        const traceable = new Set(
-          [...result.index.nodes.values()]
-            .filter((n) => ['input', 'secret', 'output'].includes(n.kind))
-            .map((n) => n.unit),
-        );
-        const files = [...result.project.workflows.keys(), ...result.project.actions.keys()].filter((f) =>
-          traceable.has(f),
-        );
         throw new UsageError(
-          files.length
-            ? `No symbol matches "${args.symbol}".\n${c.dim('Try a workflow file (to list its interface) such as:')}\n${files
-                .slice(0, 8)
-                .map((f) => `  flowpact trace ${f}`)
-                .join('\n')}`
-            : `No symbol matches "${args.symbol}", and no workflow or action here declares inputs, secrets or outputs.`,
+          `No symbol matches "${args.symbol}".\n${c.dim('Try a workflow file (to list its interface) such as:')}\n${err.issues
+            .slice(0, 8)
+            .map((f) => `  flowpact trace ${f}`)
+            .join('\n')}`,
         );
       }
-      const direction: TraceDirection = args.up ? 'up' : 'down';
-      const trees = matches.map((m) => trace(result.index, m.id, { direction, maxDepth: depth }));
+      const { result, unit } = traced;
       if (args.format === 'json') {
         // Always the same shape, however many symbols matched.
-        ctx.stdout(jsonSafe(JSON.stringify({ query: args.symbol, direction, traces: trees }, null, 2)));
+        ctx.stdout(jsonSafe(JSON.stringify(result, null, 2)));
+      } else if (unit) {
+        ctx.stdout(`${unit} declares no inputs, secrets or outputs — nothing to trace.`);
       } else {
-        ctx.stdout(trees.map((t) => renderTrace(t, direction, ctx.render)).join('\n\n'));
+        ctx.stdout(result.traces.map((t) => renderTrace(t, result.direction, ctx.render)).join('\n\n'));
       }
       return EXIT.ok;
     }),

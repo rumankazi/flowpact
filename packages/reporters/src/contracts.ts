@@ -10,7 +10,7 @@ const STATUS = {
 
 /** A table of contract files with their status and the semantic changes, breaking ones first. */
 export function renderContractPlan(
-  plan: ContractPlan,
+  plan: Pick<ContractPlan, 'entries' | 'drift' | 'counts' | 'breaking'>,
   opts: RenderOptions,
   extra: { applied?: boolean } = {},
 ): string {

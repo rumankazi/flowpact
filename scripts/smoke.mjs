@@ -1,10 +1,21 @@
 #!/usr/bin/env node
-// Smoke test for an installed flowpact: runs the `flowpact` command the way users do (npm's shim on PATH) against the fixtures
-// and checks exit codes and output shapes. No dependencies, so it runs against a tarball install or the npm registry.
+// Smoke test for an installed flowpact: runs the `flowpact` command the way users do (npm's shim on PATH) against the
+// fixtures and checks exit codes and output shapes, then imports its API from a project that depends on it. No
+// dependencies, so it runs against a tarball install or the npm registry.
 //
-//   node scripts/smoke.mjs [--bin flowpact] [--version 0.1.0]
+//   node scripts/smoke.mjs [--bin flowpact] [--version 0.1.0] [--package <installed package directory>]
+//
+// --package defaults to the globally installed (or `npm link`ed) package.
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -144,6 +155,47 @@ check('graph renders Mermaid', () => {
 check('usage errors exit 2', () => {
   const r = flowpact(['lint', '--format', 'xml']);
   expect(r.code === 2, 'exit code 2', r);
+});
+
+/** Where the package is installed: --package, else npm's global node_modules (where `npm link` puts it). */
+function installedPackage() {
+  const given = arg('package');
+  if (given) return given;
+  const npm = spawnSync('npm', ['root', '--global'], {
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  });
+  return join(npm.stdout.trim(), 'flowpact');
+}
+
+check('the API lints from a project that depends on the package', () => {
+  const pkg = installedPackage();
+  expect(existsSync(join(pkg, 'package.json')), `the package is installed at ${pkg}`);
+  // A project with flowpact in node_modules, as `npm install` leaves it; the import goes through the package's exports.
+  const project = mkdtempSync(join(tmpdir(), 'flowpact-smoke-api-'));
+  mkdirSync(join(project, 'node_modules'));
+  symlinkSync(pkg, join(project, 'node_modules', 'flowpact'), 'junction');
+  writeFileSync(join(project, 'package.json'), '{ "private": true, "type": "module" }\n');
+  writeFileSync(
+    join(project, 'main.js'),
+    `import { lint, VERSION } from 'flowpact';
+const analysis = await lint({ root: process.argv[2] });
+const { findings } = analysis.report;
+process.stdout.write(JSON.stringify({ version: VERSION, exitCode: analysis.exitCode(), codes: findings.map((f) => f.code), sarif: JSON.parse(analysis.sarif()).version }));
+`,
+  );
+  const run = spawnSync(process.execPath, ['main.js', fixture('incident-matrix')], {
+    cwd: project,
+    encoding: 'utf8',
+    env: { ...process.env, CI: '', GITHUB_ACTIONS: '' },
+    timeout: 60_000,
+  });
+  const r = { code: run.status, stdout: run.stdout, stderr: run.stderr };
+  expect(r.code === 0 && r.stderr === '', 'runs without output on stderr', r);
+  const result = json(r);
+  expect(result.version === VERSION, `VERSION is ${VERSION}`, r);
+  expect(result.exitCode === 1 && result.codes.includes('FP401'), 'finds FP401 and returns exit code 1', r);
+  expect(result.sarif === '2.1.0', 'renders SARIF 2.1.0', r);
 });
 
 if (failures.length) {
