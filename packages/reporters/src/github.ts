@@ -55,9 +55,13 @@ const escapeProperty = (s: string) => escapeData(s).replace(/:/g, '%3A').replace
  * into an annotation on the run and the pull request. Findings accepted by overrides are left out.
  */
 export function renderGithub(result: AnalysisResult, opts: GithubOptions = {}): string {
-  return result.findings
-    .map((f) => {
-      const a = githubAnnotation(f, opts);
+  return workflowCommands(result.findings.map((f) => githubAnnotation(f, opts)));
+}
+
+/** Annotations as workflow commands, every value escaped. */
+export function workflowCommands(annotations: GithubAnnotation[]): string {
+  return annotations
+    .map((a) => {
       const props = (
         [
           ['title', a.title],

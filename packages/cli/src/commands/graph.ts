@@ -1,7 +1,8 @@
-import { analyze, jsonSafe } from '@flowpact/core';
-import { buildCallGraph, renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
+import { jsonSafe } from '@flowpact/core';
+import { renderDot, renderGraphTree, renderMermaid } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import { commonArgs, createContext, displayPath, EXIT, guard, printBanner, UsageError } from '../shared';
+import { callGraph } from '../lib/inspect';
+import { commonArgs, createContext, displayPath, EXIT, guard, printBanner } from '../shared';
 
 export const graphCommand = defineCommand({
   meta: {
@@ -18,23 +19,10 @@ export const graphCommand = defineCommand({
     },
   },
   run: ({ args, rawArgs, cmd }) =>
-    guard(() => {
+    guard(async () => {
       const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       printBanner(ctx, `root ${displayPath(ctx.root)}`);
-      const result = analyze({
-        root: ctx.root,
-        config: ctx.loaded.config,
-        logger: ctx.logger,
-        validateSchema: false,
-        only: [],
-      });
-      if (result.summary.workflows === 0 && result.summary.actions === 0) {
-        throw new UsageError(
-          `No workflows found under ${displayPath(ctx.root)}/.github/workflows. Use --root to point at a repository.`,
-        );
-      }
-      const graph = buildCallGraph(result.index);
-      ctx.logger.debug('call graph', { nodes: graph.nodes.length, edges: graph.edges.length });
+      const graph = await callGraph(ctx.session);
       switch (args.format) {
         case 'mermaid':
           ctx.stdout(renderMermaid(graph));

@@ -1,7 +1,7 @@
-import { jsonSafe, resolveSeverities } from '@flowpact/core';
-import { renderRuleList } from '@flowpact/reporters';
+import { jsonSafe } from '@flowpact/core';
+import { renderRules } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import { loadRegistry } from '../analysis';
+import { listRules } from '../lib/inspect';
 import { commonArgs, createContext, EXIT, guard, pluginArgs } from '../shared';
 
 export const rulesCommand = defineCommand({
@@ -14,29 +14,9 @@ export const rulesCommand = defineCommand({
   run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
       const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
-      const registry = await loadRegistry(ctx);
-      const severities = resolveSeverities(registry, ctx.loaded.config);
-      if (args.format === 'json') {
-        ctx.stdout(
-          jsonSafe(
-            JSON.stringify(
-              registry.all().map((r) => ({
-                code: r.code,
-                name: r.name,
-                category: r.category,
-                defaultSeverity: r.defaultSeverity,
-                severity: severities.get(r.code),
-                summary: r.docs.summary,
-                docsUrl: registry.docsUrl(r),
-              })),
-              null,
-              2,
-            ),
-          ),
-        );
-      } else {
-        ctx.stdout(renderRuleList(registry, severities, ctx.render));
-      }
+      const rules = await listRules(ctx.session);
+      if (args.format === 'json') ctx.stdout(jsonSafe(JSON.stringify(rules, null, 2)));
+      else ctx.stdout(renderRules(rules, ctx.render));
       return EXIT.ok;
     }),
 });

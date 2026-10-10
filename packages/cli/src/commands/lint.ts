@@ -1,26 +1,8 @@
-import { resolve } from 'node:path';
-import {
-  contractPatch,
-  exitCodeFor,
-  githubEvent,
-  IMPACT_CODES,
-  type ImpactLevel,
-  ImpactSetupError,
-  jsonSafe,
-  prepareImpact,
-} from '@flowpact/core';
-import {
-  type MarkdownOptions,
-  renderGithub,
-  renderJson,
-  renderMarkdown,
-  renderPretty,
-  renderSarif,
-} from '@flowpact/reporters';
+import { type ImpactLevel, jsonSafe } from '@flowpact/core';
+import { type MarkdownOptions, workflowCommands } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
-import { runAnalysis } from '../analysis';
+import { type FailOn, runReport as runAnalysis } from '../lib/report';
 import {
-  checkTargets,
   commonArgs,
   createContext,
   displayPath,
@@ -175,39 +157,10 @@ function markdownOptionsFromEnv(pathPrefix: string, env: NodeJS.ProcessEnv = pro
   };
 }
 
-/** Resolves the baseline and the declaration for impact mode; setup problems are usage errors (exit 2). */
-function setupImpact(ctx: ReturnType<typeof createContext>, args: ReportArgs) {
-  try {
-    return prepareImpact(
-      ctx.root,
-      ctx.loaded.config,
-      {
-        ...(args.base ? { base: args.base } : {}),
-        ...(args.expect ? { expect: args.expect as ImpactLevel } : {}),
-        ...(args.title !== undefined ? { title: args.title } : {}),
-        ...(args.labels !== undefined
-          ? {
-              labels: args.labels
-                .split(',')
-                .map((l) => l.trim())
-                .filter(Boolean),
-            }
-          : {}),
-        ...(process.env.GITHUB_ACTIONS === 'true' ? { event: githubEvent() } : {}),
-        ...(ctx.loaded.file ? { configPath: ctx.loaded.file } : {}),
-        ...(ctx.loaded.base
-          ? { baseConfig: ctx.loaded.base.data, baseConfigFile: resolve(process.cwd(), ctx.loaded.base.file) }
-          : {}),
-      },
-      ctx.logger,
-    );
-  } catch (err) {
-    if (err instanceof ImpactSetupError) throw new UsageError(err.message);
-    throw err;
-  }
-}
-
-/** Shared implementation of `flowpact lint`, `flowpact check` and `flowpact impact`. */
+/**
+ * Shared implementation of `flowpact lint`, `flowpact check` and `flowpact impact`: the API's `lint`, `check` and
+ * `impact`, with the banner, the `impact:` notes and the reports printed and written as the flags ask.
+ */
 export async function runReport(
   args: ReportArgs,
   rawArgs: string[],
@@ -230,61 +183,69 @@ export async function runReport(
   const outputs = repeatedFlag(rawArgs, def, 'output').filter(Boolean);
   if (!outputs.length && args.output) outputs.push(args.output);
   const files = outputs.map(parseOutput);
-  const wantImpact = command === 'impact' || Boolean(args.impact);
-  let impact: ReturnType<typeof setupImpact> | undefined;
-  if (wantImpact) {
-    impact = setupImpact(ctx, args);
-    if ('skip' in impact) {
-      ctx.stderr(`impact: skipped (${impact.skip})`);
-      if (command === 'impact') return 0;
-    }
-  }
-  const result = await runAnalysis(ctx, {
-    paths: command === 'impact' ? [] : paths,
-    validateSchema: command === 'impact' ? false : args.schema !== false,
-    checkContracts: command === 'check',
-    ...(command === 'impact' && !only ? { only: [...IMPACT_CODES] } : only ? { only } : {}),
-    ...(impact && 'options' in impact ? { impact: impact.options } : {}),
-  });
-  if (impact && 'notes' in impact) for (const note of impact.notes) ctx.stderr(`impact: ${note}`);
-  checkTargets(result.project, paths, ctx.root);
-  if (result.summary.workflows === 0 && result.summary.actions === 0 && command !== 'impact') {
-    throw new UsageError(
-      `No workflows found under ${displayPath(ctx.root)}/.github/workflows. Use --root to point at a repository.`,
-    );
-  }
+  const analysis = await runAnalysis(
+    ctx.session,
+    command,
+    {
+      paths,
+      ...(only ? { only } : {}),
+      schema: args.schema !== false,
+      impact: Boolean(args.impact),
+      ...(args.base !== undefined ? { base: args.base } : {}),
+      ...(args.expect ? { expect: args.expect as ImpactLevel } : {}),
+      ...(args.title !== undefined ? { title: args.title } : {}),
+      ...(args.labels !== undefined
+        ? {
+            labels: args.labels
+              .split(',')
+              .map((l) => l.trim())
+              .filter(Boolean),
+          }
+        : {}),
+      ...(process.env.FLOWPACT_NOW ? { now: new Date(process.env.FLOWPACT_NOW) } : {}),
+    },
+    {
+      // `flowpact impact` has nothing to report when impact mode is skipped; `lint --impact` lints without it.
+      impactSkipped: (reason) => {
+        ctx.stderr(`impact: skipped (${reason})`);
+        return command === 'impact';
+      },
+      analyzed: (notes) => {
+        for (const note of notes) ctx.stderr(note);
+      },
+    },
+  );
+  if (!analysis) return 0;
   const includeGraph = Boolean(args['include-graph']);
   const pathPrefix = workspacePrefix(ctx.root);
   const render = (format: Format, toFile: boolean): string => {
     switch (format) {
       case 'json':
-        return renderJson(result, { includeGraph });
+        return analysis.json({ includeGraph });
       case 'sarif':
-        return renderSarif(result, { pathPrefix });
+        return analysis.sarif({ pathPrefix });
       case 'github':
-        return renderGithub(result, { pathPrefix });
+        return workflowCommands(analysis.annotations({ pathPrefix }));
       case 'markdown':
-        return renderMarkdown(result, { ...markdownOptionsFromEnv(pathPrefix), includeGraph });
+        return analysis.markdown({ ...markdownOptionsFromEnv(pathPrefix), includeGraph });
       default:
         return toFile
-          ? renderPretty(result, { ...ctx.plain, hideInfo: false })
-          : renderPretty(result, { ...ctx.render, hideInfo: Boolean(args['hide-info']) });
+          ? analysis.pretty({ ...ctx.plain, hideInfo: false })
+          : analysis.pretty({ ...ctx.render, hideInfo: Boolean(args['hide-info']) });
     }
   };
   if (args.format === 'github') writeWorkflowCommands(render('github', false));
   else ctx.stdout(render(args.format as Format, false));
   for (const { format, file } of files)
     writeOutput(file, render(format, true), ctx, format === 'json' || format === 'sarif' ? 'data' : 'text');
-  if (args['dump-graph'])
-    writeOutput(
-      args['dump-graph'],
-      jsonSafe(`${JSON.stringify(result.index.toJSON(), null, 2)}\n`),
-      ctx,
-      'data',
-    );
-  if (args.patch && result.contracts?.drift)
-    writeOutput(args.patch, contractPatch(result.contracts), ctx, 'data');
-  return exitCodeFor(result.summary, args['fail-on'] as 'error' | 'warning' | 'never');
+  if (args['dump-graph']) {
+    // The data-flow graph, as the JSON report includes it.
+    const { graph } = JSON.parse(analysis.json({ includeGraph: true }));
+    writeOutput(args['dump-graph'], jsonSafe(`${JSON.stringify(graph, null, 2)}\n`), ctx, 'data');
+  }
+  const patch = args.patch ? analysis.contracts?.patch() : undefined;
+  if (args.patch && patch !== undefined) writeOutput(args.patch, patch, ctx, 'data');
+  return analysis.exitCode(args['fail-on'] as FailOn);
 }
 
 export const lintCommand = defineCommand({
