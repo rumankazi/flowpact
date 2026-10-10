@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import {
   contractPatch,
   exitCodeFor,
@@ -194,7 +195,9 @@ function setupImpact(ctx: ReturnType<typeof createContext>, args: ReportArgs) {
           : {}),
         ...(process.env.GITHUB_ACTIONS === 'true' ? { event: githubEvent() } : {}),
         ...(ctx.loaded.file ? { configPath: ctx.loaded.file } : {}),
-        ...(ctx.loaded.base ? { baseConfig: ctx.loaded.base.data } : {}),
+        ...(ctx.loaded.base
+          ? { baseConfig: ctx.loaded.base.data, baseConfigFile: resolve(process.cwd(), ctx.loaded.base.file) }
+          : {}),
       },
       ctx.logger,
     );

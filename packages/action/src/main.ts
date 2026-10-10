@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +22,6 @@ import {
   githubEvent,
   type ImpactLevel,
   ImpactSetupError,
-  insideRepository,
   isPublished,
   type LoadedConfig,
   type Logger,
@@ -33,6 +32,7 @@ import {
   loadPlugins,
   loadProject,
   neutralizeWorkflowCommands,
+  pathInside,
   prepareImpact,
   resolveCommit,
   resolveLogLevel,
@@ -47,6 +47,7 @@ import {
   renderMarkdown,
   renderSarif,
 } from '@flowpact/reporters';
+import { parse as parseYaml } from 'yaml';
 
 /** Input defaults; `action.yml` declares the same values (a test keeps them in sync). */
 export const DEFAULTS = {
@@ -156,6 +157,35 @@ function int(name: InputName): number {
 /** A path from an input, relative to the action's own directory. */
 const fromActionDir = (p: string) => (isAbsolute(p) ? p : resolve(ACTION_DIR, p));
 
+/** The input defaults an action.yml declares; empty when it cannot be read. */
+export function declaredDefaultsOf(actionYml: string): Record<string, string> {
+  const defaults: Record<string, string> = {};
+  try {
+    const meta = parseYaml(readFileSync(actionYml, 'utf8')) as {
+      inputs?: Record<string, { default?: unknown }>;
+    };
+    for (const [k, v] of Object.entries(meta?.inputs ?? {}))
+      if (typeof v?.default === 'string') defaults[k] = v.default;
+  } catch {
+    // No readable action.yml next to the bundle: flowpact's own defaults apply.
+  }
+  return defaults;
+}
+
+let declaredDefaults: Record<string, string> | undefined;
+/**
+ * The default this copy of the action declares for an input in its own action.yml. The runner applies an action.yml
+ * default only when a workflow leaves the input out, not when it passes an empty value (as a reusable workflow
+ * forwarding an unset input does), so an organization's defaults would otherwise fall back to flowpact's.
+ */
+function declaredDefault(name: InputName): string {
+  declaredDefaults ??= declaredDefaultsOf(join(ACTION_DIR, 'action.yml'));
+  return declaredDefaults[name]?.trim() || DEFAULTS[name];
+}
+
+/** An input that an organization's copy of the action may set by default; empty means that default. */
+const orgInput = (name: 'base-config' | 'plugin') => core.getInput(name).trim() || declaredDefault(name);
+
 function readInputs(): Inputs {
   return {
     mode: oneOf('mode', ['lint', 'check']),
@@ -174,8 +204,8 @@ function readInputs(): Inputs {
     artifactName: input('artifact-name'),
     retentionDays: int('retention-days'),
     plugins: pluginsAllowed(oneOf('plugins', ['auto', 'true', 'false'])),
-    baseConfig: input('base-config') ? fromActionDir(input('base-config')) : '',
-    extraPlugins: input('plugin')
+    baseConfig: orgInput('base-config') ? fromActionDir(orgInput('base-config')) : '',
+    extraPlugins: orgInput('plugin')
       .split(/\r?\n/)
       .map((p) => p.trim())
       .filter(Boolean)
@@ -238,7 +268,7 @@ function impactSetup(
   root: string,
   config: FlowpactConfig,
   configPath: string | undefined,
-  baseConfig: Record<string, unknown> | undefined,
+  baseConfig: { file: string; data: Record<string, unknown> } | undefined,
   inputs: Inputs,
   logger: Logger,
 ): { options?: NonNullable<AnalyzeOptions['impact']>; note?: string } {
@@ -275,7 +305,7 @@ function impactSetup(
         ...(event ? { event } : {}),
         ...(process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}),
         ...(configPath ? { configPath } : {}),
-        ...(baseConfig ? { baseConfig } : {}),
+        ...(baseConfig ? { baseConfig: baseConfig.data, baseConfigFile: baseConfig.file } : {}),
         fetch: (refs) => fetchRefs(root, refs, core.getInput('token'), logger),
       },
       logger,
@@ -537,7 +567,7 @@ export async function run(): Promise<void> {
     );
     // A plugin given with the plugin input runs whatever the plugins input says, unless it is a file in the checkout
     // while plugins from the checkout may not run (an untrusted event, or plugins: false).
-    const inCheckout = (p: string) => insideRepository(workspace, p);
+    const inCheckout = (p: string) => pathInside(workspace, p) || pathInside(root, p);
     const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
     if (extraPlugins.length < inputs.extraPlugins.length) {
       core.warning(
@@ -556,7 +586,7 @@ export async function run(): Promise<void> {
     }
 
     const impact = await group('flowpact: impact baseline', async () =>
-      impactSetup(root, loaded.config, inputs.config || undefined, loaded.base?.data, inputs, logger),
+      impactSetup(root, loaded.config, inputs.config || undefined, loaded.base, inputs, logger),
     );
     if (impact.note) core.info(impact.note);
 

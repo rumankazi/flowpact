@@ -85,7 +85,9 @@ vi.mock('@actions/artifact', () => ({
   },
 }));
 
-const { ACTION_DIR, DEFAULTS, run, summaryWithinLimit, SUMMARY_LIMIT } = await import('../src/main');
+const { ACTION_DIR, DEFAULTS, declaredDefaultsOf, run, summaryWithinLimit, SUMMARY_LIMIT } = await import(
+  '../src/main'
+);
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const FIXTURES = join(REPO, 'fixtures');
@@ -306,6 +308,22 @@ export default { code: '${code}', name: '${code.toLowerCase()}-rule', category: 
   it("reads relative paths from the action's own directory", () => {
     expect(existsSync(join(ACTION_DIR, 'action.yml'))).toBe(true);
     expect(join(ACTION_DIR, '/')).toBe(REPO);
+  });
+
+  it('reads the defaults a copy of the action declares, which an empty input falls back to', () => {
+    const yml = join(temp, 'copy', 'action.yml');
+    mkdirSync(dirname(yml), { recursive: true });
+    writeFileSync(
+      yml,
+      'inputs:\n  base-config:\n    default: acme.base.yml\n  plugin:\n    default: |\n      rules/acme.mjs\n',
+    );
+    expect(declaredDefaultsOf(yml)).toEqual({ 'base-config': 'acme.base.yml', plugin: 'rules/acme.mjs\n' });
+    expect(declaredDefaultsOf(join(temp, 'missing.yml'))).toEqual({});
+    // flowpact's own action.yml declares the same defaults as the code.
+    expect(declaredDefaultsOf(join(ACTION_DIR, 'action.yml'))).toMatchObject({
+      'base-config': '',
+      plugin: '',
+    });
   });
 
   it('puts the repository config on top of base-config', async () => {

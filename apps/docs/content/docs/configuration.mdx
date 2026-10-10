@@ -234,9 +234,9 @@ to a plugin and is ignored with the warning.
 
 ## Base config
 
-A base config holds defaults for many repositories, such as an organization's. It is passed with `--base-config <file>`,
-usually by an organization's [wrapper](/docs/integrating#organization-defaults), and each repository's own config goes on
-top of it:
+A base config holds defaults for many repositories, such as an organization's. It is passed with the CLI's
+`--base-config <file>` or the action's `base-config` input, usually by an organization's
+[copy of the action](/docs/integrating#copy-the-action) or wrapper, and each repository's own config goes on top of it:
 
 ```yaml title="acme.base.yml (in the wrapper)"
 rules:
@@ -265,11 +265,11 @@ flowpact lint --base-config acme.base.yml
 | `rules`, `limits`, `impact` | allowed | key by key; the repository's value wins (`impact.types` and `impact.labels` entry by entry) |
 | `ignore`, `generated` | allowed | both lists apply |
 | `repository`, `overrides`, `matrixShapes`, `impact.publish` | config error | they name files of one repository |
-| `plugins` | config error | plugins run code; a wrapper loads organization rules with [`--plugin`](/docs/cli#flowpact-lint) |
+| `plugins` | config error | plugins run code; organization rules load with the action's `plugin` input or [`--plugin`](/docs/cli#flowpact-lint) |
 
 The repository's config still works on its own: run without the base config, as locally and in the editor, flowpact
-uses the repository's config and the defaults. The base config's path is relative to the working directory, and the
-banner shows it (`config .github/flowpact/flowpact.config.yml · base acme.base.yml`). A repository's config cannot
+uses the repository's config and the defaults. The base config's path is relative to the working directory
+(`--base-config`) or to the action's own directory (the `base-config` input), and the banner shows it (`config .github/flowpact/flowpact.config.yml · base acme.base.yml`). A repository's config cannot
 point at a base config itself; see [why](/docs/integrating#why-not-extends).
 
 ## Reference

@@ -42,7 +42,8 @@ flowpact has **no telemetry** and sends nothing anywhere.
     release tags) from the repository's own `origin`, with the `token` input as a one-off authorization header;
   - in `mode: check` with `upload-contracts`, the artifact upload, through the runner's artifact service.
 
-On GitHub Enterprise Server, both go to the enterprise server, never to github.com.
+On GitHub Enterprise Server, the `git fetch` goes to the enterprise server, and the contracts upload is not available
+(it is skipped with a warning; set `upload-contracts: false`), so nothing goes to github.com.
 
 ## Permissions
 
