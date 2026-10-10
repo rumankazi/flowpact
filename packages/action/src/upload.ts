@@ -141,6 +141,13 @@ const BLOB_RETRY_ERRORS = [
   'REQUEST_SEND_ERROR',
 ];
 
+/**
+ * How long a blob request may go without progress before the upload stops (the library's
+ * ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS, 5 minutes by default). A stalled upload is not retried, as in the library.
+ */
+const stallTimeout = () =>
+  Number.parseInt(process.env.ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS ?? '', 10) || 300_000;
+
 /** One request to the signed blob URL; 4 tries, waiting 0, 4 and 12 seconds, like the Azure client. */
 async function blobRequest(
   http: HttpClient,
@@ -170,8 +177,13 @@ async function blobRequest(
       retryable = status === 500 || status === 503;
     } catch (err) {
       const e = err as NodeJS.ErrnoException;
-      failure = redact(e.message);
-      retryable = BLOB_RETRY_ERRORS.some((c) => e.code === c || e.message.toUpperCase().includes(c));
+      // http-client's socket timeout: "Request timeout: <path and the signed query>".
+      const stalled = e.message.startsWith('Request timeout');
+      failure = stalled
+        ? `upload stalled: no progress in ${stallTimeout()} ms (${redact(e.message)})`
+        : redact(e.message);
+      retryable =
+        !stalled && BLOB_RETRY_ERRORS.some((c) => e.code === c || e.message.toUpperCase().includes(c));
     }
     if (!retryable || attempt === 4) throw new Error(`${what} failed: ${failure}`);
     const delay = (2 ** (attempt - 1) - 1) * 4000;
@@ -183,7 +195,7 @@ async function blobRequest(
 /** Uploads the zip as a block blob, in the library's 8 MiB blocks. */
 async function uploadBlob(signedUrl: string, zip: Buffer, secrets: string[]): Promise<void> {
   // No credentials: the URL is signed, and the runtime token must not reach blob storage.
-  const http = new HttpClient(USER_AGENT);
+  const http = new HttpClient(USER_AGENT, [], { socketTimeout: stallTimeout() });
   const join = signedUrl.includes('?') ? '&' : '?';
   // Block ids, all the same length: a random prefix and the block's index, base64 (as the Azure client makes them).
   const prefix = randomUUID();

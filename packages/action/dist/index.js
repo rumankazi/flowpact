@@ -42721,6 +42721,7 @@ var BLOB_RETRY_ERRORS = [
   "EPIPE",
   "REQUEST_SEND_ERROR"
 ];
+var stallTimeout = () => Number.parseInt(process.env.ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS ?? "", 10) || 3e5;
 async function blobRequest(http2, url2, body, headers, what, secrets) {
   const redact = (s) => secrets.reduce((out, secret) => out.replaceAll(secret, "***"), s);
   for (let attempt = 1; ; attempt++) {
@@ -42742,8 +42743,9 @@ async function blobRequest(http2, url2, body, headers, what, secrets) {
       retryable = status === 500 || status === 503;
     } catch (err) {
       const e = err;
-      failure2 = redact(e.message);
-      retryable = BLOB_RETRY_ERRORS.some((c) => e.code === c || e.message.toUpperCase().includes(c));
+      const stalled = e.message.startsWith("Request timeout");
+      failure2 = stalled ? `upload stalled: no progress in ${stallTimeout()} ms (${redact(e.message)})` : redact(e.message);
+      retryable = !stalled && BLOB_RETRY_ERRORS.some((c) => e.code === c || e.message.toUpperCase().includes(c));
     }
     if (!retryable || attempt === 4) throw new Error(`${what} failed: ${failure2}`);
     const delay = (2 ** (attempt - 1) - 1) * 4e3;
@@ -42752,7 +42754,7 @@ async function blobRequest(http2, url2, body, headers, what, secrets) {
   }
 }
 async function uploadBlob(signedUrl, zip2, secrets) {
-  const http2 = new HttpClient(USER_AGENT);
+  const http2 = new HttpClient(USER_AGENT, [], { socketTimeout: stallTimeout() });
   const join7 = signedUrl.includes("?") ? "&" : "?";
   const prefix = randomUUID2();
   const ids = [];

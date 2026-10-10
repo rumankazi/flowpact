@@ -24,6 +24,8 @@ interface Reply {
   headers?: Record<string, string>;
   /** Close the connection without answering. */
   hangUp?: boolean;
+  /** Keep the connection open and never answer. */
+  stall?: boolean;
 }
 interface Seen {
   endpoint: Endpoint;
@@ -42,7 +44,13 @@ const TOKEN = `eyJhbGciOiJIUzI1NiJ9.${payload}.TOKEN-SIGNATURE`;
 // A signature with characters that are encoded in the URL: the service hands out base64.
 const SIG = 'SIG+secret/=';
 const SAS = `sv=2025-01-05&se=2026-06-05T00%3A00%3A00Z&sr=b&sp=cw&sig=${encodeURIComponent(SIG)}`;
-const ENV = ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL', 'GITHUB_SERVER_URL', 'GITHUB_RETENTION_DAYS'];
+const ENV = [
+  'ACTIONS_RUNTIME_TOKEN',
+  'ACTIONS_RESULTS_URL',
+  'GITHUB_SERVER_URL',
+  'GITHUB_RETENTION_DAYS',
+  'ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS',
+];
 
 let server: Server;
 let base: string;
@@ -94,6 +102,7 @@ beforeEach(async () => {
       });
       const reply = replies[endpoint]?.shift() ?? success[endpoint]();
       if (reply.hangUp) return void req.socket.destroy();
+      if (reply.stall) return;
       res.writeHead(reply.status, reply.headers);
       res.end(reply.body ?? '');
     });
@@ -273,6 +282,22 @@ describe('uploadArtifact', () => {
     for (const line of [...log.lines, ...log.warnings]) {
       expect(line).not.toContain('TOKEN-SIGNATURE');
       expect(line).not.toContain(payload);
+      expect(line).not.toContain(SIG);
+      expect(line).not.toContain(encodeURIComponent(SIG));
+    }
+  });
+
+  it('stops a stalled blob upload after the stall timeout, without retrying it or showing the signature', async () => {
+    process.env.ACTIONS_ARTIFACT_UPLOAD_TIMEOUT_MS = '200';
+    replies.block = [{ status: 0, stall: true }];
+    const failure = await uploadArtifact('flowpact-contracts', files, dir).then(
+      () => '',
+      (err: Error) => err.message,
+    );
+    expect(failure).toMatch(/^Put Block failed: upload stalled: no progress in 200 ms \(Request timeout: /);
+    expect(failure).toContain('sig=***');
+    expect(of('block')).toHaveLength(1);
+    for (const line of [failure, ...log.lines, ...log.warnings]) {
       expect(line).not.toContain(SIG);
       expect(line).not.toContain(encodeURIComponent(SIG));
     }
