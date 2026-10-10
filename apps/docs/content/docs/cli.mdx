@@ -50,7 +50,7 @@ flowpact lint [paths…] [options]
 | `--no-plugins` | Do not load the [plugins](/docs/custom-rules) the config lists; they run code from the repository. |
 | `--plugin <file>` | Also load this plugin, relative to the working directory; repeatable, and not affected by `--no-plugins`. See [Build on flowpact](/docs/integrating#organization-rules). |
 | `--format pretty\|json\|markdown\|sarif\|github` | Output on stdout (default `pretty`). See [output formats](#output-formats). |
-| `-o, --output <file>` | Also write the report to a file, format by extension: `.sarif` / `.sarif.json` → SARIF, `.json` → JSON, `.md` → Markdown, anything else → plain text. Name the format for other names, as in `-o markdown:"$GITHUB_STEP_SUMMARY"`. Repeat it to write several reports from one run. |
+| `-o, --output <file>` | Also write the report to a file, replacing it; format by extension: `.sarif` / `.sarif.json` → SARIF, `.json` → JSON, `.md` → Markdown, anything else → plain text. Name the format for other names, as in `-o markdown:"$GITHUB_STEP_SUMMARY"`. Repeat it to write several reports from one run. |
 | `--fail-on error\|warning\|never` | Exit `1` when findings at this level exist (default `error`). |
 | `--only <codes>` | Comma-separated codes or names to run, e.g. `FP401,unused-input`. |
 | `--hide-info` | Pretty terminal output only: do not list info findings (they are still counted). JSON, Markdown and SARIF always include them. |
