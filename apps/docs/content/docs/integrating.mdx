@@ -71,7 +71,7 @@ regenerated contracts, which GitHub Enterprise Server does not support (set `upl
 
 ## Run the CLI in a step
 
-A `run:` step is not an action, so no action policy applies to it. The CLI is a single file that needs only Node.js
+A `run:` step is not an action, so no action policy applies to it. The CLI has no dependencies and needs only Node.js
 22 or later, which GitHub-hosted runners have:
 
 ```yaml title=".github/workflows/flowpact.yml"
@@ -95,9 +95,9 @@ jobs:
 ```
 
 The step refuses to run a file whose [provenance](/docs/security#verify-a-release) does not verify. Without network
-access at run time, verify the file once and commit `package/dist/index.js` to an internal repository as
-`tools/flowpact.mjs` (the `.mjs` name keeps it an ES module whatever `package.json` the repository has); the step is then
-`node tools/flowpact.mjs lint …`. Add `--base-config` and `--plugin` for your defaults and rules.
+access at run time, verify the tarball once and commit the extracted `package/` folder to an internal repository as
+`tools/flowpact/` (its own `package.json` keeps the code an ES module whatever `package.json` the repository has); the
+step is then `node tools/flowpact/dist/index.js lint …`. Add `--base-config` and `--plugin` for your defaults and rules.
 
 On GitHub Enterprise Cloud, an organization
 [ruleset](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-workflows-to-pass-before-merging)
