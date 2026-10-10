@@ -41,4 +41,11 @@ describe('what the committed action bundle contains', () => {
     for (const name of ['@actions/artifact', '@azure/storage-blob', 'archiver', 'unzip-stream'])
       expect(names).not.toContain(name);
   });
+
+  it('leaves out undici, which the action never calls, for a stub that says so if it is', async () => {
+    expect(sbom.components.map((c) => c.name)).not.toContain('undici');
+    const { ProxyAgent } = await import('../../packages/action/src/stubs/undici');
+    expect(() => new ProxyAgent()).toThrow('undici is not part of the flowpact action');
+    expect(read('packages/action/dist/index.js')).toContain('undici is not part of the flowpact action');
+  });
 });
