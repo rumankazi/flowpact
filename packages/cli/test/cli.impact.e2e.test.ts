@@ -237,6 +237,27 @@ describe('flowpact impact baselines and policy', () => {
     expect(r.stderr).not.toContain('they apply after it is merged');
   });
 
+  it('leaves a base config of the repository out of the baseline, so a pull request cannot relax its own check', async () => {
+    const base = '.github/acme.base.yml';
+    // The pull request edits the base config in its own tree to declare every fix as major.
+    const root = repo(
+      { [WF]: reusable('Test'), [base]: 'rules: {}\n' },
+      { [WF]: reusable('Unit tests'), [base]: 'impact:\n  types: { fix: major }\n' },
+    );
+    const r = await flowpact(root, [
+      'impact',
+      '--base',
+      'main',
+      '--title',
+      'fix: x',
+      '--base-config',
+      join(root, base),
+    ]);
+    expect(r.exitCode).toBe(1);
+    expect(r.stdout).toContain('FP810');
+    expect(r.stderr).toContain('the base config is a file of this repository');
+  });
+
   it("ignores the baseline config's rule settings, which a pull request may be fixing", async () => {
     const config = '.github/flowpact/flowpact.config.yml';
     const root = repo(

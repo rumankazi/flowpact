@@ -99,9 +99,10 @@ rules:
 - Paths are relative to the repository root; the module is loaded with Node's `import()`, so it must be JavaScript
   (`.mjs`, or `.js` in an ESM package).
 - It default-exports a rule or an array of rules, or exports them as `rules`.
-- The CLI also loads plugins given with `--plugin <file>` (relative to the working directory, repeatable), such as
-  organization rules shipped by a [wrapper](/docs/integrating#organization-rules). `--no-plugins` skips the plugins the
-  config lists, but not those.
+- The CLI also loads plugins given with `--plugin <file>` (relative to the working directory, repeatable), and the action
+  those in its `plugin` input (relative to the action's directory), such as organization rules shipped with a
+  [copy of the action](/docs/integrating#organization-rules). `--no-plugins` and the action's `plugins` input skip the
+  plugins the config lists, but not those.
 - `flowpact lint`, `flowpact check` and the [GitHub Action](/docs/action) run plugin rules next to the built-in ones, so they
   can be configured under `rules:`, accepted with [overrides](/docs/configuration#overrides) and selected with
   `--only`.

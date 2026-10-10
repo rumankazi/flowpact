@@ -8,4 +8,4 @@ set -euo pipefail
 out="${1:?usage: scripts/action-archive.sh <out.tar.gz>}"
 tar --sort=name --mtime="@$(git log -1 --format=%ct HEAD)" --owner=0 --group=0 --numeric-owner --format=gnu \
   -cf - action.yml packages/action/dist/index.js packages/action/dist/THIRD_PARTY_LICENSES.txt \
-  packages/action/dist/sbom.cdx.json LICENSE | gzip -n -9 > "$out"
+  packages/action/dist/sbom.cdx.json packages/action/dist/package.json LICENSE | gzip -n -9 > "$out"

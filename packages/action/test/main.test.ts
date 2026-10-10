@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyze, writeContracts } from '@flowpact/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -85,7 +85,9 @@ vi.mock('@actions/artifact', () => ({
   },
 }));
 
-const { DEFAULTS, run, summaryWithinLimit, SUMMARY_LIMIT } = await import('../src/main');
+const { ACTION_DIR, DEFAULTS, declaredDefaultsOf, run, summaryWithinLimit, SUMMARY_LIMIT } = await import(
+  '../src/main'
+);
 
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const FIXTURES = join(REPO, 'fixtures');
@@ -291,6 +293,64 @@ describe('lint mode', () => {
     expect(s.failed).toHaveLength(1);
     expect(s.failed[0]).toContain('is a symlink, or links outside');
     expect(readFileSync(outside, 'utf8')).toBe('keep');
+  });
+});
+
+describe('organization inputs', () => {
+  /** A plugin rule that reports one finding, and records that its module ran. */
+  const plugin = (code: string, marker: string) =>
+    `globalThis[${JSON.stringify(marker)}] = true;
+export default { code: '${code}', name: '${code.toLowerCase()}-rule', category: 'structure', defaultSeverity: 'error',
+  docsUrl: 'https://example.com/${code}', docs: { summary: 'An organization rule.', why: 'Why.', fix: 'Fix.' },
+  check(ctx) { ctx.report({ message: '${code} ran', loc: { file: '.github/workflows/tests.yml', line: 1, column: 1, endLine: 1, endColumn: 2 } }); } };\n`;
+  const ran = (marker: string) => (globalThis as Record<string, unknown>)[marker] === true;
+
+  it("reads relative paths from the action's own directory", () => {
+    expect(existsSync(join(ACTION_DIR, 'action.yml'))).toBe(true);
+    expect(join(ACTION_DIR, '/')).toBe(REPO);
+  });
+
+  it('reads the defaults a copy of the action declares, which an empty input falls back to', () => {
+    const yml = join(temp, 'copy', 'action.yml');
+    mkdirSync(dirname(yml), { recursive: true });
+    writeFileSync(
+      yml,
+      'inputs:\n  base-config:\n    default: acme.base.yml\n  plugin:\n    default: |\n      rules/acme.mjs\n',
+    );
+    expect(declaredDefaultsOf(yml)).toEqual({ 'base-config': 'acme.base.yml', plugin: 'rules/acme.mjs\n' });
+    expect(declaredDefaultsOf(join(temp, 'missing.yml'))).toEqual({});
+    // flowpact's own action.yml declares the same defaults as the code.
+    expect(declaredDefaultsOf(join(ACTION_DIR, 'action.yml'))).toMatchObject({
+      'base-config': '',
+      plugin: '',
+    });
+  });
+
+  it('puts the repository config on top of base-config', async () => {
+    const { workspace } = repoFrom('incident-matrix');
+    const base = join(temp, 'org', 'acme.base.yml');
+    mkdirSync(dirname(base), { recursive: true });
+    writeFileSync(base, 'rules:\n  FP401: warning\n');
+    const s = await action(workspace, { 'base-config': base });
+    expect(s.failed).toEqual([]);
+    expect(s.annotations.find((a) => a.message.includes('matrix combinations'))?.level).toBe('warning');
+    expect(s.infos.some((m) => m.includes(`· base ${base}`))).toBe(true);
+  });
+
+  it('loads the plugin input whatever the plugins input says, but not files of the checkout on untrusted events', async () => {
+    const { workspace } = repoFrom('incident-matrix');
+    const org = join(temp, 'org', 'acme.mjs');
+    mkdirSync(dirname(org), { recursive: true });
+    writeFileSync(org, plugin('ACME601', '__flowpactOrgPluginRan'));
+    writeFileSync(join(workspace, 'pr.mjs'), plugin('PR601', '__flowpactCheckoutPluginRan'));
+    process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+    const s = await action(workspace, { plugins: 'auto', plugin: `${org}\n${join(workspace, 'pr.mjs')}\n` });
+    expect(ran('__flowpactOrgPluginRan')).toBe(true);
+    expect(ran('__flowpactCheckoutPluginRan')).toBe(false);
+    expect(s.annotations.some((a) => a.props?.title === 'ACME601 acme601-rule')).toBe(true);
+    expect(
+      s.annotations.some((a) => a.level === 'warning' && a.message.includes('files in the checkout')),
+    ).toBe(true);
   });
 });
 

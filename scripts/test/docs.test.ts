@@ -90,9 +90,9 @@ describe('version references', () => {
     // @ts-expect-error -- plain JavaScript module without types
     const { syncRefs } = await import('../sync-version-refs.mjs');
     const text =
-      'uses: rumankazi/flowpact@v0.3\nuses: rumankazi/flowpact@v0.3.2\nnpx flowpact@0.3 lint\n`flowpact` on npm, flowpact@ v0';
+      'uses: rumankazi/flowpact@v0.3\nuses: rumankazi/flowpact@v0.3.2\nnpx flowpact@0.3 lint\n`flowpact` on npm, flowpact@ v0\nFLOWPACT_VERSION: 0.3.2';
     expect(syncRefs(text, '0.4.0')).toBe(
-      'uses: rumankazi/flowpact@v0.4\nuses: rumankazi/flowpact@v0.4.0\nnpx flowpact@0.4 lint\n`flowpact` on npm, flowpact@ v0',
+      'uses: rumankazi/flowpact@v0.4\nuses: rumankazi/flowpact@v0.4.0\nnpx flowpact@0.4 lint\n`flowpact` on npm, flowpact@ v0\nFLOWPACT_VERSION: 0.4.0',
     );
     expect(
       syncRefs(
@@ -109,7 +109,7 @@ describe('version references', () => {
     expect(syncRefs(banner('v1.0.0-rc.1', '92.4', '221.6'), '1.0.0')).toBe(banner('v1.0.0', '50.4', '179.6'));
     expect(syncRefs('uses: rumankazi/flowpact@v1.0.0-rc.1', '1.0.0')).toBe('uses: rumankazi/flowpact@v1.0.0');
     expect(syncRefs(text, '1.2.0')).toBe(
-      'uses: rumankazi/flowpact@v1\nuses: rumankazi/flowpact@v1.2.0\nnpx flowpact@1 lint\n`flowpact` on npm, flowpact@ v0',
+      'uses: rumankazi/flowpact@v1\nuses: rumankazi/flowpact@v1.2.0\nnpx flowpact@1 lint\n`flowpact` on npm, flowpact@ v0\nFLOWPACT_VERSION: 1.2.0',
     );
   });
 });

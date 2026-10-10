@@ -56817,9 +56817,10 @@ var require_cronstrue = __commonJS({
 
 // src/main.ts
 import { execFileSync as execFileSync2 } from "child_process";
-import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
+import { mkdirSync as mkdirSync2, mkdtempSync, readFileSync as readFileSync5, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
+import { dirname as dirname3, isAbsolute as isAbsolute5, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
+import { fileURLToPath } from "url";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -131710,6 +131711,9 @@ var withinOrAt = (root, p) => {
   const rel = relative3(root, p);
   return rel === "" || rel !== ".." && !rel.startsWith(`..${sep3}`) && !isAbsolute3(rel);
 };
+function pathInside(tree, p) {
+  return withinOrAt(realpathNearest(tree), realpathNearest(p));
+}
 function assertSafeWritePath(abs, trees) {
   const target = resolve4(abs);
   const realParent = realpathNearest(dirname2(target));
@@ -135335,6 +135339,13 @@ function git(root, args, input3) {
     throw new GitError(detail);
   }
 }
+function gitTopLevel(root) {
+  try {
+    return git(root, ["rev-parse", "--show-toplevel"]).toString().trim() || void 0;
+  } catch {
+    return void 0;
+  }
+}
 function resolveCommit(root, ref) {
   if (!ref || ref.startsWith("-")) throw new GitError(`invalid ref: ${JSON.stringify(ref)}`);
   try {
@@ -135593,9 +135604,16 @@ function prepareImpact(root, headConfig, req, logger7) {
     throw new ImpactSetupError(err.message);
   }
   const configPath = req.configPath ? relative4(root, join6(root, req.configPath)).split("\\").join("/") : void 0;
-  const baseConfig = baselineConfig(fs8, configPath, req.baseConfig, notes);
+  const top = req.baseConfig && req.baseConfigFile ? gitTopLevel(root) : void 0;
+  const baseInRepository = top !== void 0 && pathInside(top, req.baseConfigFile);
+  if (baseInRepository) {
+    notes.push(
+      "the base config is a file of this repository, so the baseline's impact settings leave it out"
+    );
+  }
+  const baseConfig = baselineConfig(fs8, configPath, baseInRepository ? void 0 : req.baseConfig, notes);
   const policy = { ...(baseConfig ?? defaultConfig()).impact };
-  if (JSON.stringify(policy) !== JSON.stringify(headConfig.impact)) {
+  if (!baseInRepository && JSON.stringify(policy) !== JSON.stringify(headConfig.impact)) {
     notes.push("this pull request changes impact settings; they apply after it is merged");
   }
   logger7?.debug("impact baseline", { ref: baseRef, commit, kind });
@@ -136409,6 +136427,7 @@ function renderSarif(result, opts = {}) {
 }
 
 // src/main.ts
+var import_yaml7 = __toESM(require_dist5(), 1);
 var DEFAULTS2 = {
   mode: "lint",
   paths: "",
@@ -136426,12 +136445,15 @@ var DEFAULTS2 = {
   "artifact-name": "flowpact-contracts",
   "retention-days": "7",
   plugins: "auto",
+  "base-config": "",
+  plugin: "",
   impact: "off",
   "expected-impact": "",
   "base-ref": "",
   token: "${{ github.token }}",
   debug: "false"
 };
+var ACTION_DIR = resolve6(dirname3(fileURLToPath(import.meta.url)), "../../..");
 var UNTRUSTED_EVENTS = /* @__PURE__ */ new Set(["pull_request_target", "workflow_run"]);
 var SUMMARY_LIMIT = 1e6;
 var PATCH_FILE = "flowpact-contracts.patch";
@@ -136459,6 +136481,23 @@ function int2(name) {
     throw new InputError(`Input ${name} must be a non-negative integer (got "${value}")`);
   return Number(value);
 }
+var fromActionDir = (p) => isAbsolute5(p) ? p : resolve6(ACTION_DIR, p);
+function declaredDefaultsOf(actionYml) {
+  const defaults2 = {};
+  try {
+    const meta3 = (0, import_yaml7.parse)(readFileSync5(actionYml, "utf8"));
+    for (const [k, v] of Object.entries(meta3?.inputs ?? {}))
+      if (typeof v?.default === "string") defaults2[k] = v.default;
+  } catch {
+  }
+  return defaults2;
+}
+var declaredDefaults;
+function declaredDefault(name) {
+  declaredDefaults ??= declaredDefaultsOf(join7(ACTION_DIR, "action.yml"));
+  return declaredDefaults[name]?.trim() || DEFAULTS2[name];
+}
+var orgInput = (name) => getInput(name).trim() || declaredDefault(name);
 function readInputs() {
   return {
     mode: oneOf("mode", ["lint", "check"]),
@@ -136477,6 +136516,8 @@ function readInputs() {
     artifactName: input2("artifact-name"),
     retentionDays: int2("retention-days"),
     plugins: pluginsAllowed(oneOf("plugins", ["auto", "true", "false"])),
+    baseConfig: orgInput("base-config") ? fromActionDir(orgInput("base-config")) : "",
+    extraPlugins: orgInput("plugin").split(/\r?\n/).map((p) => p.trim()).filter(Boolean).map(fromActionDir),
     impact: oneOf("impact", ["off", "auto", "on"]),
     ...input2("expected-impact") ? { expectedImpact: oneOf("expected-impact", ["none", "patch", "minor", "major"]) } : {},
     baseRef: input2("base-ref"),
@@ -136511,7 +136552,7 @@ function fetchRefs(root, refs, token, logger7) {
     }
   }
 }
-function impactSetup(root, config2, configPath, inputs, logger7) {
+function impactSetup(root, config2, configPath, baseConfig, inputs, logger7) {
   if (inputs.impact === "off") return {};
   const event = githubEvent();
   const auto2 = inputs.impact === "auto";
@@ -136543,6 +136584,7 @@ function impactSetup(root, config2, configPath, inputs, logger7) {
         ...event ? { event } : {},
         ...process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {},
         ...configPath ? { configPath } : {},
+        ...baseConfig ? { baseConfig: baseConfig.data, baseConfigFile: baseConfig.file } : {},
         fetch: (refs) => fetchRefs(root, refs, getInput("token"), logger7)
       },
       logger7
@@ -136746,8 +136788,19 @@ async function run() {
     const root = resolve6(workspace, inputs.workingDirectory);
     const rel = toPosix2(relative5(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
-    const loaded = loadConfig(root, inputs.config ? resolve6(root, inputs.config) : void 0);
-    info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
+    const loaded = loadConfig(root, inputs.config ? resolve6(root, inputs.config) : void 0, {
+      ...inputs.baseConfig ? { base: inputs.baseConfig } : {}
+    });
+    info(
+      `mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}${loaded.base ? ` \xB7 base ${loaded.base.file}` : ""}`
+    );
+    const inCheckout = (p) => pathInside(workspace, p) || pathInside(root, p);
+    const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
+    if (extraPlugins.length < inputs.extraPlugins.length) {
+      warning(
+        `Not loading ${inputs.extraPlugins.length - extraPlugins.length} plugin(s) of the plugin input that are files in the checkout: plugins from the checkout do not run here (the plugins input).`
+      );
+    }
     if (!getInput("artifact-name").trim() && prefix2)
       inputs.artifactName = `flowpact-contracts-${slug(prefix2)}`;
     if (loaded.config.plugins.length && !inputs.plugins) {
@@ -136756,12 +136809,14 @@ async function run() {
     }
     const impact = await group2(
       "flowpact: impact baseline",
-      async () => impactSetup(root, loaded.config, inputs.config || void 0, inputs, logger7)
+      async () => impactSetup(root, loaded.config, inputs.config || void 0, loaded.base, inputs, logger7)
     );
     if (impact.note) info(impact.note);
     const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry2 = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry2, logger7);
+      if (extraPlugins.length)
+        await loadPlugins(root, { ...loaded.config, plugins: extraPlugins }, registry2, logger7);
       return analyze({
         root,
         config: loaded.config,
