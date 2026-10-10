@@ -157,7 +157,7 @@ function int(name: InputName): number {
 /** A path from an input, relative to the action's own directory. */
 const fromActionDir = (p: string) => (isAbsolute(p) ? p : resolve(ACTION_DIR, p));
 
-/** The input defaults an action.yml declares; empty when it cannot be read. */
+/** The input defaults an action.yml declares; empty when it cannot be read, with a warning unless it does not exist. */
 export function declaredDefaultsOf(actionYml: string): Record<string, string> {
   const defaults: Record<string, string> = {};
   try {
@@ -166,8 +166,14 @@ export function declaredDefaultsOf(actionYml: string): Record<string, string> {
     };
     for (const [k, v] of Object.entries(meta?.inputs ?? {}))
       if (typeof v?.default === 'string') defaults[k] = v.default;
-  } catch {
-    // No readable action.yml next to the bundle: flowpact's own defaults apply.
+  } catch (err) {
+    // No action.yml next to the bundle: flowpact's own defaults apply. One that does not parse (a copy's edit gone
+    // wrong) must not drop the copy's defaults without a word.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      // The first line of a YAML error, without the colon that introduces the excerpt below it.
+      const reason = (err as Error).message.split('\n')[0]!.replace(/:$/, '');
+      core.warning(`Ignoring the input defaults of ${actionYml}, which cannot be read: ${reason}`);
+    }
   }
   return defaults;
 }
@@ -355,14 +361,27 @@ function formatRecord(r: LogRecord, withScope: boolean): string {
   return `${withScope ? `[${r.scope}] ` : ''}${r.message}${data}`;
 }
 
+/** How deep the open log groups are, and the title of a group that opens with its first line. */
+interface Groups {
+  depth: number;
+  pending?: string;
+}
+
 /**
  * Log lines go to the step log, never to annotations (findings are reported separately). Debug records use
  * `core.debug` when the runner shows them (step debug logging); when only the `debug` input asked for them they
  * would be hidden there, so they are printed as ordinary lines instead.
  */
-function actionsSink(runnerDebug: boolean, groups: { depth: number }): LogSink {
+function actionsSink(runnerDebug: boolean, groups: Groups): LogSink {
+  // A group waiting for its first line (see `loggedGroup` in run()) opens with it.
+  const open = () => {
+    if (groups.pending === undefined) return;
+    core.startGroup(groups.pending);
+    delete groups.pending;
+  };
   return {
     write(r) {
+      open();
       switch (r.level) {
         case 'debug':
         case 'trace':
@@ -382,6 +401,7 @@ function actionsSink(runnerDebug: boolean, groups: { depth: number }): LogSink {
     },
     // The log viewer cannot nest groups; inside one, a nested group is just a heading line.
     group(title) {
+      open();
       if (groups.depth++ === 0) core.startGroup(title);
       else core.info(title);
     },
@@ -542,7 +562,7 @@ export async function run(): Promise<void> {
     const envLevel = resolveLogLevel({}, process.env);
     debug = inputs.debug || core.isDebug() || envLevel !== 'info';
     const level: LogLevel = debug ? (envLevel === 'trace' ? 'trace' : 'debug') : 'info';
-    const groups = { depth: 0 };
+    const groups: Groups = { depth: 0 };
     const logger = createLogger({ level, sink: actionsSink(core.isDebug(), groups) });
     const group = async <T>(title: string, fn: () => Promise<T> | T): Promise<T> => {
       groups.depth++;
@@ -550,6 +570,19 @@ export async function run(): Promise<void> {
         return await core.group(title, async () => fn());
       } finally {
         groups.depth--;
+      }
+    };
+    // A group that opens with the first record logged in it, so that a stage with nothing to say (impact mode off or
+    // skipped) prints no empty group.
+    const loggedGroup = <T>(title: string, fn: () => T): T => {
+      groups.depth++;
+      groups.pending = title;
+      try {
+        return fn();
+      } finally {
+        groups.depth--;
+        if (groups.pending === undefined) core.endGroup();
+        delete groups.pending;
       }
     };
 
@@ -565,27 +598,29 @@ export async function run(): Promise<void> {
     core.info(
       `mode ${inputs.mode} · root ${prefix || '.'} · config ${loaded.file ?? '(defaults)'}${loaded.base ? ` · base ${loaded.base.file}` : ''}`,
     );
+    // Why plugins from the checkout do not run, when they do not: the plugins input, or an untrusted event.
+    const checkoutPluginsOff =
+      core.getInput('plugins').trim().toLowerCase() === 'false'
+        ? 'the plugins input is false'
+        : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
     // A plugin given with the plugin input runs whatever the plugins input says, unless it is a file in the checkout
-    // while plugins from the checkout may not run (an untrusted event, or plugins: false).
+    // while plugins from the checkout may not run.
     const inCheckout = (p: string) => pathInside(workspace, p) || pathInside(root, p);
     const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
-    if (extraPlugins.length < inputs.extraPlugins.length) {
-      core.warning(
-        `Not loading ${inputs.extraPlugins.length - extraPlugins.length} plugin(s) of the plugin input that are files in the checkout: plugins from the checkout do not run here (the plugins input).`,
-      );
+    const skippedPlugins = inputs.extraPlugins.filter((p) => !extraPlugins.includes(p));
+    if (skippedPlugins.length) {
+      const names = skippedPlugins.map((p) => toPosix(relative(workspace, p))).join(', ');
+      core.warning(`Not loading the plugin input's ${names} from the checkout: ${checkoutPluginsOff}.`);
     }
     // With several projects (working-directory), give each its own artifact unless a name was set explicitly.
     if (!core.getInput('artifact-name').trim() && prefix)
       inputs.artifactName = `flowpact-contracts-${slug(prefix)}`;
-    if (loaded.config.plugins.length && !inputs.plugins) {
-      const why =
-        core.getInput('plugins').trim().toLowerCase() === 'false'
-          ? 'the plugins input is false'
-          : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
-      core.warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
-    }
+    if (loaded.config.plugins.length && !inputs.plugins)
+      core.warning(
+        `Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${checkoutPluginsOff}.`,
+      );
 
-    const impact = await group('flowpact: impact baseline', async () =>
+    const impact = loggedGroup('flowpact: impact baseline', () =>
       impactSetup(root, loaded.config, inputs.config || undefined, loaded.base, inputs, logger),
     );
     if (impact.note) core.info(impact.note);

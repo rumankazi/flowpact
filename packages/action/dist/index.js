@@ -42951,7 +42951,11 @@ function declaredDefaultsOf(actionYml) {
     const meta3 = (0, import_yaml7.parse)(readFileSync5(actionYml, "utf8"));
     for (const [k, v] of Object.entries(meta3?.inputs ?? {}))
       if (typeof v?.default === "string") defaults[k] = v.default;
-  } catch {
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      const reason = err.message.split("\n")[0].replace(/:$/, "");
+      warning(`Ignoring the input defaults of ${actionYml}, which cannot be read: ${reason}`);
+    }
   }
   return defaults;
 }
@@ -43087,8 +43091,14 @@ function formatRecord(r, withScope) {
   return `${withScope ? `[${r.scope}] ` : ""}${r.message}${data}`;
 }
 function actionsSink(runnerDebug, groups) {
+  const open3 = () => {
+    if (groups.pending === void 0) return;
+    startGroup(groups.pending);
+    delete groups.pending;
+  };
   return {
     write(r) {
+      open3();
       switch (r.level) {
         case "debug":
         case "trace":
@@ -43108,6 +43118,7 @@ function actionsSink(runnerDebug, groups) {
     },
     // The log viewer cannot nest groups; inside one, a nested group is just a heading line.
     group(title) {
+      open3();
       if (groups.depth++ === 0) startGroup(title);
       else info(title);
     },
@@ -43246,6 +43257,17 @@ async function run() {
         groups.depth--;
       }
     };
+    const loggedGroup = (title, fn) => {
+      groups.depth++;
+      groups.pending = title;
+      try {
+        return fn();
+      } finally {
+        groups.depth--;
+        if (groups.pending === void 0) endGroup();
+        delete groups.pending;
+      }
+    };
     info(bannerText());
     const workspace = resolve6(process.env.GITHUB_WORKSPACE || process.cwd());
     const root = resolve6(workspace, inputs.workingDirectory);
@@ -43257,22 +43279,23 @@ async function run() {
     info(
       `mode ${inputs.mode} \xB7 root ${prefix || "."} \xB7 config ${loaded.file ?? "(defaults)"}${loaded.base ? ` \xB7 base ${loaded.base.file}` : ""}`
     );
+    const checkoutPluginsOff = getInput("plugins").trim().toLowerCase() === "false" ? "the plugins input is false" : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
     const inCheckout = (p) => pathInside(workspace, p) || pathInside(root, p);
     const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
-    if (extraPlugins.length < inputs.extraPlugins.length) {
-      warning(
-        `Not loading ${inputs.extraPlugins.length - extraPlugins.length} plugin(s) of the plugin input that are files in the checkout: plugins from the checkout do not run here (the plugins input).`
-      );
+    const skippedPlugins = inputs.extraPlugins.filter((p) => !extraPlugins.includes(p));
+    if (skippedPlugins.length) {
+      const names = skippedPlugins.map((p) => toPosix2(relative6(workspace, p))).join(", ");
+      warning(`Not loading the plugin input's ${names} from the checkout: ${checkoutPluginsOff}.`);
     }
     if (!getInput("artifact-name").trim() && prefix)
       inputs.artifactName = `flowpact-contracts-${slug(prefix)}`;
-    if (loaded.config.plugins.length && !inputs.plugins) {
-      const why = getInput("plugins").trim().toLowerCase() === "false" ? "the plugins input is false" : `plugins run code from the checkout and are disabled on ${process.env.GITHUB_EVENT_NAME} events; set the plugins input to true to allow them`;
-      warning(`Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${why}.`);
-    }
-    const impact = await group2(
+    if (loaded.config.plugins.length && !inputs.plugins)
+      warning(
+        `Not loading ${loaded.config.plugins.length} plugin(s) from the config: ${checkoutPluginsOff}.`
+      );
+    const impact = loggedGroup(
       "flowpact: impact baseline",
-      async () => impactSetup(root, loaded.config, inputs.config || void 0, loaded.base, inputs, logger)
+      () => impactSetup(root, loaded.config, inputs.config || void 0, loaded.base, inputs, logger)
     );
     if (impact.note) info(impact.note);
     const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {

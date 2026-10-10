@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Fails unless `npm pack` for the CLI contains exactly the files users need and declares no runtime dependencies
-// (everything is bundled, so installing flowpact downloads nothing else). Run from packages/cli.
+// (everything is bundled, so installing flowpact downloads nothing else). Run from packages/cli, after
+// `npm pkg delete devDependencies scripts` (as CI and release.yml do): the manifest is then the one published.
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
@@ -33,7 +34,14 @@ if (JSON.stringify(rest) !== JSON.stringify(expected) || chunks.length !== 1)
     `unexpected tarball contents: ${files.join(', ')} (expected ${expected.join(', ')} and one dist/chunk-<hash>.js)`,
   );
 
-const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+const manifest = readFileSync('package.json', 'utf8');
+const pkg = JSON.parse(manifest);
+// devDependencies and scripts build the package in this repository (workspace:* packages, tsup). Where the package is
+// vendored into an npm workspace, npm cannot install the workspace: protocol and workspace-wide scripts would run them.
+if (pkg.devDependencies || pkg.scripts || manifest.includes('workspace:'))
+  fail(
+    'package.json still has devDependencies or scripts: run `npm pkg delete devDependencies scripts` first',
+  );
 for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies', 'bundleDependencies']) {
   if (pkg[field] && Object.keys(pkg[field]).length)
     fail(`package.json declares ${field} (${Object.keys(pkg[field]).join(', ')}); bundle them instead`);
@@ -46,4 +54,4 @@ if (
   exported?.types !== './dist/api.d.ts'
 )
   fail('package.json must keep "bin" (dist/index.js) and export dist/api.js with its types (dist/api.d.ts)');
-console.log(`tarball contents ok: ${files.join(', ')}; no runtime dependencies`);
+console.log(`tarball contents ok: ${files.join(', ')}; no dependencies or scripts`);
