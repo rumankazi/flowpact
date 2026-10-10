@@ -85,21 +85,25 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
    (`release-please-config.json`: `draft`, `force-tag-creation`).
 3. The release workflow then publishes `flowpact` to npm with provenance through npm trusted publishing (no
    token; only the very first publish of a new package name needs a short-lived `NPM_TOKEN` secret, because a trusted
-   publisher can be configured only once the package exists), moves the floating tag used by
-   `uses: rumankazi/flowpact@v0.8` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
-   the major, `v1`), and smoke-tests the published package on Linux, macOS and Windows.
+   publisher can be configured only once the package exists), and smoke-tests the published package on Linux, macOS
+   and Windows.
 
 4. For stable releases it also packages the VS Code extension, smoke-tests the package in VS Code, attaches the
    signed `.vsix` to the GitHub release, and publishes that file to the registries set up below.
 5. It attaches the signed assets to the draft: the npm tarball, the `.vsix` and the action archive
    (`flowpact-action-X.Y.Z.tar.gz`: `action.yml`, the bundle and the license, built reproducibly by
-   `scripts/action-archive.sh`), each with its Sigstore bundle and in-toto provenance. Only then does it publish the
-   release, and only after that does it move the floating tag. With **immutable releases** enabled in the repository
-   settings, a published release's tag and assets cannot change, so what a mirror verified stays what was released.
+   `scripts/action-archive.sh`), each with its Sigstore bundle and in-toto provenance, and a CycloneDX SBOM of each,
+   attested against it. Only when every one of them is on the release does it publish the release (a failed extension
+   build keeps it a draft too), and only after that does it move the floating tag used by
+   `uses: rumankazi/flowpact@v0.8` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
+   the major, `v1`). With **immutable releases** enabled in the repository settings, a published release's tag and
+   assets cannot change, so what a mirror verified stays what was released.
 
-If publishing fails after the tag exists, run the **Release** workflow manually with that tag: the release stays a
-draft until every asset is attached, and versions already on npm, the Marketplace or Open VSX are skipped. The same re-run publishes a release to a registry that was set up after
-it went out.
+If publishing fails after the tag exists, run the **Release** workflow manually with that tag, or re-run the failed
+jobs: assets already attached with their signature bundle and provenance are kept, the missing ones are added (an asset
+whose upload stopped halfway is replaced), the release stays a draft until every asset is attached, and versions already
+on npm, the Marketplace or Open VSX are skipped. A published release is never changed, so the same run can publish an
+old release to a registry that was set up after it went out without touching its assets.
 
 ### Publishing the VS Code extension (one-time setup)
 

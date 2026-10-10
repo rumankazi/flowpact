@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { parseArgs } from 'node:util';
 import {
+  assertSafeWritePath,
   ConfigError,
   createLogger,
   type LoadedConfig,
@@ -83,32 +85,113 @@ export interface CliContext {
   stderr: (s: string) => void;
 }
 
-/**
- * Every value of a flag that may be repeated, in order: `--name v`, `--name=v` and `-x v`. citty keeps only the last
- * one.
- */
-export function repeatedFlag(rawArgs: string[], name: string, alias?: string): string[] {
-  const values: string[] = [];
-  for (let i = 0; i < rawArgs.length; i++) {
-    const a = rawArgs[i]!;
-    if (a === '--') break;
-    if (a === `--${name}` || (alias && a === `-${alias}`)) {
-      const v = rawArgs[i + 1];
-      if (v !== undefined) values.push(v);
-      i++;
-    } else if (a.startsWith(`--${name}=`)) values.push(a.slice(name.length + 3));
-    else if (alias && a.startsWith(`-${alias}=`)) values.push(a.slice(alias.length + 2));
+/** How a command's string flags can be written: `--name`, its camelCase, long aliases, and `-x` for one-letter aliases. */
+function flagSpellings(def: ArgsDef) {
+  const strings = new Map<string, string>(); // spelling without dashes → flag name
+  const shortStrings = new Map<string, string>();
+  for (const [key, arg] of Object.entries(def)) {
+    if (arg.type === 'positional') continue;
+    const alias = 'alias' in arg ? (arg.alias as string | string[] | undefined) : undefined;
+    const aliases = alias === undefined ? [] : Array.isArray(alias) ? alias : [alias];
+    const camel = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    if (arg.type === 'boolean') continue;
+    // citty makes every alias an option of its own, so a one-letter alias also works as `--o`.
+    for (const long of [key, camel, ...aliases]) strings.set(long, key);
+    for (const a of aliases) if (a.length === 1) shortStrings.set(a, key);
   }
-  return values;
+  return { strings, shortStrings };
 }
 
-function countVerbose(rawArgs: string[]): number {
-  let n = 0;
-  for (const a of rawArgs) {
-    if (a === '--verbose') n++;
-    else if (/^-v+$/.test(a)) n += a.length - 1;
+/**
+ * The arguments with every value of a string flag attached to its flag: `--title X` becomes `--title=X`, `-o X` becomes
+ * `-oX`. citty looks for `--no-*`, `--`, `--help` and `--version` before it knows which arguments are values, so a value
+ * such as a pull request title (`--title "--"`, `--title "--help"`) could otherwise turn off `--no-plugins` or end the
+ * run. Options before the command (`flowpact --no-plugins lint`), which citty would drop, are a usage error.
+ */
+export function normalizeArgv(argv: string[], commands: Record<string, { args?: unknown }>): string[] {
+  const [first, ...rest] = argv;
+  const command = argv.findIndex((a) => !a.startsWith('-'));
+  const options = command < 0 ? argv : argv.slice(0, command);
+  // Help and the version need no command: `flowpact --no-color --help` still prints help.
+  if (first === undefined || options.some((a) => ['--help', '-h', '--version', '-V'].includes(a)))
+    return argv;
+  if (first.startsWith('-')) {
+    throw new UsageError(
+      `Options go after the command, e.g. \`flowpact lint ${first}\` (got \`${first}\` before the command).`,
+    );
   }
-  return n;
+  const args = commands[first]?.args;
+  // The language server reads its own arguments (--socket <port>) the way editors pass them.
+  if (first === 'lsp' || !args || typeof args !== 'object') return argv;
+  const { strings, shortStrings } = flagSpellings(args as ArgsDef);
+  const out = [first];
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i]!;
+    const next = rest[i + 1];
+    if (a === '--') {
+      out.push(...rest.slice(i));
+      break;
+    }
+    const long = /^--([^=]+)$/.exec(a)?.[1];
+    if (long !== undefined && strings.has(long) && next !== undefined) {
+      out.push(`--${long}=${next}`);
+      i++;
+      continue;
+    }
+    if (/^-[A-Za-z]+$/.test(a)) {
+      // A cluster of short flags (`-qo`): a string flag takes the rest of it, or the next argument when it is last.
+      const at = [...a.slice(1)].findIndex((c) => shortStrings.has(c));
+      if (at === a.length - 2 && next !== undefined) {
+        // An empty value cannot be attached to a short flag; the long form keeps it.
+        out.push(
+          ...(next === ''
+            ? [...(at ? [a.slice(0, -1)] : []), `--${shortStrings.get(a.at(-1)!)}=`]
+            : [a + next]),
+        );
+        i++;
+        continue;
+      }
+    }
+    out.push(a);
+  }
+  return out;
+}
+
+/**
+ * Every value of a flag that may be repeated (`-o`, `--plugin`), in order; citty keeps only the last one. The arguments
+ * are parsed the way citty parses them — node:util's parseArgs, not strict, with the command's flags and their aliases,
+ * after dropping `--no-*` — so the value of another flag is never taken for this one: in `--title "--plugin=x"`,
+ * `--plugin=x` is the title. A flag without a value (`-o` at the end) is '', as in citty; callers skip it.
+ */
+export function repeatedFlag(rawArgs: string[], def: ArgsDef, name: string): string[] {
+  type Option = { type: 'string' | 'boolean'; short?: string };
+  const options: Record<string, Option> = {};
+  const names = new Set<string>([name]);
+  for (const [key, arg] of Object.entries(def)) {
+    if (arg.type === 'positional') continue;
+    const type = arg.type === 'boolean' ? 'boolean' : 'string';
+    const alias = 'alias' in arg ? (arg.alias as string | string[] | undefined) : undefined;
+    const aliases = alias === undefined ? [] : Array.isArray(alias) ? alias : [alias];
+    const short = aliases.find((a) => a.length === 1);
+    options[key] = { type, ...(short ? { short } : {}) };
+    const camel = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+    for (const long of [camel, ...aliases]) {
+      if (long === key) continue;
+      options[long] ??= { type };
+      if (key === name) names.add(long);
+    }
+  }
+  const end = rawArgs.indexOf('--');
+  const args = rawArgs.filter((a, i) => !(a.startsWith('--no-') && (end < 0 || i < end)));
+  let tokens: ReturnType<typeof parseArgs>['tokens'];
+  try {
+    ({ tokens } = parseArgs({ args, options, allowPositionals: true, strict: false, tokens: true }));
+  } catch {
+    return [];
+  }
+  return (tokens ?? []).flatMap((t) =>
+    t.kind === 'option' && names.has(t.name) ? [typeof t.value === 'string' ? t.value : ''] : [],
+  );
 }
 
 export function stderrSink(color: boolean) {
@@ -149,7 +232,8 @@ export function colorEnabled(
   return flagColor !== false && !noColor && !forceOff && (forceOn || pc.isColorSupported);
 }
 
-export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext {
+/** `def`: the command's flags (citty's `cmd.args`), to read repeated flags as citty reads the others. */
+export function createContext(flags: CommonFlags, rawArgs: string[], def: ArgsDef): CliContext {
   const env = process.env;
   const color = colorEnabled(flags.color, env);
   const isTTY = Boolean(process.stdout.isTTY);
@@ -162,7 +246,8 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
   };
   const resolved = resolveLogLevel({
     debug: Boolean(flags.debug),
-    verbose: countVerbose(rawArgs),
+    // Every -v counts, also in a cluster such as -vvo; read like any flag, so a value never does.
+    verbose: repeatedFlag(rawArgs, def, 'verbose').filter((v) => v !== 'false').length,
     quiet: Boolean(flags.quiet),
   });
   // The CLI keeps info-level progress quiet unless asked for; the report itself is the output.
@@ -188,8 +273,11 @@ export function createContext(flags: CommonFlags, rawArgs: string[]): CliContext
     plain: { ...render, color: false, hyperlinks: false },
     loaded,
     plugins: {
-      config: flags.plugins !== false,
-      extra: repeatedFlag(rawArgs, 'plugin').map((p) => resolve(process.cwd(), p)),
+      // `--no-plugins` anywhere disables them, even where citty would not see it: failing safe.
+      config: flags.plugins !== false && !rawArgs.includes('--no-plugins'),
+      extra: repeatedFlag(rawArgs, def, 'plugin')
+        .filter(Boolean)
+        .map((p) => resolve(process.cwd(), p)),
     },
     stdout: (s) => process.stdout.write(s.endsWith('\n') ? s : `${s}\n`),
     stderr: (s) => process.stderr.write(s.endsWith('\n') ? s : `${s}\n`),
@@ -226,12 +314,22 @@ export function workspacePrefix(root: string, env: NodeJS.ProcessEnv = process.e
   return rel && !rel.startsWith('..') && !isAbsolute(rel) ? rel.split(sep).join('/') : '';
 }
 
-export function writeOutput(file: string, content: string, ctx: CliContext) {
+/** Where files are never written through a symlink a pull request could have committed: the repository, the workspace. */
+export const protectedTrees = (ctx: CliContext): string[] => [
+  ctx.root,
+  ...(process.env.GITHUB_WORKSPACE ? [process.env.GITHUB_WORKSPACE] : []),
+];
+
+/**
+ * Writes a report or a patch. A text report may be printed by a later CI step, so it is kept free of workflow commands;
+ * JSON is written with `jsonSafe` by whoever renders it; a patch is written as is, for `git apply`.
+ */
+export function writeOutput(file: string, content: string, ctx: CliContext, kind: 'text' | 'data' = 'text') {
   const abs = resolve(process.cwd(), file);
+  assertSafeWritePath(abs, protectedTrees(ctx));
   try {
     mkdirSync(dirname(abs), { recursive: true });
-    // A report file may be printed by a later CI step; keep it free of workflow commands too.
-    writeFileSync(abs, neutralizeWorkflowCommands(content));
+    writeFileSync(abs, kind === 'text' ? neutralizeWorkflowCommands(content) : content);
   } catch (err) {
     throw new UsageError(`Cannot write ${file}: ${(err as Error).message}`);
   }

@@ -47,8 +47,10 @@ plugins:
   - ./ci/flowpact-rules.mjs
 ```
 
-The config is validated strictly: unknown keys, unknown rule codes or names, and invalid values are reported with
-their path (exit code `2`); misspelled rule codes and names get a suggestion.
+The config is validated strictly: unknown keys and invalid values are reported with their path (exit code `2`). An
+unknown code with the built-in prefix (`FP` and a digit, such as `FP999`) or a typo of a loaded rule is an error too,
+with a suggestion; other unknown rule names are [ignored with a warning](#rules-that-are-not-loaded), since they may
+belong to a plugin that is not loaded.
 
 ## Editor autocomplete
 
@@ -80,7 +82,7 @@ overrides:
 
 | Key | Required | Description |
 | --- | --- | --- |
-| `rule` | yes | Rule code or name. An unknown rule is a config error. |
+| `rule` | yes | Rule code or name. See [Rules that are not loaded](#rules-that-are-not-loaded) for names no loaded rule has. |
 | `target` | `target` or `file` | The finding's symbol id. `*` matches within a path segment, `**` across segments, e.g. `.github/workflows/*.yml#inputs.legacy-*`. |
 | `file` | `target` or `file` | The file the finding is reported in: a path, a path prefix or a glob. |
 | `reason` | yes | Why the finding is accepted (at least 10 characters). |
@@ -220,8 +222,15 @@ to `true`; the CLI skips them with `--no-plugins`.
 `rules:` and `overrides:` entries for a rule that is not loaded in a run are ignored for that run and listed in a
 warning. That happens when plugins are skipped, or when a repository configures an
 [organization rule](/docs/integrating#organization-rules) that only its organization's wrapper loads: the entry takes
-effect in the wrapper, and plain `flowpact lint` or the editor ignore it. A name that starts with `FP` or is close to a
-loaded rule (`unused-inptu`) is still a config error, so a typo is never hidden.
+effect in the wrapper, and plain `flowpact lint` or the editor ignore it. What is still a config error, so a typo is
+not hidden:
+
+- a code with the built-in prefix (`FP999`, `FP-101`), or a built-in code with a character replaced (`FPl01`);
+- a code one edit from a loaded code with the same prefix (`ACME610` beside a loaded `ACME601`);
+- another spelling of a loaded rule's name (`unusedInput`), or one at most two edits from it (`unused-inptu`).
+
+A code with another prefix (`AC201`, `DP201`) or a name that adds a word to a loaded one (`no-secrets-inherit`) belongs
+to a plugin and is ignored with the warning.
 
 ## Base config
 

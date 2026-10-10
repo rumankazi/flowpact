@@ -5,6 +5,7 @@ import {
   IMPACT_CODES,
   type ImpactLevel,
   ImpactSetupError,
+  jsonSafe,
   prepareImpact,
 } from '@flowpact/core';
 import {
@@ -208,8 +209,9 @@ export async function runReport(
   args: ReportArgs,
   rawArgs: string[],
   command: 'lint' | 'check' | 'impact',
+  def: ArgsDef,
 ): Promise<number> {
-  const ctx = createContext(args, rawArgs);
+  const ctx = createContext(args, rawArgs, def);
   printBanner(
     ctx,
     `root ${displayPath(ctx.root)}${ctx.loaded.file ? ` · config ${ctx.loaded.file}` : ''}${ctx.loaded.base ? ` · base ${ctx.loaded.base.file}` : ''}`,
@@ -222,7 +224,7 @@ export async function runReport(
         .filter(Boolean)
     : undefined;
   // Before the analysis, so a bad -o fails fast.
-  const outputs = repeatedFlag(rawArgs, 'output', 'o');
+  const outputs = repeatedFlag(rawArgs, def, 'output').filter(Boolean);
   if (!outputs.length && args.output) outputs.push(args.output);
   const files = outputs.map(parseOutput);
   const wantImpact = command === 'impact' || Boolean(args.impact);
@@ -268,10 +270,17 @@ export async function runReport(
   };
   if (args.format === 'github') writeWorkflowCommands(render('github', false));
   else ctx.stdout(render(args.format as Format, false));
-  for (const { format, file } of files) writeOutput(file, render(format, true), ctx);
+  for (const { format, file } of files)
+    writeOutput(file, render(format, true), ctx, format === 'json' || format === 'sarif' ? 'data' : 'text');
   if (args['dump-graph'])
-    writeOutput(args['dump-graph'], `${JSON.stringify(result.index.toJSON(), null, 2)}\n`, ctx);
-  if (args.patch && result.contracts?.drift) writeOutput(args.patch, contractPatch(result.contracts), ctx);
+    writeOutput(
+      args['dump-graph'],
+      jsonSafe(`${JSON.stringify(result.index.toJSON(), null, 2)}\n`),
+      ctx,
+      'data',
+    );
+  if (args.patch && result.contracts?.drift)
+    writeOutput(args.patch, contractPatch(result.contracts), ctx, 'data');
   return exitCodeFor(result.summary, args['fail-on'] as 'error' | 'warning' | 'never');
 }
 
@@ -281,5 +290,6 @@ export const lintCommand = defineCommand({
     description: 'Analyze workflows and local actions: inputs, secrets, outputs, matrices and call structure',
   },
   args: reportArgs,
-  run: ({ args, rawArgs }) => guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'lint')),
+  run: ({ args, rawArgs, cmd }) =>
+    guard(() => runReport(args as unknown as ReportArgs, rawArgs, 'lint', cmd.args as ArgsDef)),
 });

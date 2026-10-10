@@ -237,6 +237,16 @@ describe('flowpact impact baselines and policy', () => {
     expect(r.stderr).not.toContain('they apply after it is merged');
   });
 
+  it("ignores the baseline config's rule settings, which a pull request may be fixing", async () => {
+    const config = '.github/flowpact/flowpact.config.yml';
+    const root = repo(
+      { [WF]: reusable('Test'), [config]: 'rules:\n  unused-inptu: off\n' },
+      { [WF]: reusable('Unit tests'), [config]: 'rules:\n  unused-input: off\n' },
+    );
+    const r = await flowpact(root, ['impact', '--base', 'main', '--title', 'fix!: rename the test check']);
+    expect(r.exitCode).toBe(0);
+  });
+
   it('falls back to the default policy when the baseline config is invalid', async () => {
     const config = '.github/flowpact/flowpact.config.yml';
     const root = repo(

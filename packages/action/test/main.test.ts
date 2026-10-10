@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -279,6 +280,17 @@ describe('lint mode', () => {
         r.locations.map((l) => l.physicalLocation.artifactLocation.uri),
     );
     expect(uris).toEqual(['sub/.github/workflows/tests.yml']);
+  });
+
+  it('refuses to write a report through a symlink in the checkout', async () => {
+    const { workspace } = repoFrom('incident-matrix');
+    const outside = join(mkdtempSync(join(tmpdir(), 'flowpact-action-out-')), 'target.txt');
+    writeFileSync(outside, 'keep');
+    symlinkSync(outside, join(workspace, 'flowpact.sarif'));
+    const s = await action(workspace, { 'report-sarif': 'flowpact.sarif' });
+    expect(s.failed).toHaveLength(1);
+    expect(s.failed[0]).toContain('is a symlink, or links outside');
+    expect(readFileSync(outside, 'utf8')).toBe('keep');
   });
 });
 

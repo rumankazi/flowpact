@@ -6,6 +6,32 @@ description: What changes between flowpact releases, and what to do when you mov
 flowpact is before 1.0: a minor release (0.7 → 0.8) can change what is reported. Each section below lists what to do
 when you move to that release.
 
+## 0.8 → 0.9
+
+0.9 is for organizations that run flowpact in their own action or CI template ([Build on flowpact](/docs/integrating)):
+GitHub annotations from the CLI, several reports from one run, `--plugin` and `--no-plugins`, and a
+[base config](/docs/configuration#base-config). One change can fail a CI run: options must come after the command.
+
+### Move to the new version
+
+- **GitHub Action:** `uses: rumankazi/flowpact@v0.9`. Before 1.0 the floating tag follows a minor release, so `@v0.8`
+  stays on 0.8.
+- **CLI:** `npx flowpact@0.9`, or update the dev dependency.
+- **VS Code:** the extension updates itself.
+
+### Put options after the command
+
+Before 0.9, an option written before the command was dropped without a word: `flowpact --no-plugins lint` ran with the
+repository's plugins, and `flowpact -q lint` was not quiet. 0.9 stops with a usage error (exit `2`) instead. Write
+`flowpact lint --no-plugins`. `flowpact --help` and `flowpact --version` work as before.
+
+### Config entries for rules that are not loaded
+
+A `rules:` or `overrides:` entry for a rule that no loaded plugin defines used to stop the run with a config error. 0.9
+ignores it with a warning, so a repository can configure organization rules that only its organization's wrapper
+loads. An unknown code with the built-in prefix (`FP999`), or a typo of a loaded rule (`unused-inptu`), is still an
+error; see [Rules that are not loaded](/docs/configuration#rules-that-are-not-loaded).
+
 ## 0.7 → 0.8
 
 0.8 removes most false positives found on 28 large public repositories, so most repositories see fewer findings.

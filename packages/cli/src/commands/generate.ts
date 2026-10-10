@@ -8,7 +8,7 @@ import {
   writeContracts,
 } from '@flowpact/core';
 import { renderContractPlan, renderPatch } from '@flowpact/reporters';
-import { defineCommand } from 'citty';
+import { type ArgsDef, defineCommand } from 'citty';
 import { runAnalysis } from '../analysis';
 import {
   checkTargets,
@@ -20,6 +20,7 @@ import {
   pathArgs,
   pluginArgs,
   printBanner,
+  protectedTrees,
   UsageError,
   writeOutput,
 } from '../shared';
@@ -54,9 +55,9 @@ export const generateCommand = defineCommand({
       valueHint: 'dir',
     },
   },
-  run: ({ args, rawArgs }) =>
+  run: ({ args, rawArgs, cmd }) =>
     guard(async () => {
-      const ctx = createContext(args, rawArgs);
+      const ctx = createContext(args, rawArgs, cmd.args as ArgsDef);
       printBanner(ctx, `root ${displayPath(ctx.root)}`);
       const paths = pathArgs(args._, 'generate', ctx.root);
       const result = await runAnalysis(ctx, { paths, only: [], validateSchema: false });
@@ -75,14 +76,14 @@ export const generateCommand = defineCommand({
       const dryRun = Boolean(args['dry-run']);
       const out = args.out ? resolve(process.cwd(), args.out) : undefined;
       // Write first, so the summary never claims files that were refused.
-      const written = dryRun || args.patch ? [] : writeContracts(ctx.root, plan, out);
+      const written = dryRun || args.patch ? [] : writeContracts(ctx.root, plan, out, protectedTrees(ctx));
       ctx.stdout(renderContractPlan(plan, ctx.render, { applied: !dryRun && !args.patch }));
       if (dryRun) {
         if (plan.drift) ctx.stdout(renderPatch(contractPatch(plan), ctx.render));
         return EXIT.ok;
       }
       if (args.patch) {
-        writeOutput(args.patch, contractPatch(plan), ctx);
+        writeOutput(args.patch, contractPatch(plan), ctx, 'data');
         return EXIT.ok;
       }
       ctx.logger.info(`wrote ${written.length} contract file(s)`, { files: written });

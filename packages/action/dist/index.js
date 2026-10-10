@@ -2159,9 +2159,9 @@ var require_dispatcher_base = __commonJS({
       }
       close(callback) {
         if (callback === void 0) {
-          return new Promise((resolve6, reject2) => {
+          return new Promise((resolve7, reject2) => {
             this.close((err, data) => {
-              return err ? reject2(err) : resolve6(data);
+              return err ? reject2(err) : resolve7(data);
             });
           });
         }
@@ -2199,12 +2199,12 @@ var require_dispatcher_base = __commonJS({
           err = null;
         }
         if (callback === void 0) {
-          return new Promise((resolve6, reject2) => {
+          return new Promise((resolve7, reject2) => {
             this.destroy(err, (err2, data) => {
               return err2 ? (
                 /* istanbul ignore next: should never error */
                 reject2(err2)
-              ) : resolve6(data);
+              ) : resolve7(data);
             });
           });
         }
@@ -4471,8 +4471,8 @@ var require_util2 = __commonJS({
     function createDeferredPromise() {
       let res;
       let rej;
-      const promise2 = new Promise((resolve6, reject2) => {
-        res = resolve6;
+      const promise2 = new Promise((resolve7, reject2) => {
+        res = resolve7;
         rej = reject2;
       });
       return { promise: promise2, resolve: res, reject: rej };
@@ -6724,12 +6724,12 @@ upgrade: ${upgrade}\r
           cb();
         }
       }
-      const waitForDrain = () => new Promise((resolve6, reject2) => {
+      const waitForDrain = () => new Promise((resolve7, reject2) => {
         assert3(callback === null);
         if (socket[kError]) {
           reject2(socket[kError]);
         } else {
-          callback = resolve6;
+          callback = resolve7;
         }
       });
       socket.on("close", onDrain).on("drain", onDrain);
@@ -7401,12 +7401,12 @@ var require_client_h2 = __commonJS({
           cb();
         }
       }
-      const waitForDrain = () => new Promise((resolve6, reject2) => {
+      const waitForDrain = () => new Promise((resolve7, reject2) => {
         assert3(callback === null);
         if (socket[kError]) {
           reject2(socket[kError]);
         } else {
-          callback = resolve6;
+          callback = resolve7;
         }
       });
       h2stream.on("close", onDrain).on("drain", onDrain);
@@ -7884,16 +7884,16 @@ var require_client = __commonJS({
         return this[kNeedDrain] < 2;
       }
       async [kClose]() {
-        return new Promise((resolve6) => {
+        return new Promise((resolve7) => {
           if (this[kSize]) {
-            this[kClosedResolve] = resolve6;
+            this[kClosedResolve] = resolve7;
           } else {
-            resolve6(null);
+            resolve7(null);
           }
         });
       }
       async [kDestroy](err) {
-        return new Promise((resolve6) => {
+        return new Promise((resolve7) => {
           const requests = this[kQueue].splice(this[kPendingIdx]);
           for (let i = 0; i < requests.length; i++) {
             const request2 = requests[i];
@@ -7904,7 +7904,7 @@ var require_client = __commonJS({
               this[kClosedResolve]();
               this[kClosedResolve] = null;
             }
-            resolve6(null);
+            resolve7(null);
           };
           if (this[kHTTPContext]) {
             this[kHTTPContext].destroy(err, callback);
@@ -7955,7 +7955,7 @@ var require_client = __commonJS({
         });
       }
       try {
-        const socket = await new Promise((resolve6, reject2) => {
+        const socket = await new Promise((resolve7, reject2) => {
           client2[kConnector]({
             host,
             hostname: hostname3,
@@ -7967,7 +7967,7 @@ var require_client = __commonJS({
             if (err) {
               reject2(err);
             } else {
-              resolve6(socket2);
+              resolve7(socket2);
             }
           });
         });
@@ -8304,8 +8304,8 @@ var require_pool_base = __commonJS({
         if (this[kQueue].isEmpty()) {
           await Promise.all(this[kClients].map((c) => c.close()));
         } else {
-          await new Promise((resolve6) => {
-            this[kClosedResolve] = resolve6;
+          await new Promise((resolve7) => {
+            this[kClosedResolve] = resolve7;
           });
         }
       }
@@ -9571,7 +9571,7 @@ var require_readable = __commonJS({
         if (this._readableState.closeEmitted) {
           return null;
         }
-        return await new Promise((resolve6, reject2) => {
+        return await new Promise((resolve7, reject2) => {
           if (this[kContentLength] > limit) {
             this.destroy(new AbortError3());
           }
@@ -9584,7 +9584,7 @@ var require_readable = __commonJS({
             if (signal?.aborted) {
               reject2(signal.reason ?? new AbortError3());
             } else {
-              resolve6(null);
+              resolve7(null);
             }
           }).on("error", noop3).on("data", function(chunk) {
             limit -= chunk.length;
@@ -9603,7 +9603,7 @@ var require_readable = __commonJS({
     }
     async function consume(stream4, type) {
       assert3(!stream4[kConsume]);
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         if (isUnusable(stream4)) {
           const rState = stream4._readableState;
           if (rState.destroyed && rState.closeEmitted === false) {
@@ -9620,7 +9620,7 @@ var require_readable = __commonJS({
             stream4[kConsume] = {
               type,
               stream: stream4,
-              resolve: resolve6,
+              resolve: resolve7,
               reject: reject2,
               length: 0,
               body: []
@@ -9690,18 +9690,18 @@ var require_readable = __commonJS({
       return buffer2;
     }
     function consumeEnd(consume2) {
-      const { type, body: body2, resolve: resolve6, stream: stream4, length } = consume2;
+      const { type, body: body2, resolve: resolve7, stream: stream4, length } = consume2;
       try {
         if (type === "text") {
-          resolve6(chunksDecode(body2, length));
+          resolve7(chunksDecode(body2, length));
         } else if (type === "json") {
-          resolve6(JSON.parse(chunksDecode(body2, length)));
+          resolve7(JSON.parse(chunksDecode(body2, length)));
         } else if (type === "arrayBuffer") {
-          resolve6(chunksConcat(body2, length).buffer);
+          resolve7(chunksConcat(body2, length).buffer);
         } else if (type === "blob") {
-          resolve6(new Blob(body2, { type: stream4[kContentType] }));
+          resolve7(new Blob(body2, { type: stream4[kContentType] }));
         } else if (type === "bytes") {
-          resolve6(chunksConcat(body2, length));
+          resolve7(chunksConcat(body2, length));
         }
         consumeFinish(consume2);
       } catch (err) {
@@ -9959,9 +9959,9 @@ var require_api_request = __commonJS({
     };
     function request2(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           request2.call(this, opts, (err, data) => {
-            return err ? reject2(err) : resolve6(data);
+            return err ? reject2(err) : resolve7(data);
           });
         });
       }
@@ -10185,9 +10185,9 @@ var require_api_stream = __commonJS({
     };
     function stream4(opts, factory, callback) {
       if (callback === void 0) {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           stream4.call(this, opts, factory, (err, data) => {
-            return err ? reject2(err) : resolve6(data);
+            return err ? reject2(err) : resolve7(data);
           });
         });
       }
@@ -10472,9 +10472,9 @@ var require_api_upgrade = __commonJS({
     };
     function upgrade(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           upgrade.call(this, opts, (err, data) => {
-            return err ? reject2(err) : resolve6(data);
+            return err ? reject2(err) : resolve7(data);
           });
         });
       }
@@ -10566,9 +10566,9 @@ var require_api_connect = __commonJS({
     };
     function connect(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           connect.call(this, opts, (err, data) => {
-            return err ? reject2(err) : resolve6(data);
+            return err ? reject2(err) : resolve7(data);
           });
         });
       }
@@ -14430,7 +14430,7 @@ var require_fetch = __commonJS({
       function dispatch({ body: body2 }) {
         const url3 = requestCurrentURL(request2);
         const agent = fetchParams.controller.dispatcher;
-        return new Promise((resolve6, reject2) => agent.dispatch(
+        return new Promise((resolve7, reject2) => agent.dispatch(
           {
             path: url3.pathname + url3.search,
             origin: url3.origin,
@@ -14506,7 +14506,7 @@ var require_fetch = __commonJS({
                 }
               }
               const onError = this.onError.bind(this);
-              resolve6({
+              resolve7({
                 status,
                 statusText,
                 headersList,
@@ -14552,7 +14552,7 @@ var require_fetch = __commonJS({
               for (let i = 0; i < rawHeaders.length; i += 2) {
                 headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i]), rawHeaders[i + 1].toString("latin1"), true);
               }
-              resolve6({
+              resolve7({
                 status,
                 statusText: STATUS_CODES[status],
                 headersList,
@@ -18283,8 +18283,8 @@ var require_util8 = __commonJS({
       return true;
     }
     function delay4(ms) {
-      return new Promise((resolve6) => {
-        setTimeout(resolve6, ms).unref();
+      return new Promise((resolve7) => {
+        setTimeout(resolve7, ms).unref();
       });
     }
     module.exports = {
@@ -19994,8 +19994,8 @@ var require_helpers = __commonJS({
     function req(url3, opts = {}) {
       const href = typeof url3 === "string" ? url3 : url3.href;
       const req2 = (href.startsWith("https:") ? https3 : http3).request(url3, opts);
-      const promise2 = new Promise((resolve6, reject2) => {
-        req2.once("response", resolve6).once("error", reject2).end();
+      const promise2 = new Promise((resolve7, reject2) => {
+        req2.once("response", resolve7).once("error", reject2).end();
       });
       req2.then = promise2.then.bind(promise2);
       return req2;
@@ -20172,7 +20172,7 @@ var require_parse_proxy_response = __commonJS({
     var debug_1 = __importDefault(require_src());
     var debug2 = (0, debug_1.default)("https-proxy-agent:parse-proxy-response");
     function parseProxyResponse(socket) {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         let buffersLength = 0;
         const buffers = [];
         function read() {
@@ -20238,7 +20238,7 @@ var require_parse_proxy_response = __commonJS({
           }
           debug2("got proxy server response: %o %o", firstLine, headers);
           cleanup();
-          resolve6({
+          resolve7({
             connect: {
               statusCode,
               statusText,
@@ -21532,9 +21532,9 @@ var require_readdir_glob = __commonJS({
     var fs8 = __require("fs");
     var { EventEmitter: EventEmitter3 } = __require("events");
     var { Minimatch } = require_minimatch();
-    var { resolve: resolve6 } = __require("path");
+    var { resolve: resolve7 } = __require("path");
     function readdir2(dir2, strict) {
-      return new Promise((resolve7, reject2) => {
+      return new Promise((resolve8, reject2) => {
         fs8.readdir(dir2, { withFileTypes: true }, (err, files) => {
           if (err) {
             switch (err.code) {
@@ -21542,7 +21542,7 @@ var require_readdir_glob = __commonJS({
                 if (strict) {
                   reject2(err);
                 } else {
-                  resolve7([]);
+                  resolve8([]);
                 }
                 break;
               case "ENOTSUP":
@@ -21552,7 +21552,7 @@ var require_readdir_glob = __commonJS({
               case "ENAMETOOLONG":
               // Filename too long
               case "UNKNOWN":
-                resolve7([]);
+                resolve8([]);
                 break;
               case "ELOOP":
               // Too many levels of symbolic links
@@ -21561,30 +21561,30 @@ var require_readdir_glob = __commonJS({
                 break;
             }
           } else {
-            resolve7(files);
+            resolve8(files);
           }
         });
       });
     }
     function stat2(file2, followSymlinks) {
-      return new Promise((resolve7, reject2) => {
+      return new Promise((resolve8, reject2) => {
         const statFunc = followSymlinks ? fs8.stat : fs8.lstat;
         statFunc(file2, (err, stats) => {
           if (err) {
             switch (err.code) {
               case "ENOENT":
                 if (followSymlinks) {
-                  resolve7(stat2(file2, false));
+                  resolve8(stat2(file2, false));
                 } else {
-                  resolve7(null);
+                  resolve8(null);
                 }
                 break;
               default:
-                resolve7(null);
+                resolve8(null);
                 break;
             }
           } else {
-            resolve7(stats);
+            resolve8(stats);
           }
         });
       });
@@ -21598,8 +21598,8 @@ var require_readdir_glob = __commonJS({
           useStat = true;
         }
         const filename = dir2 + "/" + name;
-        const relative5 = filename.slice(1);
-        const absolute = path4 + "/" + relative5;
+        const relative6 = filename.slice(1);
+        const absolute = path4 + "/" + relative6;
         let stats = null;
         if (useStat || followSymlinks) {
           stats = await stat2(absolute, followSymlinks);
@@ -21611,12 +21611,12 @@ var require_readdir_glob = __commonJS({
           stats = { isDirectory: () => false };
         }
         if (stats.isDirectory()) {
-          if (!shouldSkip(relative5)) {
-            yield { relative: relative5, absolute, stats };
+          if (!shouldSkip(relative6)) {
+            yield { relative: relative6, absolute, stats };
             yield* exploreWalkAsync(filename, path4, followSymlinks, useStat, shouldSkip, false);
           }
         } else {
-          yield { relative: relative5, absolute, stats };
+          yield { relative: relative6, absolute, stats };
         }
       }
     }
@@ -21674,7 +21674,7 @@ var require_readdir_glob = __commonJS({
             (skip) => new Minimatch(skip, { dot: true })
           );
         }
-        this.iterator = explore(resolve6(cwd || "."), this.options.follow, this.options.stat, this._shouldSkipDirectory.bind(this));
+        this.iterator = explore(resolve7(cwd || "."), this.options.follow, this.options.stat, this._shouldSkipDirectory.bind(this));
         this.paused = false;
         this.inactive = false;
         this.aborted = false;
@@ -21686,11 +21686,11 @@ var require_readdir_glob = __commonJS({
         }
         setTimeout(() => this._next(), 0);
       }
-      _shouldSkipDirectory(relative5) {
-        return this.skipMatchers.some((m) => m.match(relative5));
+      _shouldSkipDirectory(relative6) {
+        return this.skipMatchers.some((m) => m.match(relative6));
       }
-      _fileMatches(relative5, isDirectory2) {
-        const file2 = relative5 + (isDirectory2 ? "/" : "");
+      _fileMatches(relative6, isDirectory2) {
+        const file2 = relative6 + (isDirectory2 ? "/" : "");
         return (this.matchers.length === 0 || this.matchers.some((m) => m.match(file2))) && !this.ignoreMatchers.some((m) => m.match(file2)) && (!this.options.nodir || !isDirectory2);
       }
       _next() {
@@ -21699,16 +21699,16 @@ var require_readdir_glob = __commonJS({
             if (!obj.done) {
               const isDirectory2 = obj.value.stats.isDirectory();
               if (this._fileMatches(obj.value.relative, isDirectory2)) {
-                let relative5 = obj.value.relative;
+                let relative6 = obj.value.relative;
                 let absolute = obj.value.absolute;
                 if (this.options.mark && isDirectory2) {
-                  relative5 += "/";
+                  relative6 += "/";
                   absolute += "/";
                 }
                 if (this.options.stat) {
-                  this.emit("match", { relative: relative5, absolute, stat: obj.value.stats });
+                  this.emit("match", { relative: relative6, absolute, stat: obj.value.stats });
                 } else {
-                  this.emit("match", { relative: relative5, absolute });
+                  this.emit("match", { relative: relative6, absolute });
                 }
               }
               this._next(this.iterator);
@@ -21928,10 +21928,10 @@ function awaitify(asyncFn, arity) {
     if (typeof args[arity - 1] === "function") {
       return asyncFn.apply(this, args);
     }
-    return new Promise((resolve6, reject2) => {
+    return new Promise((resolve7, reject2) => {
       args[arity - 1] = (err, ...cbArgs) => {
         if (err) return reject2(err);
-        resolve6(cbArgs.length > 1 ? cbArgs : cbArgs[0]);
+        resolve7(cbArgs.length > 1 ? cbArgs : cbArgs[0]);
       };
       asyncFn.apply(this, args);
     });
@@ -22113,13 +22113,13 @@ function mapSeries(coll, iteratee, callback) {
   return _asyncMap(eachOfSeries$1, coll, iteratee, callback);
 }
 function promiseCallback() {
-  let resolve6, reject2;
+  let resolve7, reject2;
   function callback(err, ...args) {
     if (err) return reject2(err);
-    resolve6(args.length > 1 ? args : args[0]);
+    resolve7(args.length > 1 ? args : args[0]);
   }
   callback[PROMISE_SYMBOL] = new Promise((res, rej) => {
-    resolve6 = res, reject2 = rej;
+    resolve7 = res, reject2 = rej;
   });
   return callback;
 }
@@ -22392,8 +22392,8 @@ function queue$1(worker, concurrency, payload) {
       });
     }
     if (rejectOnError || !callback) {
-      return new Promise((resolve6, reject2) => {
-        res = resolve6;
+      return new Promise((resolve7, reject2) => {
+        res = resolve7;
         rej = reject2;
       });
     }
@@ -22432,10 +22432,10 @@ function queue$1(worker, concurrency, payload) {
   }
   const eventMethod = (name) => (handler2) => {
     if (!handler2) {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         once2(name, (err, data) => {
           if (err) return reject2(err);
-          resolve6(data);
+          resolve7(data);
         });
       });
     }
@@ -27269,8 +27269,8 @@ var require_primordials = __commonJS({
       ArrayPrototypeIndexOf(self2, el) {
         return self2.indexOf(el);
       },
-      ArrayPrototypeJoin(self2, sep4) {
-        return self2.join(sep4);
+      ArrayPrototypeJoin(self2, sep5) {
+        return self2.join(sep5);
       },
       ArrayPrototypeMap(self2, fn) {
         return self2.map(fn);
@@ -28441,25 +28441,25 @@ var require_util10 = __commonJS({
         };
       },
       createDeferredPromise: function() {
-        let resolve6;
+        let resolve7;
         let reject2;
         const promise2 = new Promise((res, rej) => {
-          resolve6 = res;
+          resolve7 = res;
           reject2 = rej;
         });
         return {
           promise: promise2,
-          resolve: resolve6,
+          resolve: resolve7,
           reject: reject2
         };
       },
       promisify(fn) {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           fn((err, ...args) => {
             if (err) {
               return reject2(err);
             }
-            return resolve6(...args);
+            return resolve7(...args);
           });
         });
       },
@@ -29251,7 +29251,7 @@ var require_end_of_stream = __commonJS({
         validateBoolean(opts.cleanup, "cleanup");
         autoCleanup = opts.cleanup;
       }
-      return new Promise2((resolve6, reject2) => {
+      return new Promise2((resolve7, reject2) => {
         const cleanup = eos(stream4, opts, (err) => {
           if (autoCleanup) {
             cleanup();
@@ -29259,7 +29259,7 @@ var require_end_of_stream = __commonJS({
           if (err) {
             reject2(err);
           } else {
-            resolve6();
+            resolve7();
           }
         });
       });
@@ -30426,7 +30426,7 @@ var require_readable3 = __commonJS({
         error63 = this.readableEnded ? null : new AbortError3();
         this.destroy(error63);
       }
-      return new Promise2((resolve6, reject2) => eos(this, (err) => err && err !== error63 ? reject2(err) : resolve6(null)));
+      return new Promise2((resolve7, reject2) => eos(this, (err) => err && err !== error63 ? reject2(err) : resolve7(null)));
     };
     Readable7.prototype.push = function(chunk, encoding) {
       return readableAddChunk(this, chunk, encoding, false);
@@ -30970,12 +30970,12 @@ var require_readable3 = __commonJS({
     }
     async function* createAsyncIterator(stream4, options) {
       let callback = nop;
-      function next(resolve6) {
+      function next(resolve7) {
         if (this === stream4) {
           callback();
           callback = nop;
         } else {
-          callback = resolve6;
+          callback = resolve7;
         }
       }
       stream4.on("readable", next);
@@ -32028,7 +32028,7 @@ var require_duplexify = __commonJS({
       );
     };
     function fromAsyncGen(fn) {
-      let { promise: promise2, resolve: resolve6 } = createDeferredPromise();
+      let { promise: promise2, resolve: resolve7 } = createDeferredPromise();
       const ac = new AbortController2();
       const signal = ac.signal;
       const value = fn(
@@ -32043,7 +32043,7 @@ var require_duplexify = __commonJS({
               throw new AbortError3(void 0, {
                 cause: signal.reason
               });
-            ({ promise: promise2, resolve: resolve6 } = createDeferredPromise());
+            ({ promise: promise2, resolve: resolve7 } = createDeferredPromise());
             yield chunk;
           }
         })(),
@@ -32054,8 +32054,8 @@ var require_duplexify = __commonJS({
       return {
         value,
         write(chunk, encoding, cb) {
-          const _resolve = resolve6;
-          resolve6 = null;
+          const _resolve = resolve7;
+          resolve7 = null;
           _resolve({
             chunk,
             done: false,
@@ -32063,8 +32063,8 @@ var require_duplexify = __commonJS({
           });
         },
         final(cb) {
-          const _resolve = resolve6;
-          resolve6 = null;
+          const _resolve = resolve7;
+          resolve7 = null;
           _resolve({
             done: true,
             cb
@@ -32516,7 +32516,7 @@ var require_pipeline = __commonJS({
           callback();
         }
       };
-      const wait = () => new Promise2((resolve6, reject2) => {
+      const wait = () => new Promise2((resolve7, reject2) => {
         if (error63) {
           reject2(error63);
         } else {
@@ -32524,7 +32524,7 @@ var require_pipeline = __commonJS({
             if (error63) {
               reject2(error63);
             } else {
-              resolve6();
+              resolve7();
             }
           };
         }
@@ -33168,8 +33168,8 @@ var require_operators = __commonJS({
                 next = null;
               }
               if (!done && (queue2.length >= highWaterMark || cnt >= concurrency)) {
-                await new Promise2((resolve6) => {
-                  resume = resolve6;
+                await new Promise2((resolve7) => {
+                  resume = resolve7;
                 });
               }
             }
@@ -33203,8 +33203,8 @@ var require_operators = __commonJS({
               queue2.shift();
               maybeResume();
             }
-            await new Promise2((resolve6) => {
-              next = resolve6;
+            await new Promise2((resolve7) => {
+              next = resolve7;
             });
           }
         } finally {
@@ -33462,7 +33462,7 @@ var require_promises = __commonJS({
     var { finished } = require_end_of_stream();
     require_stream2();
     function pipeline(...streams) {
-      return new Promise2((resolve6, reject2) => {
+      return new Promise2((resolve7, reject2) => {
         let signal;
         let end;
         const lastArg = streams[streams.length - 1];
@@ -33477,7 +33477,7 @@ var require_promises = __commonJS({
             if (err) {
               reject2(err);
             } else {
-              resolve6(value);
+              resolve7(value);
             }
           },
           {
@@ -38250,10 +38250,10 @@ var require_commonjs3 = __commonJS({
        * Return a void Promise that resolves once the stream ends.
        */
       async promise() {
-        return new Promise((resolve6, reject2) => {
+        return new Promise((resolve7, reject2) => {
           this.on(DESTROYED, () => reject2(new Error("stream destroyed")));
           this.on("error", (er) => reject2(er));
-          this.on("end", () => resolve6());
+          this.on("end", () => resolve7());
         });
       }
       /**
@@ -38277,7 +38277,7 @@ var require_commonjs3 = __commonJS({
             return Promise.resolve({ done: false, value: res });
           if (this[EOF])
             return stop();
-          let resolve6;
+          let resolve7;
           let reject2;
           const onerr = (er) => {
             this.off("data", ondata);
@@ -38291,19 +38291,19 @@ var require_commonjs3 = __commonJS({
             this.off("end", onend);
             this.off(DESTROYED, ondestroy);
             this.pause();
-            resolve6({ value, done: !!this[EOF] });
+            resolve7({ value, done: !!this[EOF] });
           };
           const onend = () => {
             this.off("error", onerr);
             this.off("data", ondata);
             this.off(DESTROYED, ondestroy);
             stop();
-            resolve6({ done: true, value: void 0 });
+            resolve7({ done: true, value: void 0 });
           };
           const ondestroy = () => onerr(new Error("stream destroyed"));
           return new Promise((res2, rej) => {
             reject2 = rej;
-            resolve6 = res2;
+            resolve7 = res2;
             this.once(DESTROYED, ondestroy);
             this.once("error", onerr);
             this.once("end", onend);
@@ -38444,7 +38444,7 @@ var require_commonjs4 = __commonJS({
     var node_url_1 = __require("url");
     var fs_1 = __require("fs");
     var actualFS = __importStar(__require("fs"));
-    var realpathSync2 = fs_1.realpathSync.native;
+    var realpathSync3 = fs_1.realpathSync.native;
     var promises_1 = __require("fs/promises");
     var minipass_1 = require_commonjs3();
     var defaultFS = {
@@ -38452,7 +38452,7 @@ var require_commonjs4 = __commonJS({
       readdir: fs_1.readdir,
       readdirSync: fs_1.readdirSync,
       readlinkSync: fs_1.readlinkSync,
-      realpathSync: realpathSync2,
+      realpathSync: realpathSync3,
       promises: {
         lstat: promises_1.lstat,
         readdir: promises_1.readdir,
@@ -39319,9 +39319,9 @@ var require_commonjs4 = __commonJS({
         if (this.#asyncReaddirInFlight) {
           await this.#asyncReaddirInFlight;
         } else {
-          let resolve6 = () => {
+          let resolve7 = () => {
           };
-          this.#asyncReaddirInFlight = new Promise((res) => resolve6 = res);
+          this.#asyncReaddirInFlight = new Promise((res) => resolve7 = res);
           try {
             for (const e of await this.#fs.promises.readdir(fullpath, {
               withFileTypes: true
@@ -39334,7 +39334,7 @@ var require_commonjs4 = __commonJS({
             children.provisional = 0;
           }
           this.#asyncReaddirInFlight = void 0;
-          resolve6();
+          resolve7();
         }
         return children.slice(0, children.provisional);
       }
@@ -39567,7 +39567,7 @@ var require_commonjs4 = __commonJS({
        *
        * @internal
        */
-      constructor(cwd = process.cwd(), pathImpl, sep4, { nocase, childrenCacheSize = 16 * 1024, fs: fs8 = defaultFS } = {}) {
+      constructor(cwd = process.cwd(), pathImpl, sep5, { nocase, childrenCacheSize = 16 * 1024, fs: fs8 = defaultFS } = {}) {
         this.#fs = fsFromOption(fs8);
         if (cwd instanceof URL || cwd.startsWith("file://")) {
           cwd = (0, node_url_1.fileURLToPath)(cwd);
@@ -39578,7 +39578,7 @@ var require_commonjs4 = __commonJS({
         this.#resolveCache = new ResolveCache();
         this.#resolvePosixCache = new ResolveCache();
         this.#children = new ChildrenCache(childrenCacheSize);
-        const split = cwdPath.substring(this.rootPath.length).split(sep4);
+        const split = cwdPath.substring(this.rootPath.length).split(sep5);
         if (split.length === 1 && !split[0]) {
           split.pop();
         }
@@ -40421,10 +40421,10 @@ var require_ignore = __commonJS({
       ignored(p) {
         const fullpath = p.fullpath();
         const fullpaths = `${fullpath}/`;
-        const relative5 = p.relative() || ".";
-        const relatives = `${relative5}/`;
+        const relative6 = p.relative() || ".";
+        const relatives = `${relative6}/`;
         for (const m of this.relative) {
-          if (m.match(relative5) || m.match(relatives))
+          if (m.match(relative6) || m.match(relatives))
             return true;
         }
         for (const m of this.absolute) {
@@ -40435,9 +40435,9 @@ var require_ignore = __commonJS({
       }
       childrenIgnored(p) {
         const fullpath = p.fullpath() + "/";
-        const relative5 = (p.relative() || ".") + "/";
+        const relative6 = (p.relative() || ".") + "/";
         for (const m of this.relativeChildren) {
-          if (m.match(relative5))
+          if (m.match(relative6))
             return true;
         }
         for (const m of this.absoluteChildren) {
@@ -42107,11 +42107,11 @@ var require_core = __commonJS({
         this._finalize();
       }
       var self2 = this;
-      return new Promise(function(resolve6, reject2) {
+      return new Promise(function(resolve7, reject2) {
         var errored;
         self2._module.on("end", function() {
           if (!errored) {
-            resolve6();
+            resolve7();
           }
         });
         self2._module.on("error", function(err) {
@@ -44645,8 +44645,8 @@ var require_streamx = __commonJS({
             return this;
           },
           next() {
-            return new Promise(function(resolve6, reject2) {
-              promiseResolve = resolve6;
+            return new Promise(function(resolve7, reject2) {
+              promiseResolve = resolve7;
               promiseReject = reject2;
               const data = stream4.read();
               if (data !== null) ondata(data);
@@ -44679,11 +44679,11 @@ var require_streamx = __commonJS({
         }
         function destroy2(err) {
           stream4.destroy(err);
-          return new Promise((resolve6, reject2) => {
-            if (stream4._duplexState & DESTROYED) return resolve6({ value: void 0, done: true });
+          return new Promise((resolve7, reject2) => {
+            if (stream4._duplexState & DESTROYED) return resolve7({ value: void 0, done: true });
             stream4.once("close", function() {
               if (err) reject2(err);
-              else resolve6({ value: void 0, done: true });
+              else resolve7({ value: void 0, done: true });
             });
           });
         }
@@ -44727,8 +44727,8 @@ var require_streamx = __commonJS({
         const writes = pending + (ws._duplexState & WRITE_WRITING ? 1 : 0);
         if (writes === 0) return Promise.resolve(true);
         if (state3.drains === null) state3.drains = [];
-        return new Promise((resolve6) => {
-          state3.drains.push({ writes, resolve: resolve6 });
+        return new Promise((resolve7) => {
+          state3.drains.push({ writes, resolve: resolve7 });
         });
       }
       write(data) {
@@ -44833,10 +44833,10 @@ var require_streamx = __commonJS({
       cb(null);
     }
     function pipelinePromise(...streams) {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         return pipeline(...streams, (err) => {
           if (err) return reject2(err);
-          resolve6();
+          resolve7();
         });
       });
     }
@@ -45508,16 +45508,16 @@ var require_extract = __commonJS({
           entryCallback = null;
           cb(err);
         }
-        function onnext(resolve6, reject2) {
+        function onnext(resolve7, reject2) {
           if (error63) {
             return reject2(error63);
           }
           if (entryStream) {
-            resolve6({ value: entryStream, done: false });
+            resolve7({ value: entryStream, done: false });
             entryStream = null;
             return;
           }
-          promiseResolve = resolve6;
+          promiseResolve = resolve7;
           promiseReject = reject2;
           consumeCallback(null);
           if (extract._finished && promiseResolve) {
@@ -45545,11 +45545,11 @@ var require_extract = __commonJS({
         function destroy2(err) {
           extract.destroy(err);
           consumeCallback(err);
-          return new Promise((resolve6, reject2) => {
-            if (extract.destroyed) return resolve6({ value: void 0, done: true });
+          return new Promise((resolve7, reject2) => {
+            if (extract.destroyed) return resolve7({ value: void 0, done: true });
             extract.once("close", function() {
               if (err) reject2(err);
-              else resolve6({ value: void 0, done: true });
+              else resolve7({ value: void 0, done: true });
             });
           });
         }
@@ -46442,11 +46442,11 @@ var require_lib2 = __commonJS({
     })();
     var __awaiter16 = exports2 && exports2.__awaiter || function(thisArg, _arguments, P, generator) {
       function adopt(value) {
-        return value instanceof P ? value : new P(function(resolve6) {
-          resolve6(value);
+        return value instanceof P ? value : new P(function(resolve7) {
+          resolve7(value);
         });
       }
-      return new (P || (P = Promise))(function(resolve6, reject2) {
+      return new (P || (P = Promise))(function(resolve7, reject2) {
         function fulfilled(value) {
           try {
             step(generator.next(value));
@@ -46462,7 +46462,7 @@ var require_lib2 = __commonJS({
           }
         }
         function step(result) {
-          result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+          result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
         }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
       });
@@ -46549,26 +46549,26 @@ var require_lib2 = __commonJS({
       }
       readBody() {
         return __awaiter16(this, void 0, void 0, function* () {
-          return new Promise((resolve6) => __awaiter16(this, void 0, void 0, function* () {
+          return new Promise((resolve7) => __awaiter16(this, void 0, void 0, function* () {
             let output2 = Buffer.alloc(0);
             this.message.on("data", (chunk) => {
               output2 = Buffer.concat([output2, chunk]);
             });
             this.message.on("end", () => {
-              resolve6(output2.toString());
+              resolve7(output2.toString());
             });
           }));
         });
       }
       readBodyBuffer() {
         return __awaiter16(this, void 0, void 0, function* () {
-          return new Promise((resolve6) => __awaiter16(this, void 0, void 0, function* () {
+          return new Promise((resolve7) => __awaiter16(this, void 0, void 0, function* () {
             const chunks = [];
             this.message.on("data", (chunk) => {
               chunks.push(chunk);
             });
             this.message.on("end", () => {
-              resolve6(Buffer.concat(chunks));
+              resolve7(Buffer.concat(chunks));
             });
           }));
         });
@@ -46776,14 +46776,14 @@ var require_lib2 = __commonJS({
        */
       requestRaw(info2, data) {
         return __awaiter16(this, void 0, void 0, function* () {
-          return new Promise((resolve6, reject2) => {
+          return new Promise((resolve7, reject2) => {
             function callbackForResult(err, res) {
               if (err) {
                 reject2(err);
               } else if (!res) {
                 reject2(new Error("Unknown error"));
               } else {
-                resolve6(res);
+                resolve7(res);
               }
             }
             this.requestRawWithCallback(info2, data, callbackForResult);
@@ -47027,12 +47027,12 @@ var require_lib2 = __commonJS({
         return __awaiter16(this, void 0, void 0, function* () {
           retryNumber = Math.min(ExponentialBackoffCeiling2, retryNumber);
           const ms = ExponentialBackoffTimeSlice2 * Math.pow(2, retryNumber);
-          return new Promise((resolve6) => setTimeout(() => resolve6(), ms));
+          return new Promise((resolve7) => setTimeout(() => resolve7(), ms));
         });
       }
       _processResponse(res, options) {
         return __awaiter16(this, void 0, void 0, function* () {
-          return new Promise((resolve6, reject2) => __awaiter16(this, void 0, void 0, function* () {
+          return new Promise((resolve7, reject2) => __awaiter16(this, void 0, void 0, function* () {
             const statusCode = res.message.statusCode || 0;
             const response = {
               statusCode,
@@ -47040,7 +47040,7 @@ var require_lib2 = __commonJS({
               headers: {}
             };
             if (statusCode === HttpCodes2.NotFound) {
-              resolve6(response);
+              resolve7(response);
             }
             function dateTimeDeserializer(key, value) {
               if (typeof value === "string") {
@@ -47079,7 +47079,7 @@ var require_lib2 = __commonJS({
               err.result = response.result;
               reject2(err);
             } else {
-              resolve6(response);
+              resolve7(response);
             }
           }));
         });
@@ -47544,8 +47544,8 @@ var require_light = __commonJS({
           return this.Promise.resolve();
         }
         yieldLoop(t = 0) {
-          return new this.Promise(function(resolve6, reject2) {
-            return setTimeout(resolve6, t);
+          return new this.Promise(function(resolve7, reject2) {
+            return setTimeout(resolve7, t);
           });
         }
         computePenalty() {
@@ -47756,15 +47756,15 @@ var require_light = __commonJS({
           return this._queue.length === 0;
         }
         async _tryToRun() {
-          var args, cb, error63, reject2, resolve6, returned, task;
+          var args, cb, error63, reject2, resolve7, returned, task;
           if (this._running < 1 && this._queue.length > 0) {
             this._running++;
-            ({ task, args, resolve: resolve6, reject: reject2 } = this._queue.shift());
+            ({ task, args, resolve: resolve7, reject: reject2 } = this._queue.shift());
             cb = await (async function() {
               try {
                 returned = await task(...args);
                 return function() {
-                  return resolve6(returned);
+                  return resolve7(returned);
                 };
               } catch (error1) {
                 error63 = error1;
@@ -47779,13 +47779,13 @@ var require_light = __commonJS({
           }
         }
         schedule(task, ...args) {
-          var promise2, reject2, resolve6;
-          resolve6 = reject2 = null;
+          var promise2, reject2, resolve7;
+          resolve7 = reject2 = null;
           promise2 = new this.Promise(function(_resolve, _reject) {
-            resolve6 = _resolve;
+            resolve7 = _resolve;
             return reject2 = _reject;
           });
-          this._queue.push({ task, args, resolve: resolve6, reject: reject2 });
+          this._queue.push({ task, args, resolve: resolve7, reject: reject2 });
           this._tryToRun();
           return promise2;
         }
@@ -48186,14 +48186,14 @@ var require_light = __commonJS({
                 counts = this._states.counts;
                 return counts[0] + counts[1] + counts[2] + counts[3] === at;
               };
-              return new this.Promise((resolve6, reject2) => {
+              return new this.Promise((resolve7, reject2) => {
                 if (finished()) {
-                  return resolve6();
+                  return resolve7();
                 } else {
                   return this.on("done", () => {
                     if (finished()) {
                       this.removeAllListeners("done");
-                      return resolve6();
+                      return resolve7();
                     }
                   });
                 }
@@ -48286,9 +48286,9 @@ var require_light = __commonJS({
               options = parser$5.load(options, this.jobDefaults);
             }
             task = (...args2) => {
-              return new this.Promise(function(resolve6, reject2) {
+              return new this.Promise(function(resolve7, reject2) {
                 return fn(...args2, function(...args3) {
-                  return (args3[0] != null ? reject2 : resolve6)(args3);
+                  return (args3[0] != null ? reject2 : resolve7)(args3);
                 });
               });
             };
@@ -52373,10 +52373,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -52390,7 +52390,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep4) {
+          if (!keyProps.anchor && !keyProps.tag && !sep5) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map3.comment)
@@ -52414,7 +52414,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map3.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep5 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -52430,7 +52430,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep5, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -52521,7 +52521,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep4 = "";
+        let sep5 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -52535,13 +52535,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep4 + cb;
-              sep4 = "";
+                comment += sep5 + cb;
+              sep5 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep4 += source;
+                sep5 += source;
               hasSpace = true;
               break;
             default:
@@ -52584,18 +52584,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep4 && !value) {
+          if (!props.anchor && !props.tag && !sep5 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -52649,8 +52649,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap5 && !sep4 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
+        if (!isMap5 && !sep5 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep5, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -52662,7 +52662,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep5 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -52673,8 +52673,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap5 && !props.found && ctx.options.strict) {
-              if (sep4)
-                for (const st of sep4) {
+              if (sep5)
+                for (const st of sep5) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -52691,7 +52691,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep5, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -52871,7 +52871,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep4 = "";
+      let sep5 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -52888,24 +52888,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep4 === " ")
-            sep4 = "\n";
-          else if (!prevMoreIndented && sep4 === "\n")
-            sep4 = "\n\n";
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          if (sep5 === " ")
+            sep5 = "\n";
+          else if (!prevMoreIndented && sep5 === "\n")
+            sep5 = "\n\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep4 === "\n")
+          if (sep5 === "\n")
             value += "\n";
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          value += sep4 + content;
-          sep4 = " ";
+          value += sep5 + content;
+          sep5 = " ";
           prevMoreIndented = false;
         }
       }
@@ -53088,25 +53088,25 @@ var require_resolve_flow_scalar = __commonJS({
         trimBoth = /^[ \t]+|[ \t]+$/g;
       }
       let res = match[1].replace(trimEnd2, "");
-      let sep4 = " ";
+      let sep5 = " ";
       let pos = line.lastIndex;
       while (match = line.exec(source)) {
         const lm = match[1].replace(trimBoth, "");
         if (lm === "") {
-          if (sep4 === "\n")
-            res += sep4;
+          if (sep5 === "\n")
+            res += sep5;
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          res += sep4 + lm;
-          sep4 = " ";
+          res += sep5 + lm;
+          sep5 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep4 + (match?.[1] ?? "");
+      return res + sep5 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -53916,14 +53916,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep4, value }) {
+    function stringifyItem({ start, key, sep: sep5, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep4)
-        for (const st of sep4)
+      if (sep5)
+        for (const st of sep5)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -55090,18 +55090,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep4;
+          let sep5;
           if (scalar.end) {
-            sep4 = scalar.end;
-            sep4.push(this.sourceToken);
+            sep5 = scalar.end;
+            sep5.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep4 = [this.sourceToken];
+            sep5 = [this.sourceToken];
           const map3 = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep4 }]
+            items: [{ start, key: scalar, sep: sep5 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map3;
@@ -55254,15 +55254,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep4 = it.sep;
-                  sep4.push(this.sourceToken);
+                  const sep5 = it.sep;
+                  sep5.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep4 }]
+                    items: [{ start: start2, key, sep: sep5 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -55456,13 +55456,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent2);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep4 = fc.end.splice(1, fc.end.length);
-            sep4.push(this.sourceToken);
+            const sep5 = fc.end.splice(1, fc.end.length);
+            sep5.push(this.sourceToken);
             const map3 = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep4 }]
+              items: [{ start, key: fc, sep: sep5 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map3;
@@ -56819,7 +56819,7 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, relative as relative4, resolve as resolve5, sep as sep3 } from "path";
+import { dirname as dirname3, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -57008,11 +57008,11 @@ var tunnel = __toESM(require_tunnel2(), 1);
 var import_undici = __toESM(require_undici(), 1);
 var __awaiter = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -57028,7 +57028,7 @@ var __awaiter = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -57101,26 +57101,26 @@ var HttpClientResponse = class {
   }
   readBody() {
     return __awaiter(this, void 0, void 0, function* () {
-      return new Promise((resolve6) => __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve7) => __awaiter(this, void 0, void 0, function* () {
         let output2 = Buffer.alloc(0);
         this.message.on("data", (chunk) => {
           output2 = Buffer.concat([output2, chunk]);
         });
         this.message.on("end", () => {
-          resolve6(output2.toString());
+          resolve7(output2.toString());
         });
       }));
     });
   }
   readBodyBuffer() {
     return __awaiter(this, void 0, void 0, function* () {
-      return new Promise((resolve6) => __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve7) => __awaiter(this, void 0, void 0, function* () {
         const chunks = [];
         this.message.on("data", (chunk) => {
           chunks.push(chunk);
         });
         this.message.on("end", () => {
-          resolve6(Buffer.concat(chunks));
+          resolve7(Buffer.concat(chunks));
         });
       }));
     });
@@ -57323,14 +57323,14 @@ var HttpClient = class {
    */
   requestRaw(info2, data) {
     return __awaiter(this, void 0, void 0, function* () {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         function callbackForResult(err, res) {
           if (err) {
             reject2(err);
           } else if (!res) {
             reject2(new Error("Unknown error"));
           } else {
-            resolve6(res);
+            resolve7(res);
           }
         }
         this.requestRawWithCallback(info2, data, callbackForResult);
@@ -57574,12 +57574,12 @@ var HttpClient = class {
     return __awaiter(this, void 0, void 0, function* () {
       retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
       const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
-      return new Promise((resolve6) => setTimeout(() => resolve6(), ms));
+      return new Promise((resolve7) => setTimeout(() => resolve7(), ms));
     });
   }
   _processResponse(res, options) {
     return __awaiter(this, void 0, void 0, function* () {
-      return new Promise((resolve6, reject2) => __awaiter(this, void 0, void 0, function* () {
+      return new Promise((resolve7, reject2) => __awaiter(this, void 0, void 0, function* () {
         const statusCode = res.message.statusCode || 0;
         const response = {
           statusCode,
@@ -57587,7 +57587,7 @@ var HttpClient = class {
           headers: {}
         };
         if (statusCode === HttpCodes.NotFound) {
-          resolve6(response);
+          resolve7(response);
         }
         function dateTimeDeserializer(key, value) {
           if (typeof value === "string") {
@@ -57626,7 +57626,7 @@ var HttpClient = class {
           err.result = response.result;
           reject2(err);
         } else {
-          resolve6(response);
+          resolve7(response);
         }
       }));
     });
@@ -57637,11 +57637,11 @@ var lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => (c[k.toLowerCase(
 // ../../node_modules/.pnpm/@actions+http-client@4.0.1/node_modules/@actions/http-client/lib/auth.js
 var __awaiter2 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -57657,7 +57657,7 @@ var __awaiter2 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -57690,11 +57690,11 @@ import { EOL as EOL3 } from "os";
 import { constants, promises } from "fs";
 var __awaiter3 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -57710,7 +57710,7 @@ var __awaiter3 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -57989,11 +57989,11 @@ var arch = os3.arch();
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/core.js
 var __awaiter4 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -58009,7 +58009,7 @@ var __awaiter4 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -62482,11 +62482,11 @@ function maskSecretUrls(body2) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/shared/artifact-twirp-client.js
 var __awaiter5 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -62502,7 +62502,7 @@ var __awaiter5 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -62640,7 +62640,7 @@ var ArtifactHttpClient = class {
   }
   sleep(milliseconds) {
     return __awaiter5(this, void 0, void 0, function* () {
-      return new Promise((resolve6) => setTimeout(resolve6, milliseconds));
+      return new Promise((resolve7) => setTimeout(resolve7, milliseconds));
     });
   }
   getExponentialRetryTimeMilliseconds(attempt) {
@@ -63546,9 +63546,9 @@ function isStreamComplete(stream4) {
   if (stream4.readable === false) {
     return Promise.resolve();
   }
-  return new Promise((resolve6) => {
+  return new Promise((resolve7) => {
     const handler2 = () => {
-      resolve6();
+      resolve7();
       stream4.removeListener("close", handler2);
       stream4.removeListener("end", handler2);
       stream4.removeListener("error", handler2);
@@ -63703,8 +63703,8 @@ var NodeHttpClient = class {
       headers: request2.headers.toJSON({ preserveCase: true }),
       ...request2.requestOverrides
     };
-    return new Promise((resolve6, reject2) => {
-      const req = isInsecure ? http2.request(options, resolve6) : https2.request(options, resolve6);
+    return new Promise((resolve7, reject2) => {
+      const req = isInsecure ? http2.request(options, resolve7) : https2.request(options, resolve7);
       req.once("error", (err) => {
         reject2(new RestError(err.message, { code: err.code ?? RestError.REQUEST_SEND_ERROR, request: request2 }));
       });
@@ -63788,7 +63788,7 @@ function getDecodedResponseStream(stream4, headers) {
   return stream4;
 }
 function streamToText(stream4) {
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     const buffer2 = [];
     stream4.on("data", (chunk) => {
       if (Buffer.isBuffer(chunk)) {
@@ -63798,7 +63798,7 @@ function streamToText(stream4) {
       }
     });
     stream4.on("end", () => {
-      resolve6(Buffer.concat(buffer2).toString("utf8"));
+      resolve7(Buffer.concat(buffer2).toString("utf8"));
     });
     stream4.on("error", (e) => {
       if (e && e?.name === "AbortError") {
@@ -63895,7 +63895,7 @@ function calculateRetryDelay(retryAttempt, config2) {
 // ../../node_modules/.pnpm/@typespec+ts-http-runtime@0.3.9_supports-color@7.2.0/node_modules/@typespec/ts-http-runtime/dist/esm/util/helpers.js
 var StandardAbortMessage = "The operation was aborted.";
 function delay(delayInMs, value, options) {
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     let timer = void 0;
     let onAborted = void 0;
     const rejectOnAbort = () => {
@@ -63918,7 +63918,7 @@ function delay(delayInMs, value, options) {
     }
     timer = setTimeout(() => {
       removeListeners();
-      resolve6(value);
+      resolve7(value);
     }, delayInMs);
     if (options?.abortSignal) {
       options.abortSignal.addEventListener("abort", onAborted);
@@ -64723,7 +64723,7 @@ var AbortError2 = class extends Error {
 // ../../node_modules/.pnpm/@azure+core-util@1.14.0_supports-color@7.2.0/node_modules/@azure/core-util/dist/esm/createAbortablePromise.js
 function createAbortablePromise(buildPromise, options) {
   const { cleanupBeforeAbort, abortSignal, abortErrorMsg } = options ?? {};
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     function rejectOnAbort() {
       reject2(new AbortError2(abortErrorMsg ?? "The operation was aborted."));
     }
@@ -64741,7 +64741,7 @@ function createAbortablePromise(buildPromise, options) {
     try {
       buildPromise((x) => {
         removeListeners();
-        resolve6(x);
+        resolve7(x);
       }, (x) => {
         removeListeners();
         reject2(x);
@@ -64758,8 +64758,8 @@ var StandardAbortMessage2 = "The delay was aborted.";
 function delay2(timeInMs, options) {
   let token;
   const { abortSignal, abortErrorMsg } = options ?? {};
-  return createAbortablePromise((resolve6) => {
-    token = setTimeout(resolve6, timeInMs);
+  return createAbortablePromise((resolve7) => {
+    token = setTimeout(resolve7, timeInMs);
   }, {
     cleanupBeforeAbort: () => clearTimeout(token),
     abortSignal,
@@ -70009,21 +70009,21 @@ var Matcher = class {
    * @returns {string}
    */
   toString(separator, includeNamespace = true) {
-    const sep4 = separator || this.separator;
-    const isDefault = sep4 === this.separator && includeNamespace === true;
+    const sep5 = separator || this.separator;
+    const isDefault = sep5 === this.separator && includeNamespace === true;
     if (isDefault) {
       if (this._pathStringCache !== null) {
         return this._pathStringCache;
       }
       const result = this.path.map(
         (n) => n.namespace ? `${n.namespace}:${n.tag}` : n.tag
-      ).join(sep4);
+      ).join(sep5);
       this._pathStringCache = result;
       return result;
     }
     return this.path.map(
       (n) => includeNamespace && n.namespace ? `${n.namespace}:${n.tag}` : n.tag
-    ).join(sep4);
+    ).join(sep5);
   }
   /**
    * Get path as array of tag names.
@@ -72778,7 +72778,7 @@ var BufferScheduler = class {
    *
    */
   async do() {
-    return new Promise((resolve6, reject2) => {
+    return new Promise((resolve7, reject2) => {
       this.readable.on("data", (data) => {
         data = typeof data === "string" ? Buffer.from(data, this.encoding) : data;
         this.appendUnresolvedData(data);
@@ -72806,11 +72806,11 @@ var BufferScheduler = class {
         if (this.isStreamEnd && this.executingOutgoingHandlers === 0) {
           if (this.unresolvedLength > 0 && this.unresolvedLength < this.bufferSize) {
             const buffer2 = this.shiftBufferFromUnresolvedDataArray();
-            this.outgoingHandler(() => buffer2.getReadableStream(), buffer2.size, this.offset).then(resolve6).catch(reject2);
+            this.outgoingHandler(() => buffer2.getReadableStream(), buffer2.size, this.offset).then(resolve7).catch(reject2);
           } else if (this.unresolvedLength >= this.bufferSize) {
             return;
           } else {
-            resolve6();
+            resolve7();
           }
         }
       });
@@ -72925,8 +72925,8 @@ var NativeCRC64 = (() => {
     NativeCRC642 = NativeCRC642 || {};
     var Module = typeof NativeCRC642 != "undefined" ? NativeCRC642 : {};
     var readyPromiseResolve, readyPromiseReject;
-    Module["ready"] = new Promise(function(resolve6, reject2) {
-      readyPromiseResolve = resolve6;
+    Module["ready"] = new Promise(function(resolve7, reject2) {
+      readyPromiseResolve = resolve7;
       readyPromiseReject = reject2;
     });
     ["_malloc", "_free", "_emscripten_bind_VoidPtr___destroy___0", "_emscripten_bind_Crc64Hash_Crc64Hash_0", "_emscripten_bind_Crc64Hash_OnAppend_2", "_emscripten_bind_Crc64Hash_OnFinal_3", "_emscripten_bind_Crc64Hash___destroy___0", "_fflush", "onRuntimeInitialized"].forEach((prop) => {
@@ -75892,7 +75892,7 @@ function getURLQueries(url3) {
   return queries;
 }
 async function delay3(timeInMs, aborter, abortError) {
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     let timeout2;
     const abortHandler = () => {
       if (timeout2 !== void 0) {
@@ -75904,7 +75904,7 @@ async function delay3(timeInMs, aborter, abortError) {
       if (aborter !== void 0) {
         aborter.removeEventListener("abort", abortHandler);
       }
-      resolve6();
+      resolve7();
     };
     timeout2 = setTimeout(resolveHandler, timeInMs);
     if (aborter !== void 0) {
@@ -94483,7 +94483,7 @@ var AvroReadableFromStream = class extends AvroReadable {
       this._position += chunk.length;
       return this.toUint8Array(chunk);
     } else {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         const cleanUp = () => {
           this._readable.removeListener("readable", readableCallback);
           this._readable.removeListener("error", rejectCallback);
@@ -94498,7 +94498,7 @@ var AvroReadableFromStream = class extends AvroReadable {
           if (callbackChunk) {
             this._position += callbackChunk.length;
             cleanUp();
-            resolve6(this.toUint8Array(callbackChunk));
+            resolve7(this.toUint8Array(callbackChunk));
           }
         };
         const rejectCallback = () => {
@@ -95144,8 +95144,8 @@ var Poller = class {
     this.stopped = true;
     this.pollProgressCallbacks = [];
     this.operation = operation;
-    this.promise = new Promise((resolve6, reject2) => {
-      this.resolve = resolve6;
+    this.promise = new Promise((resolve7, reject2) => {
+      this.resolve = resolve7;
       this.reject = reject2;
     });
     this.promise.catch(() => {
@@ -95550,8 +95550,8 @@ var Batch = class {
       return Promise.resolve();
     }
     this.parallelExecute();
-    return new Promise((resolve6, reject2) => {
-      this.emitter.on("finish", resolve6);
+    return new Promise((resolve7, reject2) => {
+      this.emitter.on("finish", resolve7);
       this.emitter.on("error", (error63) => {
         this.state = BatchStates.Error;
         reject2(error63);
@@ -95598,12 +95598,12 @@ import util2 from "util";
 async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
   let pos = 0;
   const count = end - offset;
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     const timeout2 = setTimeout(() => reject2(new Error(`The operation cannot be completed in timeout.`)), REQUEST_TIMEOUT);
     stream4.on("readable", () => {
       if (pos >= count) {
         clearTimeout(timeout2);
-        resolve6();
+        resolve7();
         return;
       }
       let chunk;
@@ -95616,7 +95616,7 @@ async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
         pos += chunkLength;
         if (pos >= count) {
           clearTimeout(timeout2);
-          resolve6();
+          resolve7();
           return;
         }
       }
@@ -95626,7 +95626,7 @@ async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
       if (pos < count) {
         reject2(new Error(`Stream drains before getting enough data needed. Data read: ${pos}, data need: ${count}`));
       }
-      resolve6();
+      resolve7();
     });
     stream4.on("error", (msg) => {
       clearTimeout(timeout2);
@@ -95635,7 +95635,7 @@ async function streamToBuffer(stream4, buffer2, offset, end, encoding) {
   });
 }
 async function readStreamToLocalFile(rs, file2) {
-  return new Promise((resolve6, reject2) => {
+  return new Promise((resolve7, reject2) => {
     const ws = fs4.createWriteStream(file2);
     rs.on("error", (err) => {
       reject2(err);
@@ -95643,7 +95643,7 @@ async function readStreamToLocalFile(rs, file2) {
     ws.on("error", (err) => {
       reject2(err);
     });
-    ws.on("close", resolve6);
+    ws.on("close", resolve7);
     rs.pipe(ws);
   });
 }
@@ -96576,7 +96576,7 @@ var BlobClient = class _BlobClient extends StorageClient2 {
    * @returns The SAS URI consisting of the URI to the resource represented by this client, followed by the generated SAS token.
    */
   generateSasUrl(options) {
-    return new Promise((resolve6) => {
+    return new Promise((resolve7) => {
       if (!(this.credential instanceof StorageSharedKeyCredential)) {
         throw new RangeError("Can only generate the SAS when the client is initialized with a shared key credential");
       }
@@ -96587,7 +96587,7 @@ var BlobClient = class _BlobClient extends StorageClient2 {
         versionId: this._versionId,
         ...options
       }, this.credential).toString();
-      resolve6(appendToURLQuery(this.url, sas));
+      resolve7(appendToURLQuery(this.url, sas));
     });
   }
   /**
@@ -96626,7 +96626,7 @@ var BlobClient = class _BlobClient extends StorageClient2 {
    * @returns The SAS URI consisting of the URI to the resource represented by this client, followed by the generated SAS token.
    */
   generateUserDelegationSasUrl(options, userDelegationKey) {
-    return new Promise((resolve6) => {
+    return new Promise((resolve7) => {
       const sas = generateBlobSASQueryParameters({
         containerName: this._containerName,
         blobName: this._name,
@@ -96634,7 +96634,7 @@ var BlobClient = class _BlobClient extends StorageClient2 {
         versionId: this._versionId,
         ...options
       }, userDelegationKey, this.accountName).toString();
-      resolve6(appendToURLQuery(this.url, sas));
+      resolve7(appendToURLQuery(this.url, sas));
     });
   }
   /**
@@ -98367,11 +98367,11 @@ import * as crypto2 from "crypto";
 import * as stream from "stream";
 var __awaiter6 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -98387,7 +98387,7 @@ var __awaiter6 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -98398,7 +98398,7 @@ function uploadToBlobStorage(authenticatedUploadURL, uploadStream, contentType2)
     let lastProgressTime = Date.now();
     const abortController = new AbortController();
     const chunkTimer = (interval) => __awaiter6(this, void 0, void 0, function* () {
-      return new Promise((resolve6, reject2) => {
+      return new Promise((resolve7, reject2) => {
         const timer = setInterval(() => {
           if (Date.now() - lastProgressTime > interval) {
             reject2(new Error("Upload progress stalled."));
@@ -98406,7 +98406,7 @@ function uploadToBlobStorage(authenticatedUploadURL, uploadStream, contentType2)
         }, interval);
         abortController.signal.addEventListener("abort", () => {
           clearInterval(timer);
-          resolve6();
+          resolve7();
         });
       });
     });
@@ -98468,11 +98468,11 @@ import * as fs5 from "fs";
 import { realpath } from "fs/promises";
 var __awaiter7 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -98488,7 +98488,7 @@ var __awaiter7 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -98530,11 +98530,11 @@ function createRawFileUploadStream(filePath) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/upload/zip.js
 var __awaiter8 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -98550,7 +98550,7 @@ var __awaiter8 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -98679,11 +98679,11 @@ function getMimeType(filePath) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/upload/upload-artifact.js
 var __awaiter9 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -98699,7 +98699,7 @@ var __awaiter9 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -98844,11 +98844,11 @@ var httpClient = __toESM(require_lib2(), 1);
 var import_undici2 = __toESM(require_undici(), 1);
 var __awaiter10 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -98864,7 +98864,7 @@ var __awaiter10 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -102962,11 +102962,11 @@ var unzip_stream_default = { Extract: unavailable };
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/download/download-artifact.js
 var __awaiter11 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -102982,7 +102982,7 @@ var __awaiter11 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -103015,7 +103015,7 @@ function streamExtract(url3, directory, skipDecompress) {
       } catch (error63) {
         retryCount++;
         debug(`Failed to download artifact after ${retryCount} retries due to ${error63.message}. Retrying in 5 seconds...`);
-        yield new Promise((resolve6) => setTimeout(resolve6, 5e3));
+        yield new Promise((resolve7) => setTimeout(resolve7, 5e3));
       }
     }
     throw new Error(`Artifact download failed after ${retryCount} retries.`);
@@ -103045,7 +103045,7 @@ function streamExtractExternal(url_1, directory_1) {
     debug(`Content-Type: ${contentType2}, mimeType: ${mimeType}, urlEndsWithZip: ${urlEndsWithZip}, isZip: ${isZip}, skipDecompress: ${skipDecompress}`);
     debug(`Content-Disposition: ${contentDisposition}, fileName: ${fileName}`);
     let sha256Digest = void 0;
-    return new Promise((resolve6, reject2) => {
+    return new Promise((resolve7, reject2) => {
       const timerFn = () => {
         const timeoutError = new Error(`Blob storage chunk did not respond in ${timeout2}ms`);
         response.message.destroy(timeoutError);
@@ -103070,7 +103070,7 @@ function streamExtractExternal(url_1, directory_1) {
           sha256Digest = hashStream.read();
           info(`SHA256 digest of downloaded artifact is ${sha256Digest}`);
         }
-        resolve6({ sha256Digest: `sha256:${sha256Digest}` });
+        resolve7({ sha256Digest: `sha256:${sha256Digest}` });
       };
       if (isZip && !skipDecompress) {
         passThrough.pipe(unzip_stream_default.Extract({ path: directory })).on("close", onClose).on("error", onError);
@@ -103301,11 +103301,11 @@ retry2.VERSION = VERSION8;
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/find/get-artifact.js
 var __awaiter12 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -103321,7 +103321,7 @@ var __awaiter12 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -103404,11 +103404,11 @@ function getArtifactInternal(artifactName) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/delete/delete-artifact.js
 var __awaiter13 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -103424,7 +103424,7 @@ var __awaiter13 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -103489,11 +103489,11 @@ function deleteArtifactInternal(artifactName) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/find/list-artifacts.js
 var __awaiter14 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -103509,7 +103509,7 @@ var __awaiter14 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -103626,11 +103626,11 @@ function filterLatest(artifacts) {
 // ../../node_modules/.pnpm/@actions+artifact@6.3.1_supports-color@7.2.0/node_modules/@actions/artifact/lib/internal/client.js
 var __awaiter15 = function(thisArg, _arguments, P, generator) {
   function adopt(value) {
-    return value instanceof P ? value : new P(function(resolve6) {
-      resolve6(value);
+    return value instanceof P ? value : new P(function(resolve7) {
+      resolve7(value);
     });
   }
-  return new (P || (P = Promise))(function(resolve6, reject2) {
+  return new (P || (P = Promise))(function(resolve7, reject2) {
     function fulfilled(value) {
       try {
         step(generator.next(value));
@@ -103646,7 +103646,7 @@ var __awaiter15 = function(thisArg, _arguments, P, generator) {
       }
     }
     function step(result) {
-      result.done ? resolve6(result.value) : adopt(result.value).then(fulfilled, rejected);
+      result.done ? resolve7(result.value) : adopt(result.value).then(fulfilled, rejected);
     }
     step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
@@ -108803,7 +108803,7 @@ var recursive = /* @__PURE__ */ new WeakMap();
 var NONE = 0;
 var ASSUMED = 1;
 var PROVEN = 2;
-function isRecursive(inst, stack, resolve6) {
+function isRecursive(inst, stack, resolve7) {
   const cached2 = recursive.get(inst);
   if (cached2 !== void 0)
     return cached2 ? PROVEN : NONE;
@@ -108813,7 +108813,7 @@ function isRecursive(inst, stack, resolve6) {
   let result = NONE;
   const check2 = (child) => {
     if (result !== PROVEN && child?._zod) {
-      const answer = isRecursive(child, stack, resolve6);
+      const answer = isRecursive(child, stack, resolve7);
       if (answer > result)
         result = answer;
     }
@@ -108824,7 +108824,7 @@ function isRecursive(inst, stack, resolve6) {
       const desc = Object.getOwnPropertyDescriptor(sh, key);
       if (spread && !desc.enumerable)
         continue;
-      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve6) : NONE;
+      const child = desc.get ? ASSUMED : desc.value?._zod ? isRecursive(desc.value, stack, resolve7) : NONE;
       if (child > answer)
         answer = child;
     }
@@ -108888,7 +108888,7 @@ function isRecursive(inst, stack, resolve6) {
       break;
     // `$ZodLazy` caches its inner on the def, so a resolved edge is followed exactly
     case "lazy": {
-      const inner = def._cachedInner ?? (resolve6 ? inst._zod.innerType : void 0);
+      const inner = def._cachedInner ?? (resolve7 ? inst._zod.innerType : void 0);
       merge3(inner ? isRecursive(inner, stack, false) : ASSUMED);
       break;
     }
@@ -125100,32 +125100,32 @@ function literalToJson(lit) {
       return null;
   }
 }
-function evaluate(e, resolve6) {
+function evaluate(e, resolve7) {
   if (e instanceof Literal) return known(literalToJson(e));
-  if (e instanceof Grouping) return evaluate(e.group, resolve6);
+  if (e instanceof Grouping) return evaluate(e.group, resolve7);
   if (e instanceof ContextAccess || e instanceof IndexAccess) {
-    const chain = refChain(e, resolve6);
+    const chain = refChain(e, resolve7);
     if (chain) {
-      const resolved = resolve6(chain);
+      const resolved = resolve7(chain);
       return resolved ?? UNKNOWN;
     }
     if (e instanceof IndexAccess) {
-      const base = evaluate(e.expr, resolve6);
-      const idx = e.index instanceof Star ? void 0 : evaluate(e.index, resolve6);
+      const base = evaluate(e.expr, resolve7);
+      const idx = e.index instanceof Star ? void 0 : evaluate(e.index, resolve7);
       if (!base.known || !idx?.known) return { known: false, taint: mergeTaint(base, ...idx ? [idx] : []) };
       return known(indexInto(base.value, idx.value), mergeTaint(base, idx));
     }
     return UNKNOWN;
   }
   if (e instanceof Unary) {
-    const v = evaluate(e.expr, resolve6);
+    const v = evaluate(e.expr, resolve7);
     return v.known ? known(!truthy3(v.value)) : UNKNOWN;
   }
   if (e instanceof Logical) {
     const isAnd = e.operator.type === TokenType.AND;
     let last = UNKNOWN;
     for (const [i, arg] of e.args.entries()) {
-      const v = evaluate(arg, resolve6);
+      const v = evaluate(arg, resolve7);
       last = v;
       if (!v.known) return v;
       if (isAnd ? !truthy3(v.value) : truthy3(v.value)) {
@@ -125135,8 +125135,8 @@ function evaluate(e, resolve6) {
     return last;
   }
   if (e instanceof Binary) {
-    const l = evaluate(e.left, resolve6);
-    const r = evaluate(e.right, resolve6);
+    const l = evaluate(e.left, resolve7);
+    const r = evaluate(e.right, resolve7);
     const taint = [];
     if (!l.known || !r.known) return UNKNOWN;
     switch (e.operator.type) {
@@ -125160,17 +125160,17 @@ function evaluate(e, resolve6) {
         return { known: false, taint };
     }
   }
-  if (e instanceof FunctionCall) return evalCall(e, resolve6);
+  if (e instanceof FunctionCall) return evalCall(e, resolve7);
   return UNKNOWN;
 }
-function refChain(e, resolve6) {
+function refChain(e, resolve7) {
   if (e instanceof ContextAccess) return { context: e.name.lexeme.toLowerCase(), path: [] };
   if (e instanceof IndexAccess) {
-    const base = refChain(e.expr, resolve6);
+    const base = refChain(e.expr, resolve7);
     if (!base) return void 0;
     if (e.index instanceof Star) return void 0;
     if (e.index instanceof Literal) return { ...base, path: [...base.path, toStr(literalToJson(e.index))] };
-    const idx = evaluate(e.index, resolve6);
+    const idx = evaluate(e.index, resolve7);
     if (idx.known && (typeof idx.value === "string" || typeof idx.value === "number")) {
       return { ...base, path: [...base.path, String(idx.value)] };
     }
@@ -125190,9 +125190,9 @@ function indexInto(base, idx) {
   }
   return null;
 }
-function evalCall(e, resolve6) {
+function evalCall(e, resolve7) {
   const name = e.functionName.lexeme.toLowerCase();
-  const args = e.args.map((a) => evaluate(a, resolve6));
+  const args = e.args.map((a) => evaluate(a, resolve7));
   const taint = mergeTaint(...args);
   const allKnown = args.every((a) => a.known);
   const vals = args.map((a) => a.known ? a.value : null);
@@ -125230,8 +125230,8 @@ function evalCall(e, resolve6) {
       );
     case "join": {
       const arr = vals[0] ?? null;
-      const sep4 = vals.length > 1 ? toStr(vals[1] ?? null) : ",";
-      return known(Array.isArray(arr) ? arr.map(toStr).join(sep4) : toStr(arr), taint);
+      const sep5 = vals.length > 1 ? toStr(vals[1] ?? null) : ",";
+      return known(Array.isArray(arr) ? arr.map(toStr).join(sep5) : toStr(arr), taint);
     }
     case "tojson":
       return known(JSON.stringify(vals[0] ?? null, null, 2), taint);
@@ -125351,37 +125351,37 @@ function fallbacksOf(expr) {
   visit3(expr.ast);
   return out;
 }
-function definitelyFalsy(e, resolve6) {
-  if (e instanceof Grouping) return definitelyFalsy(e.group, resolve6);
+function definitelyFalsy(e, resolve7) {
+  if (e instanceof Grouping) return definitelyFalsy(e.group, resolve7);
   if (e instanceof Logical) {
-    return e.operator.type === TokenType.AND ? e.args.some((a) => definitelyFalsy(a, resolve6)) : e.args.every((a) => definitelyFalsy(a, resolve6));
+    return e.operator.type === TokenType.AND ? e.args.some((a) => definitelyFalsy(a, resolve7)) : e.args.every((a) => definitelyFalsy(a, resolve7));
   }
-  if (e instanceof Unary) return definitelyTruthy(e.expr, resolve6);
-  const v = evaluate(e, resolve6);
+  if (e instanceof Unary) return definitelyTruthy(e.expr, resolve7);
+  const v = evaluate(e, resolve7);
   return v.known && !truthy3(v.value);
 }
-function definitelyTruthy(e, resolve6) {
-  if (e instanceof Grouping) return definitelyTruthy(e.group, resolve6);
+function definitelyTruthy(e, resolve7) {
+  if (e instanceof Grouping) return definitelyTruthy(e.group, resolve7);
   if (e instanceof Logical) {
-    return e.operator.type === TokenType.AND ? e.args.every((a) => definitelyTruthy(a, resolve6)) : e.args.some((a) => definitelyTruthy(a, resolve6));
+    return e.operator.type === TokenType.AND ? e.args.every((a) => definitelyTruthy(a, resolve7)) : e.args.some((a) => definitelyTruthy(a, resolve7));
   }
-  if (e instanceof Unary) return definitelyFalsy(e.expr, resolve6);
-  const v = evaluate(e, resolve6);
+  if (e instanceof Unary) return definitelyFalsy(e.expr, resolve7);
+  const v = evaluate(e, resolve7);
   return v.known && truthy3(v.value);
 }
-function evaluateTemplate(text3, resolve6) {
+function evaluateTemplate(text3, resolve7) {
   const segments = findTemplateSegments(text3);
   if (segments.length === 0) return known(text3);
   const first = segments[0];
   if (segments.length === 1 && first.start === 0 && first.end === text3.length) {
-    return first.expr.ast ? evaluate(first.expr.ast, resolve6) : UNKNOWN;
+    return first.expr.ast ? evaluate(first.expr.ast, resolve7) : UNKNOWN;
   }
   let out = "";
   let cursor = 0;
   const parts = [];
   for (const seg of segments) {
     out += text3.slice(cursor, seg.start);
-    const v = seg.expr.ast ? evaluate(seg.expr.ast, resolve6) : UNKNOWN;
+    const v = seg.expr.ast ? evaluate(seg.expr.ast, resolve7) : UNKNOWN;
     parts.push(v);
     if (!v.known) return { known: false, taint: mergeTaint(...parts) };
     out += toStr(v.value);
@@ -125427,7 +125427,10 @@ function escapeControl(s, keepNewlines = false) {
   });
 }
 function neutralizeWorkflowCommands(s) {
-  return s.replace(/^((?:\s|\u001b\[[\d;]*m)*):(?=:)/gm, "$1:\u200B");
+  return s.replace(/^((?:\s|\u0085|\u001b\[[\d;]*m)*):(?=:)/gm, "$1:\u200B").replace(/##\[/g, "##\u200B[");
+}
+function jsonSafe(json2) {
+  return json2.replace(/##\[/g, "##\\u005b").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 function trimChar(s, ch, { start = false } = {}) {
   let from = 0;
@@ -128767,6 +128770,22 @@ function editDistance(a, b) {
   }
   return dp[x.length][y.length];
 }
+function typoDistance(x, y) {
+  const d = Array.from(
+    { length: x.length + 1 },
+    (_2, i) => Array.from({ length: y.length + 1 }, (_3, j) => i === 0 ? j : j === 0 ? i : 0)
+  );
+  for (let i = 1; i <= x.length; i++) {
+    for (let j = 1; j <= y.length; j++) {
+      const cost = x[i - 1] === y[j - 1] ? 0 : 1;
+      let best = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && x[i - 1] === y[j - 2] && x[i - 2] === y[j - 1])
+        best = Math.min(best, d[i - 2][j - 2] + 1);
+      d[i][j] = best;
+    }
+  }
+  return d[x.length][y.length];
+}
 function didYouMean(name, candidates) {
   const norm = (s) => s.toLowerCase().replace(/[-_]/g, "");
   let best;
@@ -129487,7 +129506,7 @@ function workspaceResolver(opts) {
     }
     return best;
   };
-  const resolve6 = (uses, ws) => {
+  const resolve7 = (uses, ws) => {
     const target = uses.target;
     if (uses.selfRef !== void 0) return { kind: "invalid" };
     if (uses.workspacePath === void 0) {
@@ -129555,7 +129574,7 @@ function workspaceResolver(opts) {
         continue;
       }
       if (uses.kind !== "local-action" || uses.target === void 0) continue;
-      const outcome = resolve6(uses, ws);
+      const outcome = resolve7(uses, ws);
       record2(unit, job, step, outcome, rooted, via);
       const action5 = outcome.kind === "local" && outcome.found ? opts.loadAction(outcome.target) : void 0;
       if (action5) {
@@ -130002,9 +130021,10 @@ var REPOSITORY_ONLY = ["repository", "overrides", "matrixShapes", "plugins"];
 var isPlainObject4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mergeConfig(base, repo) {
   if (isPlainObject4(base) && isPlainObject4(repo)) {
-    const out = { ...base };
-    for (const [k, v] of Object.entries(repo)) out[k] = k in base ? mergeConfig(base[k], v) : v;
-    return out;
+    return Object.fromEntries([
+      ...Object.entries(base).filter(([k]) => !Object.hasOwn(repo, k)),
+      ...Object.entries(repo).map(([k, v]) => [k, Object.hasOwn(base, k) ? mergeConfig(base[k], v) : v])
+    ]);
   }
   if (Array.isArray(base) && Array.isArray(repo)) return [.../* @__PURE__ */ new Set([...base, ...repo])];
   return repo === void 0 ? base : repo;
@@ -130016,8 +130036,8 @@ function loadBaseConfig(file2) {
   if (!isPlainObject4(data))
     throw new ConfigError(`Invalid base config in ${file2}`, file2, ["(root): expected a map"]);
   const repositoryOnly = [
-    ...REPOSITORY_ONLY.filter((k) => k in data),
-    ...isPlainObject4(data.impact) && "publish" in data.impact ? ["impact.publish"] : []
+    ...REPOSITORY_ONLY.filter((k) => Object.hasOwn(data, k)),
+    ...isPlainObject4(data.impact) && Object.hasOwn(data.impact, "publish") ? ["impact.publish"] : []
   ];
   if (repositoryOnly.length) {
     throw new ConfigError(
@@ -130092,8 +130112,8 @@ function parseConfig(raw, file2) {
 }
 
 // ../core/src/contracts.ts
-import { existsSync as existsSync7, lstatSync as lstatSync2, mkdirSync, rmSync, writeFileSync } from "fs";
-import { dirname as dirname2, join as join5 } from "path";
+import { existsSync as existsSync7, lstatSync as lstatSync2, mkdirSync, realpathSync as realpathSync2, rmSync, writeFileSync } from "fs";
+import { basename as basename5, dirname as dirname2, isAbsolute as isAbsolute3, join as join5, relative as relative3, resolve as resolve4, sep as sep3 } from "path";
 
 // ../../node_modules/.pnpm/diff@9.0.0/node_modules/diff/libesm/diff/base.js
 var Diff = class {
@@ -131672,9 +131692,46 @@ function isSymlink(abs) {
     return false;
   }
 }
-function writeContracts(root, plan, outDir) {
+function realpathNearest(p) {
+  const rest = [];
+  let at = resolve4(p);
+  for (; ; ) {
+    try {
+      return join5(realpathSync2.native(at), ...rest.reverse());
+    } catch {
+      const parent2 = dirname2(at);
+      if (parent2 === at) return resolve4(p);
+      rest.push(basename5(at));
+      at = parent2;
+    }
+  }
+}
+var withinOrAt = (root, p) => {
+  const rel = relative3(root, p);
+  return rel === "" || rel !== ".." && !rel.startsWith(`..${sep3}`) && !isAbsolute3(rel);
+};
+function assertSafeWritePath(abs, trees) {
+  const target = resolve4(abs);
+  const realParent = realpathNearest(dirname2(target));
+  const ancestors = [];
+  for (let at = target; ; at = dirname2(at)) {
+    ancestors.push(at);
+    if (dirname2(at) === at) break;
+  }
+  for (const tree of trees) {
+    const realTree = realpathNearest(tree);
+    const enters = ancestors.some((a) => existsSync7(a) && withinOrAt(realTree, realpathSync2.native(a)));
+    if (!enters && !withinOrAt(resolve4(tree), target)) continue;
+    if (isSymlink(target) || !withinOrAt(realTree, realParent))
+      throw new UnsafePathError(`Not writing ${abs}: it is a symlink, or links outside ${tree}`);
+  }
+}
+function writeContracts(root, plan, outDir, trees = [root]) {
   const written = [];
   const base = outDir ?? root;
+  if (outDir) {
+    for (const e of plan.entries) if (e.status !== "delete") assertSafeWritePath(join5(outDir, e.file), trees);
+  }
   if (!outDir) {
     const unsafe = plan.entries.filter((e) => e.status !== "unchanged").map((e) => e.file).filter((f) => isSymlink(join5(root, f)) || !insideRepository(root, join5(root, f)));
     if (unsafe.length)
@@ -133594,7 +133651,7 @@ function combosOf(exp) {
   const values = Object.fromEntries((exp?.keys ?? []).map((k) => [k, { known: false }]));
   return [{ values, origin: "product", includes: [] }];
 }
-var unknownKey = (resolve6, key) => (ref) => ref.context === "matrix" && ref.path[0]?.toLowerCase() === key ? UNKNOWN : resolve6(ref);
+var unknownKey = (resolve7, key) => (ref) => ref.context === "matrix" && ref.path[0]?.toLowerCase() === key ? UNKNOWN : resolve7(ref);
 function onlyFallbacks(site, key, job, exp) {
   if (exp && didYouMean(key, exp.keys)) return false;
   const lower = key.toLowerCase();
@@ -133604,8 +133661,8 @@ function onlyFallbacks(site, key, job, exp) {
     const ast = site.segments[0].expr.ast;
     if (!ast) return false;
     const neverTrue = combos.every((c) => {
-      const resolve6 = matrixResolver(c);
-      return definitelyFalsy(ast, resolve6) && !definitelyFalsy(ast, unknownKey(resolve6, lower));
+      const resolve7 = matrixResolver(c);
+      return definitelyFalsy(ast, resolve7) && !definitelyFalsy(ast, unknownKey(resolve7, lower));
     });
     if (neverTrue) return false;
   }
@@ -134317,9 +134374,9 @@ function guardsOf2(wf, site) {
   const step = job && site.step !== void 0 ? job.steps[site.step] : void 0;
   return [job?.ifSite, step?.ifSite].filter((g) => g !== void 0 && g !== site);
 }
-function isFalse(guard, resolve6) {
+function isFalse(guard, resolve7) {
   const ast = isWholeExpression(guard) ? guard.segments[0].expr.ast : void 0;
-  return ast !== void 0 && definitelyFalsy(ast, resolve6);
+  return ast !== void 0 && definitelyFalsy(ast, resolve7);
 }
 var secretRules = [
   missingRequiredSecret,
@@ -134822,14 +134879,56 @@ function createRegistry() {
 }
 
 // ../core/src/analyze.ts
-function triageUnknown(registry2, key, path4, out) {
-  const guess = didYouMean(
-    key,
-    registry2.all().flatMap((r) => [r.code, r.name])
+var compact = (s) => s.toLowerCase().replace(/[-_\s]/g, "");
+function typoOf(registry2, key) {
+  const k = compact(key);
+  const nearest = (candidates, distance, max) => {
+    let best;
+    for (const rule2 of candidates) {
+      const d = distance(rule2);
+      if (d <= max && (!best || d < best.d)) best = { rule: rule2, d };
+    }
+    return best?.rule;
+  };
+  const rules = registry2.all();
+  const codes = rules.map((r) => r.code);
+  const fromCode = (c) => typoDistance(k, c.toLowerCase());
+  if (/^fp\d/.test(k)) {
+    const rule2 = nearest(codes, fromCode, 1);
+    return { typo: true, ...rule2 ? { rule: rule2 } : {} };
+  }
+  const builtin = nearest(
+    codes.filter((c) => /^FP\d/.test(c) && c.length === k.length),
+    fromCode,
+    1
   );
-  const issue3 = `${path4}: unknown rule${guess ? ` (did you mean ${guess}?)` : ` "${key}"`}`;
-  if (!guess && !/^FP\d/i.test(key)) out.tolerated.push(issue3);
-  else out.hard.push(issue3);
+  if (k.startsWith("fp") && builtin) return { typo: true, rule: builtin };
+  const prefix2 = (code3) => CODE_PATTERN.exec(code3.toUpperCase())?.[1];
+  const asCode = CODE_PATTERN.exec(k.toUpperCase());
+  const keyPrefix = asCode && asCode[2] !== "0" ? asCode[1] : /^([a-z][a-z0-9]{1,9}?)\d/.exec(k)?.[1]?.toUpperCase();
+  const code2 = nearest(
+    codes.filter((c) => keyPrefix !== void 0 && prefix2(c) === keyPrefix),
+    fromCode,
+    1
+  );
+  if (code2) return { typo: true, rule: code2 };
+  const names = rules.map((r) => r.name);
+  const spelled = key.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[_\s]+/g, "-");
+  const undashed = !/[-_\s]/.test(key) && !/[a-z0-9][A-Z]/.test(key);
+  const rule = names.find((n) => compact(n) === k) ?? nearest(
+    names,
+    (n) => Math.min(
+      typoDistance(spelled, n),
+      undashed ? typoDistance(k, compact(n)) + 1 : Number.POSITIVE_INFINITY
+    ),
+    2
+  );
+  return rule ? { typo: true, rule } : { typo: false };
+}
+function triageUnknown(registry2, key, path4, out) {
+  const { typo, rule } = typoOf(registry2, key);
+  const issue3 = `${path4}: unknown rule${rule ? ` (did you mean ${rule}?)` : ` "${key}"`}`;
+  (typo ? out.hard : out.tolerated).push(issue3);
 }
 var SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 function resolveSeverities(registry2, config2, opts = {}) {
@@ -134860,7 +134959,8 @@ function fingerprint(code2, symbol2, file2, message) {
 function analyze(opts) {
   const started = performance.now();
   const logger7 = opts.logger ?? silentLogger;
-  const config2 = opts.config ?? defaultConfig();
+  const configured = opts.config ?? defaultConfig();
+  const config2 = opts.only?.length === 0 ? { ...configured, rules: {}, overrides: [] } : configured;
   const publishPatterns = [
     .../* @__PURE__ */ new Set([
       ...config2.impact.publish ?? [],
@@ -135317,7 +135417,7 @@ function gitFileSystem(root, commit) {
 
 // ../core/src/impact-run.ts
 import { readFileSync as readFileSync4 } from "fs";
-import { join as join6, relative as relative3 } from "path";
+import { join as join6, relative as relative4 } from "path";
 var ImpactSetupError = class extends Error {
 };
 function githubEvent(env = process.env) {
@@ -135492,7 +135592,7 @@ function prepareImpact(root, headConfig, req, logger7) {
   } catch (err) {
     throw new ImpactSetupError(err.message);
   }
-  const configPath = req.configPath ? relative3(root, join6(root, req.configPath)).split("\\").join("/") : void 0;
+  const configPath = req.configPath ? relative4(root, join6(root, req.configPath)).split("\\").join("/") : void 0;
   const baseConfig = baselineConfig(fs8, configPath, req.baseConfig, notes);
   const policy = { ...(baseConfig ?? defaultConfig()).impact };
   if (JSON.stringify(policy) !== JSON.stringify(headConfig.impact)) {
@@ -135527,13 +135627,13 @@ function prepareImpact(root, headConfig, req, logger7) {
 
 // ../core/src/plugins.ts
 import { existsSync as existsSync8 } from "fs";
-import { isAbsolute as isAbsolute3, resolve as resolve4 } from "path";
+import { isAbsolute as isAbsolute4, resolve as resolve5 } from "path";
 import { pathToFileURL } from "url";
 var isRule = (v) => typeof v === "object" && v !== null && typeof v.code === "string" && typeof v.check === "function";
 async function loadPlugins(root, config2, registry2, logger7 = silentLogger) {
   const loaded = [];
   for (const spec of config2.plugins) {
-    const abs = isAbsolute3(spec) ? spec : resolve4(root, spec);
+    const abs = isAbsolute4(spec) ? spec : resolve5(root, spec);
     if (!existsSync8(abs))
       throw new ConfigError(`Plugin not found: ${spec}`, void 0, [`plugins: ${abs} does not exist`]);
     let mod;
@@ -135883,8 +135983,8 @@ function renderMermaid(graph, opts = {}) {
 
 // ../reporters/src/json.ts
 function renderJson(result, opts = {}) {
-  return `${JSON.stringify(toJsonReport(result, opts), null, 2)}
-`;
+  return jsonSafe(`${JSON.stringify(toJsonReport(result, opts), null, 2)}
+`);
 }
 
 // ../reporters/src/impact.ts
@@ -136304,8 +136404,8 @@ function renderSarif(result, opts = {}) {
       }
     ]
   };
-  return `${JSON.stringify(sarif, null, 2)}
-`;
+  return jsonSafe(`${JSON.stringify(sarif, null, 2)}
+`);
 }
 
 // src/main.ts
@@ -136511,7 +136611,7 @@ function actionsSink(runnerDebug, groups) {
     }
   };
 }
-var toPosix2 = (p) => p.split(sep3).join("/");
+var toPosix2 = (p) => p.split(sep4).join("/");
 var plural3 = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function annotate(f, prefix2) {
   const { level, message, ...props } = githubAnnotation(f, { pathPrefix: prefix2 });
@@ -136520,10 +136620,11 @@ function annotate(f, prefix2) {
   else notice(message, props);
 }
 function writeReport(workspace, file2, content) {
-  const abs = resolve5(workspace, file2);
+  const abs = resolve6(workspace, file2);
+  assertSafeWritePath(abs, [workspace]);
   mkdirSync2(dirname3(abs), { recursive: true });
   writeFileSync2(abs, content);
-  const shown = toPosix2(relative4(workspace, abs));
+  const shown = toPosix2(relative5(workspace, abs));
   info(`wrote ${shown.startsWith("..") ? abs : shown}`);
   return abs;
 }
@@ -136641,11 +136742,11 @@ async function run() {
       }
     };
     info(bannerText());
-    const workspace = resolve5(process.env.GITHUB_WORKSPACE || process.cwd());
-    const root = resolve5(workspace, inputs.workingDirectory);
-    const rel = toPosix2(relative4(workspace, root));
+    const workspace = resolve6(process.env.GITHUB_WORKSPACE || process.cwd());
+    const root = resolve6(workspace, inputs.workingDirectory);
+    const rel = toPosix2(relative5(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
-    const loaded = loadConfig(root, inputs.config ? resolve5(root, inputs.config) : void 0);
+    const loaded = loadConfig(root, inputs.config ? resolve6(root, inputs.config) : void 0);
     info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
     if (!getInput("artifact-name").trim() && prefix2)
       inputs.artifactName = `flowpact-contracts-${slug(prefix2)}`;
@@ -136760,7 +136861,7 @@ async function run() {
     if (err instanceof ConfigError) {
       const where2 = err.file ? ` (${err.file})` : "";
       setFailed([`${err.message}${where2}`, ...err.issues.map((i) => `  - ${i}`)].join("\n"));
-    } else if (err instanceof InputError) {
+    } else if (err instanceof InputError || err instanceof UnsafePathError) {
       setFailed(err.message);
     } else {
       const e = err instanceof Error ? err : new Error(String(err));

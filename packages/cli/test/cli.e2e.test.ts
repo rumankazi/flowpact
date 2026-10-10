@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   symlinkSync,
   writeFileSync,
@@ -389,6 +390,113 @@ describe('plugins in rules / explain', () => {
     const listed = JSON.parse(rules.stdout).map((r: { code: string }) => r.code);
     expect(listed).toContain('ORG601');
     expect(listed).not.toContain('REPO601');
+  });
+});
+
+describe('untrusted values', () => {
+  it('never reads the value of another flag, such as a pull request title, as --plugin or -o', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-title-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    const marker = join(root, 'pwned');
+    writeFileSync(
+      join(root, 'evil.mjs'),
+      `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(marker)}, 'ran');\nexport default [];\n`,
+    );
+    for (const title of [`--plugin=${join(root, 'evil.mjs')}`, `-o=${marker}`, `--output=${marker}`]) {
+      const r = await flowpact(['lint', '--root', root, '--no-plugins', '--title', title, '-q']);
+      expect({ title, exit: r.exitCode, marker: existsSync(marker) }).toEqual({
+        title,
+        exit: 0,
+        marker: false,
+      });
+    }
+  });
+
+  it('keeps --no-plugins in effect whatever the title, and runs even when the title looks like --help', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-title-plugins-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    mkdirSync(join(root, '.github/flowpact'), { recursive: true });
+    const marker = join(root, 'pwned');
+    writeFileSync(
+      join(root, 'repo.mjs'),
+      `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(marker)}, 'ran');\nexport default [];\n`,
+    );
+    writeFileSync(join(root, '.github/flowpact/flowpact.config.yml'), 'plugins: [./repo.mjs]\n');
+    for (const title of ['--', '--help', '--version', '-h']) {
+      const r = await flowpact([
+        'lint',
+        '--root',
+        root,
+        '--title',
+        title,
+        '--no-plugins',
+        '--format',
+        'json',
+      ]);
+      expect({
+        title,
+        exit: r.exitCode,
+        marker: existsSync(marker),
+        report: r.stdout.startsWith('{'),
+      }).toEqual({
+        title,
+        exit: 0,
+        marker: false,
+        report: true,
+      });
+    }
+    const before = await flowpact(['--no-plugins', 'lint', '--root', root]);
+    expect(before.exitCode).toBe(2);
+    expect(before.stderr).toContain('Options go after the command');
+    expect(existsSync(marker)).toBe(false);
+  });
+
+  it('keeps ##[ out of JSON output without changing the data, and writes patches verbatim', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-legacy-commands-'));
+    mkdirSync(join(root, '.github/workflows'), { recursive: true });
+    const name = 'a##[set-output name=x]1';
+    writeFileSync(
+      join(root, '.github/workflows/reusable.yml'),
+      `on:\n  workflow_call:\n    inputs:\n      ${JSON.stringify(name)}:\n        type: string\n        description: ${JSON.stringify(`see ${name}`)}\njobs:\n  j:\n    runs-on: x\n    steps: [{ run: x }]\n`,
+    );
+    const json = await flowpact(['lint', '--root', root, '--format', 'json', '--no-schema', '-q']);
+    expect(json.stdout).not.toContain('##[');
+    expect(JSON.stringify(JSON.parse(json.stdout).findings)).toContain(JSON.stringify(name).slice(1, -1));
+    const patch = join(root, 'contracts.patch');
+    const r = await flowpact(['generate', '--root', root, '--patch', patch, '-q']);
+    expect(r.exitCode).toBe(0);
+    expect(readFileSync(patch, 'utf8')).toContain(`see ${name}`);
+  });
+
+  it('refuses to write contracts with --out through a symlink in the repository', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-symlink-out-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    const outside = mkdtempSync(join(tmpdir(), 'flowpact-outside-dir-'));
+    symlinkSync(outside, join(root, 'out'));
+    const r = await flowpact(['generate', '--root', root, '--out', join(root, 'out')]);
+    expect(r.exitCode).toBe(2);
+    expect(r.stderr).toContain('is a symlink, or links outside');
+    expect(readdirSync(outside)).toEqual([]);
+  });
+
+  it('counts -v in clusters, and not --verbose=false', async () => {
+    const root = fixture('clean');
+    const quiet = await flowpact(['lint', '--root', root, '--verbose=false', '-o', '/dev/null']);
+    expect(quiet.stderr).not.toContain('debug');
+    const loud = await flowpact(['lint', '--root', root, '-vo', '/dev/null']);
+    expect(loud.stderr).toContain('debug');
+  });
+
+  it('refuses to write a report through a symlink in the repository', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'flowpact-symlink-report-'));
+    cpSync(fixture('clean'), root, { recursive: true });
+    const outside = join(mkdtempSync(join(tmpdir(), 'flowpact-outside-')), 'target.txt');
+    writeFileSync(outside, 'keep');
+    symlinkSync(outside, join(root, 'flowpact.sarif'));
+    const r = await flowpact(['lint', '--root', root, '-o', join(root, 'flowpact.sarif')]);
+    expect(r.exitCode).toBe(2);
+    expect(r.stderr).toContain('is a symlink, or links outside');
+    expect(readFileSync(outside, 'utf8')).toBe('keep');
   });
 });
 

@@ -3,6 +3,7 @@ import {
   createRegistry,
   DOCS_BASE_URL,
   type Finding,
+  jsonSafe,
   type Loc,
   type Severity,
   type SuppressedFinding,
@@ -142,5 +143,5 @@ export function renderSarif(result: AnalysisResult, opts: SarifOptions = {}): st
       },
     ],
   };
-  return `${JSON.stringify(sarif, null, 2)}\n`;
+  return jsonSafe(`${JSON.stringify(sarif, null, 2)}\n`);
 }

@@ -8,6 +8,7 @@ import {
   type AnalysisResult,
   type AnalyzeOptions,
   analyze,
+  assertSafeWritePath,
   bannerText,
   ConfigError,
   type ContractPlan,
@@ -33,6 +34,7 @@ import {
   prepareImpact,
   resolveCommit,
   resolveLogLevel,
+  UnsafePathError,
   writeContracts,
 } from '@flowpact/core';
 import {
@@ -346,6 +348,8 @@ function annotate(f: Finding, prefix: string): void {
 
 function writeReport(workspace: string, file: string, content: string): string {
   const abs = resolve(workspace, file);
+  // Never through a symlink in the checkout, which a pull request could have committed.
+  assertSafeWritePath(abs, [workspace]);
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, content);
   const shown = toPosix(relative(workspace, abs));
@@ -631,7 +635,7 @@ export async function run(): Promise<void> {
     if (err instanceof ConfigError) {
       const where = err.file ? ` (${err.file})` : '';
       core.setFailed([`${err.message}${where}`, ...err.issues.map((i) => `  - ${i}`)].join('\n'));
-    } else if (err instanceof InputError) {
+    } else if (err instanceof InputError || err instanceof UnsafePathError) {
       core.setFailed(err.message);
     } else {
       const e = err instanceof Error ? err : new Error(String(err));

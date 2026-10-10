@@ -7,6 +7,9 @@ const read = (path: string) => readFileSync(join(root, path), 'utf8');
 
 describe('what the committed action bundle contains', () => {
   const sbom = JSON.parse(read('packages/action/dist/sbom.cdx.json')) as {
+    bomFormat: string;
+    specVersion: string;
+    serialNumber: string;
     metadata: { component: { name: string; version: string } };
     components: { name: string; version: string; licenses: unknown[] }[];
   };
@@ -23,6 +26,14 @@ describe('what the committed action bundle contains', () => {
       expect({ package: c.name, licenses: c.licenses.length }).toEqual({ package: c.name, licenses: 1 });
     }
     expect(notices).not.toContain('no license declared');
+  });
+
+  it('is a CycloneDX document that actions/attest accepts, with a serial number derived from its contents', () => {
+    // actions/attest takes a file as CycloneDX only with bomFormat, serialNumber and specVersion.
+    expect(sbom).toMatchObject({ bomFormat: 'CycloneDX', specVersion: '1.5' });
+    expect(sbom.serialNumber).toMatch(
+      /^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 
   it('leaves out unzip-stream, which @actions/artifact needs only to download artifacts', () => {
