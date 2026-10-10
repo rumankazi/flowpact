@@ -4,6 +4,23 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.10.0](https://github.com/rumankazi/flowpact/compare/v0.9.0...v0.10.0) (2026-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** The npm package's `dist/index.js` now loads a second file next to it (code it shares with the new API), so a copy of `dist/index.js` alone no longer runs. Vendor the whole `package/` folder and run `node tools/flowpact/dist/index.js`; see https://rumankazi.github.io/flowpact/docs/upgrading.
+
+### Features
+
+* **action:** base-config and plugin inputs, so an organization's copy of the action carries its defaults and rules ([#76](https://github.com/rumankazi/flowpact/issues/76)) ([442ff0b](https://github.com/rumankazi/flowpact/commit/442ff0be94b4f842ffb5f85cc45da63fae1360d4))
+* **cli:** a programmatic API, one function per command, in the flowpact package ([#78](https://github.com/rumankazi/flowpact/issues/78)) ([9fae33a](https://github.com/rumankazi/flowpact/commit/9fae33a3c101126b2f8d1c4bb2279527449323ed))
+
+
+### Performance
+
+* **action:** upload regenerated contracts without @actions/artifact, halving the action ([#77](https://github.com/rumankazi/flowpact/issues/77)) ([1beb611](https://github.com/rumankazi/flowpact/commit/1beb611fb91d447dd0b2743312280d7621d8cbed))
+
 ## [0.9.0](https://github.com/rumankazi/flowpact/compare/v0.8.2...v0.9.0) (2026-10-10)
 
 
