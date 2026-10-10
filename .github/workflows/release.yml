@@ -180,6 +180,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           TAG: ${{ needs.resolve.outputs.tag }}
         run: |
+          # devDependencies and scripts only build the package in this repository; where it is vendored into an npm
+          # workspace, npm cannot install their workspace:* packages and workspace-wide scripts would run tsup. Then the
+          # files and the manifest are checked as CI checks them (scripts/check-pack.mjs).
+          npm pkg delete devDependencies scripts
+          node ../../scripts/check-pack.mjs
           if [ "$PRERELEASE" = true ]; then
             npm publish --provenance --access public --tag next
             exit 0

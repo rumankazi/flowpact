@@ -30,6 +30,8 @@ const state = vi.hoisted(() => ({
   infos: [] as string[],
   debugs: [] as string[],
   groups: [] as string[],
+  /** The step log in order: lines, and the groups startGroup() and endGroup() open and close. */
+  stepLog: [] as string[],
   summary: '',
   summaryWrites: 0,
   failed: [] as string[],
@@ -59,13 +61,22 @@ vi.mock('@actions/core', () => {
     },
     setFailed: (message: string | Error) => void state.failed.push(String(message)),
     isDebug: () => state.isDebug,
-    debug: (m: string) => void state.debugs.push(m),
-    info: (m: string) => void state.infos.push(m),
+    debug: (m: string) => {
+      state.debugs.push(m);
+      state.stepLog.push(`::debug::${m}`);
+    },
+    info: (m: string) => {
+      state.infos.push(m);
+      state.stepLog.push(m);
+    },
     error: annotation('error'),
     warning: annotation('warning'),
     notice: annotation('notice'),
-    startGroup: (name: string) => void state.groups.push(name),
-    endGroup: () => {},
+    startGroup: (name: string) => {
+      state.groups.push(name);
+      state.stepLog.push(`::group::${name}`);
+    },
+    endGroup: () => void state.stepLog.push('::endgroup::'),
     group: async <T>(name: string, fn: () => Promise<T>) => {
       state.groups.push(name);
       return fn();
@@ -119,6 +130,7 @@ beforeEach(() => {
     infos: [],
     debugs: [],
     groups: [],
+    stepLog: [],
     summary: '',
     summaryWrites: 0,
     failed: [],
@@ -317,11 +329,26 @@ export default { code: '${code}', name: '${code.toLowerCase()}-rule', category: 
     );
     expect(declaredDefaultsOf(yml)).toEqual({ 'base-config': 'acme.base.yml', plugin: 'rules/acme.mjs\n' });
     expect(declaredDefaultsOf(join(temp, 'missing.yml'))).toEqual({});
+    expect(state.annotations).toEqual([]);
     // flowpact's own action.yml declares the same defaults as the code.
     expect(declaredDefaultsOf(join(ACTION_DIR, 'action.yml'))).toMatchObject({
       'base-config': '',
       plugin: '',
     });
+  });
+
+  it('warns when the copy’s action.yml does not parse, instead of dropping its defaults silently', () => {
+    const yml = join(temp, 'copy', 'action.yml');
+    mkdirSync(dirname(yml), { recursive: true });
+    // The defaults pasted as a second block of the same inputs.
+    writeFileSync(yml, "inputs:\n  plugin:\n    default: ''\n  plugin:\n    default: rules/acme.mjs\n");
+    expect(declaredDefaultsOf(yml)).toEqual({});
+    expect(state.annotations).toHaveLength(1);
+    expect(state.annotations[0]!.level).toBe('warning');
+    const prefix = `Ignoring the input defaults of ${yml}, which cannot be read: `;
+    expect(state.annotations[0]!.message.startsWith(prefix)).toBe(true);
+    expect(state.annotations[0]!.message.length).toBeGreaterThan(prefix.length);
+    expect(state.annotations[0]!.message).not.toMatch(/\n|:$/);
   });
 
   it('puts the repository config on top of base-config', async () => {
@@ -346,9 +373,23 @@ export default { code: '${code}', name: '${code.toLowerCase()}-rule', category: 
     expect(ran('__flowpactOrgPluginRan')).toBe(true);
     expect(ran('__flowpactCheckoutPluginRan')).toBe(false);
     expect(s.annotations.some((a) => a.props?.title === 'ACME601 acme601-rule')).toBe(true);
-    expect(
-      s.annotations.some((a) => a.level === 'warning' && a.message.includes('files in the checkout')),
-    ).toBe(true);
+    expect(s.annotations.filter((a) => a.level === 'warning').map((a) => a.message)).toContain(
+      "Not loading the plugin input's pr.mjs from the checkout: plugins run code from the checkout and are disabled on pull_request_target events; set the plugins input to true to allow them.",
+    );
+  });
+
+  it('names the plugin input’s files it skips because the plugins input is false', async () => {
+    const { workspace } = repoFrom('incident-matrix');
+    mkdirSync(join(workspace, 'rules'));
+    writeFileSync(join(workspace, 'rules', 'a.mjs'), plugin('PRA601', '__flowpactCheckoutPluginA'));
+    writeFileSync(join(workspace, 'rules', 'b.mjs'), plugin('PRB601', '__flowpactCheckoutPluginB'));
+    process.env.GITHUB_EVENT_NAME = 'pull_request';
+    const files = [join(workspace, 'rules', 'a.mjs'), join(workspace, 'rules', 'b.mjs')];
+    const s = await action(workspace, { plugins: 'false', plugin: files.join('\n') });
+    expect(ran('__flowpactCheckoutPluginA') || ran('__flowpactCheckoutPluginB')).toBe(false);
+    expect(s.annotations.filter((a) => a.level === 'warning').map((a) => a.message)).toContain(
+      "Not loading the plugin input's rules/a.mjs, rules/b.mjs from the checkout: the plugins input is false.",
+    );
   });
 });
 
@@ -545,6 +586,28 @@ describe('impact mode', () => {
     expect(ok.failed).toEqual([]);
     const off = await action(renamedRepo(), {});
     expect(off.outputs['impact-ok']).toBe('');
+  });
+
+  it('opens the impact baseline group only when something is logged in it', async () => {
+    const off = await action(renamedRepo(), { impact: 'off' });
+    expect(off.groups).not.toContain('flowpact: impact baseline');
+    const skipped = await action(renamedRepo(), { impact: 'auto' });
+    expect(skipped.groups).not.toContain('flowpact: impact baseline');
+    expect(skipped.infos).toContain('impact: auto runs on pull requests');
+    const logged = await action(renamedRepo(), {
+      impact: 'on',
+      'base-ref': 'main',
+      'expected-impact': 'major',
+      debug: 'true',
+    });
+    expect(logged.groups.filter((g) => g === 'flowpact: impact baseline')).toHaveLength(1);
+    // The group opens before the first line logged in it, holds the lines, and closes; groups pair up in every run.
+    const start = logged.stepLog.indexOf('::group::flowpact: impact baseline');
+    const end = logged.stepLog.indexOf('::endgroup::', start);
+    expect(logged.stepLog.slice(start + 1, end).some((l) => l.includes('impact baseline {'))).toBe(true);
+    expect(logged.stepLog.slice(0, start).some((l) => l.includes('impact baseline {'))).toBe(false);
+    const opens = logged.stepLog.filter((l) => l.startsWith('::group::')).length;
+    expect(logged.stepLog.filter((l) => l === '::endgroup::')).toHaveLength(opens);
   });
 });
 
