@@ -51,7 +51,7 @@ Every function takes these options:
 | `baseConfig` | `--base-config` | [Organization defaults](/docs/integrating#organization-defaults) under the repository's config. |
 | `plugins` | `--plugin` | Plugins to load besides those the config lists, such as your [organization rules](/docs/integrating#organization-rules). `repositoryPlugins` does not affect them. |
 | `repositoryPlugins` | `--no-plugins` | `false` skips the plugins the config lists, which run the repository's code. Default: `true`. |
-| `log` | `--debug`, `-v`, `-q` | `{ level, write(record) }`: receives each log record at `level` (default `info`) or above, with its `level`, `scope`, `message`, `data` and `time`. |
+| `log` | `--debug`, `-v`, `-q` | `{ level, write(record) }`: receives each log record at `level` (default `info`) or above, with its `level`, `scope`, `message`, `data` and `time`. Like an error's, a record's `message` is written for people and can name the CLI's flags. |
 
 `graph` takes only `root`, `config`, `baseConfig` and `log`: it runs no rules.
 
@@ -133,7 +133,8 @@ const { summary, why, fix, docsUrl } = await explain('FP401');
   `traces` is empty for a workflow or action without inputs, secrets or outputs.
 - `rules()`: each rule's `code`, `name`, `category`, `defaultSeverity`, `severity` after the config, `summary` and
   `docsUrl`.
-- `explain(codeOrName)`: the same for one rule, with `why`, `fix`, `scope`, `examples` and `generatedFiles`.
+- `explain(codeOrName)`: the same for one rule, with `why`, `fix`, `examples` and `generatedFiles`, and `scope` when the
+  rule has one.
 
 ## Errors
 
@@ -155,7 +156,7 @@ config file when there is one.
 | `kind` | What went wrong |
 | --- | --- |
 | `usage` | An option or path that cannot work: a path that does not exist, a root without workflows, a rule `explain` does not know, a symbol `trace` cannot find. |
-| `config` | The config or base config is invalid, or names a rule that does not exist. |
+| `config` | The config or base config is invalid, or names a rule that does not exist. So does an unknown rule in `only`. |
 | `plugin` | A plugin is missing, fails to load, exports no rules or registers an invalid rule. |
 | `unsafe-path` | `generate` refused to write through a symlink or out of the repository. |
 | `impact-setup` | Impact mode has no baseline, or cannot read it. |
@@ -205,7 +206,7 @@ acme/flowpact-action
 ├── action.yml
 ├── src/main.js
 ├── build.mjs
-├── dist/index.js         # the bundle, committed
+├── dist/index.mjs        # the bundle, committed
 ├── acme.base.yml         # organization defaults
 └── rules/acme.mjs        # organization rules
 ```
@@ -213,7 +214,7 @@ acme/flowpact-action
 ```sh
 npm install --save-exact flowpact@0.10 @actions/core
 npm install --save-dev esbuild
-node build.mjs            # after every update; commit dist/index.js
+node build.mjs            # after every update; commit dist/index.mjs
 ```
 
 `acme.base.yml` and `rules/acme.mjs` are the [base config](/docs/integrating#organization-defaults) and the
@@ -326,8 +327,10 @@ From one run, this gives the annotations, the job summary, the SARIF file for `g
 path is the `sarif` output), a failed step at `fail-on`, the patch when contracts drifted, and the counts as outputs. Repositories use it after
 `actions/checkout`, as `uses: acme/flowpact-action@<commit-sha>`.
 
-- [`@vercel/ncc`](https://github.com/vercel/ncc) works as well: `ncc build src/main.js -o dist` writes `dist/index.js` and
-  a `dist/package.json` that marks it as an ES module; commit both, and point `main` at `dist/index.js`.
+- [`@vercel/ncc`](https://github.com/vercel/ncc) works as well when the action's `package.json` has `"type": "module"`
+  (`npm init` writes `"commonjs"`, and ncc then fails with `'import' and 'export' may appear only with 'sourceType:
+  module'`). `ncc build src/main.js -o dist` writes `dist/index.js` and a `dist/package.json` that marks it as an ES
+  module; commit both, and point `main` at `dist/index.js`.
 - A bundler's license report lists flowpact as one package. flowpact's own notices and SBOM list what it bundles: copy
   `node_modules/flowpact/dist/THIRD_PARTY_LICENSES.txt` and `sbom.cdx.json` next to yours.
 - When flowpact is updated (Renovate or Dependabot, as in [Keeping it current](/docs/integrating#keeping-it-current)),
