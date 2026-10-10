@@ -18,8 +18,8 @@ export default defineConfig({
   },
   esbuildOptions(options) {
     options.conditions = ['source'];
-    // @actions/artifact imports unzip-stream only to download artifacts, which the action never does.
-    options.alias = { 'unzip-stream': './src/stubs/unzip-stream.ts' };
+    // @actions/http-client imports undici only for getAgentDispatcher(), which the action never calls.
+    options.alias = { undici: './src/stubs/undici.ts' };
   },
   // The bundle is an ES module in a .js file. Copied out of this repository (the release archive), the nearest
   // package.json would decide how Node reads it, and a "type": "commonjs" one would break it; this one says ESM.

@@ -176,7 +176,7 @@ jobs:
           category: flowpact
 
   action-smoke:
-    # The committed action bundle against fixtures with known results: outputs, reports and the drift artifact.
+    # The committed action bundle against fixtures with known results: outputs and reports.
     name: Action smoke test
     runs-on: ubuntu-latest
     steps:
@@ -190,35 +190,24 @@ jobs:
           annotations: false
           summary: false
           report-json: incident.json
-      - id: drift
-        name: check reports contract drift
-        uses: ./
-        with:
-          mode: check
-          working-directory: fixtures/contracts-drift
-          fail-on: never
-          annotations: false
-          artifact-name: flowpact-contracts-smoke-${{ github.run_attempt }}
-          retention-days: 1
       - name: Check the outputs
         env:
           INCIDENT_ERRORS: ${{ steps.incident.outputs.errors }}
-          DRIFT: ${{ steps.drift.outputs.drift }}
-          PATCH: ${{ steps.drift.outputs.patch }}
-          ARTIFACT_ID: ${{ steps.drift.outputs.artifact-id }}
         run: |
           set -x
           test "$INCIDENT_ERRORS" -ge 1
           jq -e '.findings | any(.code == "FP401")' incident.json
-          test "$DRIFT" = true
-          test -s "$PATCH"
-          test -n "$ARTIFACT_ID"
+
+  artifact-upload:
+    # The contract drift artifact, uploaded for real and downloaded again; the same workflow also runs weekly.
+    name: Artifact upload
+    uses: ./.github/workflows/_artifact-upload.yml
 
   ci-passed:
     # The only required status check: add new jobs to `needs` instead of changing the branch rules.
     name: CI passed
     if: always()
-    needs: [test, docs, smoke, vscode, action-dist, action-dogfood, action-smoke]
+    needs: [test, docs, smoke, vscode, action-dist, action-dogfood, action-smoke, artifact-upload]
     runs-on: ubuntu-latest
     steps:
       - name: Every job succeeded

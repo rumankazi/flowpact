@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DefaultArtifactClient } from '@actions/artifact';
 import * as core from '@actions/core';
 import {
   type AnalysisResult,
@@ -48,6 +47,7 @@ import {
   renderSarif,
 } from '@flowpact/reporters';
 import { parse as parseYaml } from 'yaml';
+import { uploadArtifact } from './upload';
 
 /** Input defaults; `action.yml` declares the same values (a test keeps them in sync). */
 export const DEFAULTS = {
@@ -441,7 +441,7 @@ function artifactReadme(plan: ContractPlan, artifactName: string, runId: string 
 interface DriftArtifact {
   dir: string;
   patch: string;
-  uploaded?: { id?: number };
+  uploaded?: { id: number };
 }
 
 /** Writes the regenerated contracts and a patch to a temp folder and uploads them as an artifact. */
@@ -482,11 +482,11 @@ async function driftArtifact(
   const out: DriftArtifact = { dir, patch };
   if (!inputs.uploadContracts) return out;
   try {
-    const res = await new DefaultArtifactClient().uploadArtifact(inputs.artifactName, files, dir, {
+    const res = await uploadArtifact(inputs.artifactName, files, dir, {
       ...(inputs.retentionDays > 0 ? { retentionDays: inputs.retentionDays } : {}),
     });
-    core.info(`uploaded artifact ${inputs.artifactName}${res.id !== undefined ? ` (id ${res.id})` : ''}`);
-    out.uploaded = { ...(res.id !== undefined ? { id: res.id } : {}) };
+    core.info(`uploaded artifact ${inputs.artifactName} (id ${res.id})`);
+    out.uploaded = { id: res.id };
   } catch (err) {
     const message = (err as Error).message;
     const conflict = /409|conflict|already exists/i.test(message)

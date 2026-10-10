@@ -74,14 +74,12 @@ vi.mock('@actions/core', () => {
   };
 });
 
-vi.mock('@actions/artifact', () => ({
-  DefaultArtifactClient: class {
-    async uploadArtifact(name: string, files: string[], root: string, options: unknown) {
-      if (state.uploadError) throw state.uploadError;
-      const patch = files.find((f) => f.endsWith('.patch'));
-      state.uploads.push({ name, files, root, options, patch: patch ? readFileSync(patch, 'utf8') : '' });
-      return { id: 42, size: 1234 };
-    }
+vi.mock('../src/upload', () => ({
+  async uploadArtifact(name: string, files: string[], root: string, options: unknown) {
+    if (state.uploadError) throw state.uploadError;
+    const patch = files.find((f) => f.endsWith('.patch'));
+    state.uploads.push({ name, files, root, options, patch: patch ? readFileSync(patch, 'utf8') : '' });
+    return { id: 42, size: 1234 };
   },
 }));
 
