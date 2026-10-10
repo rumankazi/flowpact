@@ -3,6 +3,7 @@
 // - `rumankazi/flowpact@v0.3`: the action's floating tag (`v0.<minor>` before 1.0, `v<major>` from 1.0);
 // - `rumankazi/flowpact@v0.3.2`: an exact pin of the action;
 // - `flowpact@0.3`: an npm range for the CLI (`0.<minor>` before 1.0, `<major>` from 1.0);
+// - `FLOWPACT_VERSION: 0.3.2`: the exact version a vendored-CLI example downloads;
 // - the version in output samples: the banner (`flowpact v0.3.2 · config schema v1`) and the JSON report's `meta`,
 //   also in the terminal screenshots (apps/docs/public/screenshots/*.svg).
 // The release workflow runs it on the release pull request; `--check` lists stale references and exits 1.
@@ -48,6 +49,7 @@ export function syncRefs(text, version) {
     )
     .replace(/rumankazi\/flowpact@v\d+(?:\.\d+)?(?![\w.-])/g, `rumankazi/flowpact@v${line}`)
     .replace(/(?<![\w/@.-])flowpact@\d+(?:\.\d+)?(?![\w.-])/g, `flowpact@${line}`)
+    .replace(new RegExp(`(FLOWPACT_VERSION: )${VERSION}(?![\\w.-])`, 'g'), `$1${version}`)
     .replace(new RegExp(`(flowpact {1,2}v)${VERSION}(?= {1,2}(?:· )?config schema)`, 'g'), `$1${version}`)
     .replace(new RegExp(`("tool": "flowpact", "version": ")${VERSION}"`, 'g'), `$1${version}"`)
     .replace(/<text y="[\d.]+">.*?<\/text>/g, (svgLine) => syncSvgBanner(svgLine, version));

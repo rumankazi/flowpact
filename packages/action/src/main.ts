@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DefaultArtifactClient } from '@actions/artifact';
 import * as core from '@actions/core';
 import {
@@ -21,6 +22,7 @@ import {
   githubEvent,
   type ImpactLevel,
   ImpactSetupError,
+  insideRepository,
   isPublished,
   type LoadedConfig,
   type Logger,
@@ -64,12 +66,20 @@ export const DEFAULTS = {
   'artifact-name': 'flowpact-contracts',
   'retention-days': '7',
   plugins: 'auto',
+  'base-config': '',
+  plugin: '',
   impact: 'off',
   'expected-impact': '',
   'base-ref': '',
   token: '${{ github.token }}',
   debug: 'false',
 } as const;
+
+/**
+ * The action's own directory (where action.yml is): the bundle is packages/action/dist/index.js below it. Relative
+ * `base-config` and `plugin` paths are read from here, so a copy of the action can ship its organization's files.
+ */
+export const ACTION_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /** Events where the checkout may contain untrusted code while secrets or a write token are available. */
 const UNTRUSTED_EVENTS = new Set(['pull_request_target', 'workflow_run']);
@@ -108,6 +118,10 @@ interface Inputs {
   retentionDays: number;
   /** Whether `plugins:` from the checked-out config may run. */
   plugins: boolean;
+  /** `base-config`: an absolute path, or ''. */
+  baseConfig: string;
+  /** `plugin`: absolute paths of plugins loaded in addition to the config's. */
+  extraPlugins: string[];
   impact: 'off' | 'auto' | 'on';
   expectedImpact?: ImpactLevel;
   baseRef: string;
@@ -139,6 +153,9 @@ function int(name: InputName): number {
   return Number(value);
 }
 
+/** A path from an input, relative to the action's own directory. */
+const fromActionDir = (p: string) => (isAbsolute(p) ? p : resolve(ACTION_DIR, p));
+
 function readInputs(): Inputs {
   return {
     mode: oneOf('mode', ['lint', 'check']),
@@ -157,6 +174,12 @@ function readInputs(): Inputs {
     artifactName: input('artifact-name'),
     retentionDays: int('retention-days'),
     plugins: pluginsAllowed(oneOf('plugins', ['auto', 'true', 'false'])),
+    baseConfig: input('base-config') ? fromActionDir(input('base-config')) : '',
+    extraPlugins: input('plugin')
+      .split(/\r?\n/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map(fromActionDir),
     impact: oneOf('impact', ['off', 'auto', 'on']),
     ...(input('expected-impact')
       ? { expectedImpact: oneOf('expected-impact', ['none', 'patch', 'minor', 'major']) as ImpactLevel }
@@ -215,6 +238,7 @@ function impactSetup(
   root: string,
   config: FlowpactConfig,
   configPath: string | undefined,
+  baseConfig: Record<string, unknown> | undefined,
   inputs: Inputs,
   logger: Logger,
 ): { options?: NonNullable<AnalyzeOptions['impact']>; note?: string } {
@@ -251,6 +275,7 @@ function impactSetup(
         ...(event ? { event } : {}),
         ...(process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {}),
         ...(configPath ? { configPath } : {}),
+        ...(baseConfig ? { baseConfig } : {}),
         fetch: (refs) => fetchRefs(root, refs, core.getInput('token'), logger),
       },
       logger,
@@ -504,8 +529,21 @@ export async function run(): Promise<void> {
     const rel = toPosix(relative(workspace, root));
     const prefix = rel === '' || rel === '.' ? '' : rel;
 
-    const loaded: LoadedConfig = loadConfig(root, inputs.config ? resolve(root, inputs.config) : undefined);
-    core.info(`mode ${inputs.mode} · root ${prefix || '.'} · config ${loaded.file ?? '(defaults)'}`);
+    const loaded: LoadedConfig = loadConfig(root, inputs.config ? resolve(root, inputs.config) : undefined, {
+      ...(inputs.baseConfig ? { base: inputs.baseConfig } : {}),
+    });
+    core.info(
+      `mode ${inputs.mode} · root ${prefix || '.'} · config ${loaded.file ?? '(defaults)'}${loaded.base ? ` · base ${loaded.base.file}` : ''}`,
+    );
+    // A plugin given with the plugin input runs whatever the plugins input says, unless it is a file in the checkout
+    // while plugins from the checkout may not run (an untrusted event, or plugins: false).
+    const inCheckout = (p: string) => insideRepository(workspace, p);
+    const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
+    if (extraPlugins.length < inputs.extraPlugins.length) {
+      core.warning(
+        `Not loading ${inputs.extraPlugins.length - extraPlugins.length} plugin(s) of the plugin input that are files in the checkout: plugins from the checkout do not run here (the plugins input).`,
+      );
+    }
     // With several projects (working-directory), give each its own artifact unless a name was set explicitly.
     if (!core.getInput('artifact-name').trim() && prefix)
       inputs.artifactName = `flowpact-contracts-${slug(prefix)}`;
@@ -518,13 +556,15 @@ export async function run(): Promise<void> {
     }
 
     const impact = await group('flowpact: impact baseline', async () =>
-      impactSetup(root, loaded.config, inputs.config || undefined, inputs, logger),
+      impactSetup(root, loaded.config, inputs.config || undefined, loaded.base?.data, inputs, logger),
     );
     if (impact.note) core.info(impact.note);
 
     const result = await group(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry, logger);
+      if (extraPlugins.length)
+        await loadPlugins(root, { ...loaded.config, plugins: extraPlugins }, registry, logger);
       return analyze({
         root,
         config: loaded.config,

@@ -70,6 +70,14 @@ inputs:
     description: 'Load the plugins listed in the config (auto, true, false). Plugins run JavaScript from the checkout; auto disables them on pull_request_target and workflow_run events.'
     required: false
     default: 'auto'
+  base-config:
+    description: "Defaults under the repository's config, such as an organization's (see Base config in the docs). A relative path is read from the action's own directory, so a copy of the action can ship its organization's file."
+    required: false
+    default: ''
+  plugin:
+    description: "Plugins to load in addition to those the config lists, one path per line, such as an organization's rules. A relative path is read from the action's own directory. They load whatever the plugins input says, except files in the checkout when plugins from the checkout may not run."
+    required: false
+    default: ''
   impact:
     description: 'Check the release impact of changes to published workflows and actions against the impact the pull request declares (title, labels or expected-impact): off, auto (on pull requests, or on any event when base-ref is set, in repositories that publish workflows or actions; never on pull_request_target) or on.'
     required: false

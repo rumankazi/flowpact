@@ -57,7 +57,9 @@ On GitHub Enterprise Server, both go to the enterprise server, never to github.c
 the permissions and environment of whatever runs flowpact. flowpact never downloads them.
 
 - The GitHub Action's `plugins: auto` (the default) skips them on `pull_request_target` and `workflow_run`, where the
-  repository's code may come from an untrusted fork while the job holds secrets.
+  repository's code may come from an untrusted fork while the job holds secrets. Plugins named in its `plugin` input,
+  such as an organization's rules in its [copy of the action](/docs/integrating#copy-the-action), still load, except a
+  file in the checkout: that one is skipped like the config's plugins.
 - The VS Code extension loads them only in a [trusted workspace](/docs/editors#workspace-trust), and only for
   repositories inside the workspace folders.
 - The CLI loads the plugins the config lists unless you pass `--no-plugins`; pass it on code you do not trust. Plugins

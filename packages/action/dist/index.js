@@ -56819,7 +56819,8 @@ var require_cronstrue = __commonJS({
 import { execFileSync as execFileSync2 } from "child_process";
 import { mkdirSync as mkdirSync2, mkdtempSync, rmSync as rmSync2, writeFileSync as writeFileSync2 } from "fs";
 import { tmpdir } from "os";
-import { dirname as dirname3, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
+import { dirname as dirname3, isAbsolute as isAbsolute5, join as join7, relative as relative5, resolve as resolve6, sep as sep4 } from "path";
+import { fileURLToPath } from "url";
 
 // ../../node_modules/.pnpm/@actions+core@3.0.1/node_modules/@actions/core/lib/command.js
 import * as os from "os";
@@ -136426,12 +136427,15 @@ var DEFAULTS2 = {
   "artifact-name": "flowpact-contracts",
   "retention-days": "7",
   plugins: "auto",
+  "base-config": "",
+  plugin: "",
   impact: "off",
   "expected-impact": "",
   "base-ref": "",
   token: "${{ github.token }}",
   debug: "false"
 };
+var ACTION_DIR = resolve6(dirname3(fileURLToPath(import.meta.url)), "../../..");
 var UNTRUSTED_EVENTS = /* @__PURE__ */ new Set(["pull_request_target", "workflow_run"]);
 var SUMMARY_LIMIT = 1e6;
 var PATCH_FILE = "flowpact-contracts.patch";
@@ -136459,6 +136463,7 @@ function int2(name) {
     throw new InputError(`Input ${name} must be a non-negative integer (got "${value}")`);
   return Number(value);
 }
+var fromActionDir = (p) => isAbsolute5(p) ? p : resolve6(ACTION_DIR, p);
 function readInputs() {
   return {
     mode: oneOf("mode", ["lint", "check"]),
@@ -136477,6 +136482,8 @@ function readInputs() {
     artifactName: input2("artifact-name"),
     retentionDays: int2("retention-days"),
     plugins: pluginsAllowed(oneOf("plugins", ["auto", "true", "false"])),
+    baseConfig: input2("base-config") ? fromActionDir(input2("base-config")) : "",
+    extraPlugins: input2("plugin").split(/\r?\n/).map((p) => p.trim()).filter(Boolean).map(fromActionDir),
     impact: oneOf("impact", ["off", "auto", "on"]),
     ...input2("expected-impact") ? { expectedImpact: oneOf("expected-impact", ["none", "patch", "minor", "major"]) } : {},
     baseRef: input2("base-ref"),
@@ -136511,7 +136518,7 @@ function fetchRefs(root, refs, token, logger7) {
     }
   }
 }
-function impactSetup(root, config2, configPath, inputs, logger7) {
+function impactSetup(root, config2, configPath, baseConfig, inputs, logger7) {
   if (inputs.impact === "off") return {};
   const event = githubEvent();
   const auto2 = inputs.impact === "auto";
@@ -136543,6 +136550,7 @@ function impactSetup(root, config2, configPath, inputs, logger7) {
         ...event ? { event } : {},
         ...process.env.GITHUB_REPOSITORY ? { repository: process.env.GITHUB_REPOSITORY } : {},
         ...configPath ? { configPath } : {},
+        ...baseConfig ? { baseConfig } : {},
         fetch: (refs) => fetchRefs(root, refs, getInput("token"), logger7)
       },
       logger7
@@ -136746,8 +136754,19 @@ async function run() {
     const root = resolve6(workspace, inputs.workingDirectory);
     const rel = toPosix2(relative5(workspace, root));
     const prefix2 = rel === "" || rel === "." ? "" : rel;
-    const loaded = loadConfig(root, inputs.config ? resolve6(root, inputs.config) : void 0);
-    info(`mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}`);
+    const loaded = loadConfig(root, inputs.config ? resolve6(root, inputs.config) : void 0, {
+      ...inputs.baseConfig ? { base: inputs.baseConfig } : {}
+    });
+    info(
+      `mode ${inputs.mode} \xB7 root ${prefix2 || "."} \xB7 config ${loaded.file ?? "(defaults)"}${loaded.base ? ` \xB7 base ${loaded.base.file}` : ""}`
+    );
+    const inCheckout = (p) => insideRepository(workspace, p);
+    const extraPlugins = inputs.extraPlugins.filter((p) => inputs.plugins || !inCheckout(p));
+    if (extraPlugins.length < inputs.extraPlugins.length) {
+      warning(
+        `Not loading ${inputs.extraPlugins.length - extraPlugins.length} plugin(s) of the plugin input that are files in the checkout: plugins from the checkout do not run here (the plugins input).`
+      );
+    }
     if (!getInput("artifact-name").trim() && prefix2)
       inputs.artifactName = `flowpact-contracts-${slug(prefix2)}`;
     if (loaded.config.plugins.length && !inputs.plugins) {
@@ -136756,12 +136775,14 @@ async function run() {
     }
     const impact = await group2(
       "flowpact: impact baseline",
-      async () => impactSetup(root, loaded.config, inputs.config || void 0, inputs, logger7)
+      async () => impactSetup(root, loaded.config, inputs.config || void 0, loaded.base?.data, inputs, logger7)
     );
     if (impact.note) info(impact.note);
     const result = await group2(`flowpact ${inputs.mode}: analyze`, async () => {
       const registry2 = createRegistry();
       if (inputs.plugins) await loadPlugins(root, loaded.config, registry2, logger7);
+      if (extraPlugins.length)
+        await loadPlugins(root, { ...loaded.config, plugins: extraPlugins }, registry2, logger7);
       return analyze({
         root,
         config: loaded.config,

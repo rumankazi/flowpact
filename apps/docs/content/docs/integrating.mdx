@@ -1,12 +1,12 @@
 ---
 title: Build on flowpact
-description: Run flowpact inside your own action, CI template or tool — the interfaces that stay stable, a reference wrapper action, organization defaults and rules, and keeping the version current.
+description: Run flowpact under your organization's policies — a copy of the action, a plain run step or your own wrapper — with the interfaces that stay stable, organization defaults and rules, and keeping the version current.
 ---
 
-Organizations that cannot use a third-party action, or that want their own defaults, rules and reports, can wrap
-flowpact instead of forking it: an internal action or CI template that runs the CLI from npm. The wrapper owns the
-policy (rules, when to fail, where reports go); flowpact stays an unmodified dependency that you verify and update with
-a version bump.
+Organizations that cannot use a third-party action, or that want their own defaults, rules and reports, can run
+flowpact their way without forking it: [copy the action](#copy-the-action), [run the CLI in a step](#run-the-cli-in-a-step)
+or [write a composite action](#a-composite-action). The organization owns the policy (rules, when to fail, where reports
+go); flowpact stays unmodified, verified, and updated with a version bump.
 
 ## What is stable
 
@@ -29,9 +29,78 @@ Not stable: the terminal output and the wording of messages and Markdown reports
 JSON or SARIF instead), and the `@flowpact/*` packages inside the repository, which are not published. flowpact has no
 library API; the CLI is the interface.
 
-## A wrapper action
+## Copy the action
 
-An internal repository with a composite action that installs a pinned flowpact and runs it with your defaults:
+The flowpact action is a self-contained JavaScript action (`node24`): it uses no other actions and installs nothing
+when it runs. Each [release](https://github.com/rumankazi/flowpact/releases) has it as an archive,
+`flowpact-action-X.Y.Z.tar.gz`: `action.yml`, the bundle, its license notices and SBOM. Copy it into a repository of
+your organization, where your action policy allows it:
+
+```sh
+gh release download vX.Y.Z --repo rumankazi/flowpact --pattern 'flowpact-action-X.Y.Z.tar.gz'
+gh attestation verify flowpact-action-X.Y.Z.tar.gz --repo rumankazi/flowpact
+tar -xzf flowpact-action-X.Y.Z.tar.gz -C acme-flowpact   # a clone of your repository
+```
+
+Add your [defaults](#organization-defaults) and [rules](#organization-rules) next to it, and make them the defaults of
+its `base-config` and `plugin` inputs; relative paths are read from the action's own directory:
+
+```text
+acme/flowpact
+├── action.yml            # flowpact's, with the two defaults below
+├── packages/action/dist/ # the bundle, as released
+├── acme.base.yml
+└── rules/acme.mjs
+```
+
+```yaml title="action.yml (in your copy)"
+  base-config:
+    default: acme.base.yml
+  plugin:
+    default: rules/acme.mjs
+```
+
+Repositories then use `uses: acme/flowpact@<commit-sha>` with every input of the
+[GitHub Action](/docs/action). To update, copy the next archive the same way and keep the two defaults. The action
+reaches the network only in [impact mode](/docs/impact-mode) (a `git fetch` of the base commit) and to upload
+regenerated contracts, which GitHub Enterprise Server does not support (set `upload-contracts: false` there).
+
+## Run the CLI in a step
+
+A `run:` step is not an action, so no action policy applies to it. The CLI is a single file that needs only Node.js
+22 or later, which GitHub-hosted runners have:
+
+```yaml title=".github/workflows/flowpact.yml"
+jobs:
+  flowpact:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7 # pin to a commit SHA
+      - name: flowpact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FLOWPACT_VERSION: 0.9.0
+        run: |
+          gh release download "v$FLOWPACT_VERSION" --repo rumankazi/flowpact \
+            --pattern "flowpact-$FLOWPACT_VERSION.tgz" --dir "$RUNNER_TEMP"
+          gh attestation verify "$RUNNER_TEMP/flowpact-$FLOWPACT_VERSION.tgz" --repo rumankazi/flowpact
+          tar -xzf "$RUNNER_TEMP/flowpact-$FLOWPACT_VERSION.tgz" -C "$RUNNER_TEMP"
+          node "$RUNNER_TEMP/package/dist/index.js" lint --format github -o markdown:"$GITHUB_STEP_SUMMARY"
+```
+
+The step refuses to run a file whose [provenance](/docs/security#verify-a-release) does not verify. Without network
+access at run time, verify the file once and commit `package/dist/index.js` to an internal repository; the step is then
+`node tools/flowpact.js lint …`. Add `--base-config` and `--plugin` for your defaults and rules, and an organization
+[ruleset](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-workflows-to-pass-before-merging)
+can require such a workflow in every repository.
+
+## A composite action
+
+An internal repository with a composite action that installs a pinned flowpact and runs it with your defaults. It uses
+`actions/setup-node` and installs from npm when it runs, so where your policy allows only your organization's actions or
+blocks network access, [copy the action](#copy-the-action) or [run the CLI in a step](#run-the-cli-in-a-step) instead.
 
 ```text
 acme/flowpact-action
@@ -91,13 +160,12 @@ workspace), the paths in annotations, SARIF and Markdown links stay relative to 
 Without access to the npm registry, install the npm package from a release instead: each
 [GitHub release](https://github.com/rumankazi/flowpact/releases) has `flowpact-X.Y.Z.tgz` with build provenance.
 [Verify it](/docs/security#verify-a-release), commit it to the wrapper and depend on the file
-(`npm install --save-exact ./flowpact-X.Y.Z.tgz`). To run the flowpact action itself from an internal repository,
-mirror its release archive, `flowpact-action-X.Y.Z.tar.gz`, the same way.
+(`npm install --save-exact ./flowpact-X.Y.Z.tgz`).
 
 ## Organization defaults
 
 A [base config](/docs/configuration#base-config) holds settings for every repository, and each repository's own config
-goes on top of it. The wrapper passes it with `--base-config`:
+goes on top of it. Pass it with the action's `base-config` input or the CLI's `--base-config`:
 
 ```yaml title="acme.base.yml"
 rules:
@@ -121,13 +189,15 @@ repository's config and its defaults.
 
 ## Organization rules
 
-Write your rules as [plugins](/docs/custom-rules) and ship them in the wrapper, such as `rules/acme.mjs` with the
-`prod-deploy-needs-approval` rule from [Custom rules](/docs/custom-rules):
+Write your rules as [plugins](/docs/custom-rules) and ship them with your copy of the action or your wrapper, such as
+`rules/acme.mjs` with the `prod-deploy-needs-approval` rule from [Custom rules](/docs/custom-rules):
 
-- `--plugin <file>` loads a plugin in addition to those the repository's config lists. It is relative to the working
-  directory, and can be repeated.
-- `--no-plugins` skips the repository's plugins, which run the repository's code, but not the ones given with
-  `--plugin`. The wrapper's rules keep running on untrusted events.
+- The action's `plugin` input and the CLI's `--plugin <file>` load a plugin in addition to those the repository's
+  config lists (the input reads relative paths from the action's directory, the flag from the working directory; both
+  take several).
+- The repository's own plugins run the repository's code, so the action skips them on untrusted events
+  (`plugins: auto`) and the CLI with `--no-plugins`. Your rules keep running: the action skips a `plugin` file only
+  when it is in the checkout.
 - The base config sets how strict each rule is, and a repository can change that under `rules:` or accept a finding
   with an [override](/docs/configuration#overrides), like for built-in rules. Where the rule is not loaded (plain
   `flowpact lint`, the editor), those entries are [ignored with a warning](/docs/configuration#rules-that-are-not-loaded).
@@ -182,6 +252,8 @@ Renovate updates the wrapper's npm dependency, and pinned action references wher
 - `npm audit signatures` in the wrapper's CI checks that the installed version was published from this repository's
   release workflow.
 - Dependabot works the same way, with the `npm` and `github-actions` ecosystems.
+- A [copy of the action](#copy-the-action) or a [CLI run in a step](#run-the-cli-in-a-step) is updated by copying or
+  downloading the next release the same way, verified again; for the step, that is the `FLOWPACT_VERSION` line.
 
 ## Why not extends
 
