@@ -42617,7 +42617,7 @@ var import_yaml7 = __toESM(require_dist(), 1);
 
 // src/upload.ts
 import { createHash as createHash2, randomUUID as randomUUID2 } from "crypto";
-import { readFileSync as readFileSync4, statSync as statSync2 } from "fs";
+import { closeSync, fstatSync, openSync, readFileSync as readFileSync4 } from "fs";
 import { isAbsolute as isAbsolute5, relative as relative5, resolve as resolve5, sep as sep2 } from "path";
 import { Readable } from "stream";
 import { crc32, deflateRawSync } from "zlib";
@@ -42853,8 +42853,13 @@ async function uploadArtifact(name, files, rootDirectory, options = {}) {
     const entry = path.split(sep2).join("/");
     if (BAD_PATH.test(entry))
       throw new Error(`The path ${entry} contains one of " : < > | * ? or a line break`);
-    const stat2 = statSync2(file2);
-    return { name: entry, data: readFileSync4(file2), mode: stat2.mode, mtime: stat2.mtime };
+    const fd = openSync(file2, "r");
+    try {
+      const stat2 = fstatSync(fd);
+      return { name: entry, data: readFileSync4(fd), mode: stat2.mode, mtime: stat2.mtime };
+    } finally {
+      closeSync(fd);
+    }
   });
   const token = process.env.ACTIONS_RUNTIME_TOKEN;
   if (!token) throw new Error("Unable to get the ACTIONS_RUNTIME_TOKEN env variable");

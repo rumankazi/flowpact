@@ -6,7 +6,7 @@
  * honors the runner's proxy settings. The artifact holds a few small text files, so the zip is built in memory.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { closeSync, fstatSync, openSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { crc32, deflateRawSync } from 'node:zlib';
@@ -329,8 +329,14 @@ export async function uploadArtifact(
     const entry = path.split(sep).join('/');
     if (BAD_PATH.test(entry))
       throw new Error(`The path ${entry} contains one of " : < > | * ? or a line break`);
-    const stat = statSync(file);
-    return { name: entry, data: readFileSync(file), mode: stat.mode, mtime: stat.mtime };
+    // One open file for its metadata and contents, so they describe the same file.
+    const fd = openSync(file, 'r');
+    try {
+      const stat = fstatSync(fd);
+      return { name: entry, data: readFileSync(fd), mode: stat.mode, mtime: stat.mtime };
+    } finally {
+      closeSync(fd);
+    }
   });
 
   const token = process.env.ACTIONS_RUNTIME_TOKEN;

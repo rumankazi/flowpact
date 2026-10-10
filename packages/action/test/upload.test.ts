@@ -100,7 +100,10 @@ beforeEach(async () => {
         body: Buffer.concat(chunks),
         secrets: log.secrets.length,
       });
-      const reply = replies[endpoint]?.shift() ?? success[endpoint]();
+      // Only the service's own endpoints answer; anything else is a 404, as on the real service.
+      const fallback = Object.hasOwn(success, endpoint) ? success[endpoint] : undefined;
+      if (typeof fallback !== 'function') return void res.writeHead(404).end();
+      const reply = replies[endpoint]?.shift() ?? fallback();
       if (reply.hangUp) return void req.socket.destroy();
       if (reply.stall) return;
       res.writeHead(reply.status, reply.headers);
@@ -221,7 +224,9 @@ describe('uploadArtifact', () => {
 
     // The signed URL as given, with the block parameters after it; never the runtime token.
     expect(block.path).toBe('/blob/runs/flowpact-contracts.zip');
-    expect(block.query).toMatch(new RegExp(`^${SAS.replace(/[.+?]/g, '\\$&')}&comp=block&blockid=[^&]+$`));
+    expect(block.query).toMatch(
+      new RegExp(`^${SAS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}&comp=block&blockid=[^&]+$`),
+    );
     const id = new URLSearchParams(block.query).get('blockid')!;
     expect(Buffer.from(id, 'base64').toString()).toMatch(/^[0-9a-f-]{36}0{12}$/);
     expect(block.headers).toMatchObject({
