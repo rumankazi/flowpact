@@ -201,7 +201,7 @@ jobs:
   artifact-upload:
     # The contract drift artifact, uploaded for real and downloaded again; the same workflow also runs weekly.
     name: Artifact upload
-    uses: ./.github/workflows/artifact-upload.yml
+    uses: ./.github/workflows/_artifact-upload.yml
 
   ci-passed:
     # The only required status check: add new jobs to `needs` instead of changing the branch rules.
