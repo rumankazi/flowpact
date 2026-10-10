@@ -96,8 +96,8 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
    attested against it. Only when every one of them is on the release does it publish the release (a failed extension
    build keeps it a draft too), and only after that does it move the floating tag used by
    `uses: rumankazi/flowpact@v0.9` (before 1.0 one tag per minor line, because a 0.x minor may be breaking; from 1.0
-   the major, `v1`). With **immutable releases** enabled in the repository settings, a published release's tag and
-   assets cannot change, so what a mirror verified stays what was released.
+   the major, `v1`). **Immutable releases** are enabled in the repository settings (since 0.9.0 went out), so a
+   published release's tag and assets cannot change, and what a mirror verified stays what was released.
 
 If publishing fails after the tag exists, run the **Release** workflow manually with that tag, or re-run the failed
 jobs: assets already attached with their signature bundle and provenance are kept, the missing ones are added (an asset

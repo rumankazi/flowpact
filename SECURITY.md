@@ -39,6 +39,9 @@ Releases are published from GitHub Actions only:
   (`flowpact-action-<version>.tar.gz`), signed the same way, and a CycloneDX SBOM of each artifact, attested against
   that artifact (`gh attestation verify <artifact> --predicate-type https://cyclonedx.org/bom`); it is published only
   once every asset is attached, and never changed after that;
+- from the first release after 0.9.0, every release is a GitHub immutable release: its tag and files cannot change
+  once it is published, and GitHub attests them (`gh release verify <tag> --repo rumankazi/flowpact`,
+  `gh release verify-asset <tag> <file> --repo rumankazi/flowpact`);
 - release tags (`v*`) can only be created or moved by the release automation and maintainers.
 
 The [security page](https://rumankazi.github.io/flowpact/docs/security) describes what flowpact reads, writes and
