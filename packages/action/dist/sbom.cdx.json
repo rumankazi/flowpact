@@ -1,15 +1,15 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:eb392562-8244-5143-ac1b-39cfb147dad9",
+  "serialNumber": "urn:uuid:5fa8a34c-d886-545c-9510-a07fbe1c3fb5",
   "version": 1,
   "metadata": {
     "component": {
       "type": "application",
-      "bom-ref": "pkg:npm/flowpact-action@0.9.0",
+      "bom-ref": "pkg:npm/flowpact-action@0.10.0",
       "name": "flowpact-action",
-      "version": "0.9.0",
-      "purl": "pkg:npm/flowpact-action@0.9.0",
+      "version": "0.10.0",
+      "purl": "pkg:npm/flowpact-action@0.10.0",
       "licenses": [
         {
           "license": {
@@ -343,7 +343,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:npm/flowpact-action@0.9.0",
+      "ref": "pkg:npm/flowpact-action@0.10.0",
       "dependsOn": [
         "pkg:npm/%40actions/core@3.0.1",
         "pkg:npm/%40actions/exec@3.0.0",
