@@ -41,32 +41,43 @@ your organization, where your action policy allows it:
 ```sh
 gh release download vX.Y.Z --repo rumankazi/flowpact --pattern 'flowpact-action-X.Y.Z.tar.gz'
 gh attestation verify flowpact-action-X.Y.Z.tar.gz --repo rumankazi/flowpact
-tar -xzf flowpact-action-X.Y.Z.tar.gz -C acme-flowpact   # a clone of your repository
+tar -xzf flowpact-action-X.Y.Z.tar.gz -C acme-flowpact   # a clone of a new repository
 ```
 
+Give the copy a repository of its own: the archive has flowpact's `LICENSE` at its root, which stays with the copy and
+would replace a `LICENSE` already there.
+
 Add your [defaults](#organization-defaults) and [rules](#organization-rules) next to it, and make them the defaults of
-its `base-config` and `plugin` inputs (from the first release after 0.9.0); relative paths are read from the action's
-own directory:
+its `base-config` and `plugin` inputs (0.10.0 and later): change the `default: ''` those two inputs already have in
+`action.yml`. Relative paths are read from the action's own directory:
 
 ```text
 acme/flowpact
 ├── action.yml            # flowpact's, with the two defaults below
+├── LICENSE               # flowpact's
 ├── packages/action/dist/ # the bundle, as released
 ├── acme.base.yml
 └── rules/acme.mjs
 ```
 
-```yaml title="action.yml (in your copy)"
-  base-config:
-    default: acme.base.yml
-  plugin:
-    default: rules/acme.mjs
+```diff title="action.yml (in your copy)"
+   base-config:
+     description: …
+     required: false
+-    default: ''
++    default: acme.base.yml
+   plugin:
+     description: …
+     required: false
+-    default: ''
++    default: rules/acme.mjs
 ```
 
 Repositories then use `uses: acme/flowpact@<commit-sha>` with every input of the
 [GitHub Action](/docs/action). In a private or internal repository, first allow that under Settings → Actions → General
-→ Access. An empty `base-config` or `plugin` still means your defaults, but a workflow can set them to something else:
-to enforce the policy, require the workflow centrally ([below](#run-the-cli-in-a-step)). To update, copy the next
+→ Access. An empty `base-config` or `plugin` still means your defaults, but a workflow can set them to something else,
+and its `plugin` replaces your list rather than adding to it (list `rules/acme.mjs` with the workflow's own plugins).
+To enforce the policy, require the workflow centrally ([below](#run-the-cli-in-a-step)). To update, copy the next
 archive the same way and keep the two defaults. The action
 reaches the network only in [impact mode](/docs/impact-mode) (a `git fetch` of the base commit) and to upload
 regenerated contracts, which GitHub Enterprise Server does not support (set `upload-contracts: false` there).
@@ -96,7 +107,8 @@ jobs:
           node "$RUNNER_TEMP/package/dist/index.js" lint --format github -o markdown:"$GITHUB_STEP_SUMMARY"
 ```
 
-The step refuses to run a file whose [provenance](/docs/security#verify-a-release) does not verify. Without network
+The step refuses to run a file whose [provenance](/docs/security#verify-a-release) does not verify: `gh attestation
+verify` fails it, with `HTTP 404: Not Found` for a file that GitHub holds no attestation for. Without network
 access at run time, verify the tarball once and commit the extracted `package/` folder to an internal repository as
 `tools/flowpact/` (its own `package.json` keeps the code an ES module whatever `package.json` the repository has); the
 step is then `node tools/flowpact/dist/index.js lint …`. Add `--base-config` and `--plugin` for your defaults and rules.

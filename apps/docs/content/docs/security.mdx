@@ -87,14 +87,14 @@ If you do not use plugins, set `plugins: false` in the action.
   `flowpact-action-X.Y.Z.cdx.json`, `flowpact-vscode-X.Y.Z.cdx.json`).
 - **Published only once complete:** a release stays a draft until every signed asset and SBOM is attached, and a
   published release is never changed.
-- **Immutable:** from the first release after 0.9.0, every release is a GitHub
+- **Immutable:** from 0.10.0, every release is a GitHub
   [immutable release](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases):
   once published, its tag and files cannot change, and GitHub signs a release attestation of the tag, the commit and
   every file. Drafting first and publishing only once every file is attached is the flow GitHub recommends for it.
 - **Reproducible:** the action's bundle is committed, and CI fails when building it from source gives different bytes.
   The action archive and the `.vsix` are built deterministically from the tag.
 
-The action archive, the SBOMs and draft releases start with the first release after 0.8.2.
+The action archive, the SBOMs and draft releases start with 0.9.0.
 
 ## Verify a release
 
@@ -114,7 +114,7 @@ jq -S . flowpact-X.Y.Z.cdx.json | diff - attested.cdx.json
 # The npm package you installed is the one that was published with provenance:
 npm audit signatures
 
-# From the first release after 0.9.0: the release is immutable, and each file is the one GitHub attested for it:
+# From 0.10.0: the release is immutable, and each file is the one GitHub attested for it:
 gh release verify vX.Y.Z --repo rumankazi/flowpact
 gh release verify-asset vX.Y.Z flowpact-X.Y.Z.tgz --repo rumankazi/flowpact
 ```
