@@ -469,6 +469,8 @@ describe('errors', () => {
         empty: await failure(flowpact.lint({ root: ${JSON.stringify(empty)} })),
         missingPath: await failure(flowpact.lint({ root: clean, paths: ['nope.yml'] })),
         notAList: await failure(flowpact.lint({ root: clean, paths: 'ci.yml' })),
+        // What @actions/core getInput returns: refused, not read as true (which would run the repository's plugins).
+        stringBool: await failure(flowpact.lint({ root: ${JSON.stringify(root)}, repositoryPlugins: 'false' })),
         unknownRule: await failure(flowpact.explain('FP999')),
         unknownOnly: await failure(flowpact.lint({ root: clean, only: ['FP999'] })),
         noSymbol: await failure(flowpact.trace({ root: clean, symbol: 'nope.yml:x' })),
@@ -504,15 +506,21 @@ describe('errors', () => {
     expect(r.empty).toMatchObject({ kind: 'usage', message: expect.stringContaining('No workflows found') });
     expect(r.missingPath).toMatchObject({ kind: 'usage', message: expect.stringContaining('nope.yml') });
     expect(r.notAList).toMatchObject({ kind: 'usage', message: 'paths must be an array of strings' });
+    expect(r.stringBool).toMatchObject({
+      kind: 'usage',
+      message: 'repositoryPlugins must be true or false (got "false")',
+    });
     // The CLI adds where the list is.
     expect(r.unknownRule).toMatchObject({
       kind: 'usage',
       message: 'Unknown rule "FP999". Did you mean FP609?',
     });
     expect(r.unknownOnly).toMatchObject({ kind: 'config', issues: [expect.stringContaining('FP999')] });
+    // The files to trace instead are in the message; issues are for problems.
     expect(r.noSymbol).toMatchObject({
       kind: 'usage',
-      issues: ['.github/workflows/test.yml', '.github/actions/setup-node'],
+      message: expect.stringContaining('.github/workflows/test.yml, .github/actions/setup-node'),
+      issues: [],
     });
     expect(r.depth).toMatchObject({ kind: 'usage', message: 'depth must be a positive integer (got 0)' });
     expect(r.failOn).toMatchObject({ kind: 'usage', message: expect.stringContaining('failOn') });

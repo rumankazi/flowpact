@@ -2,7 +2,7 @@ import { jsonSafe } from '@flowpact/core';
 import { renderTrace } from '@flowpact/reporters';
 import { type ArgsDef, defineCommand } from 'citty';
 import pc from 'picocolors';
-import { FlowpactError } from '../lib/errors';
+import { NoSymbolMatchError } from '../lib/errors';
 import { traceSymbol } from '../lib/inspect';
 import { commonArgs, createContext, EXIT, guard, pluginArgs, printBanner, UsageError } from '../shared';
 
@@ -36,10 +36,10 @@ export const traceCommand = defineCommand({
         traced = await traceSymbol(ctx.session, { symbol: args.symbol, up: Boolean(args.up), depth });
       } catch (err) {
         // No match: the API lists the files that have an interface to trace; suggest commands for them.
-        if (!(err instanceof FlowpactError && err.kind === 'usage' && err.issues.length)) throw err;
+        if (!(err instanceof NoSymbolMatchError && err.traceable.length)) throw err;
         const c = pc.createColors(ctx.render.color);
         throw new UsageError(
-          `No symbol matches "${args.symbol}".\n${c.dim('Try a workflow file (to list its interface) such as:')}\n${err.issues
+          `No symbol matches "${args.symbol}".\n${c.dim('Try a workflow file (to list its interface) such as:')}\n${err.traceable
             .slice(0, 8)
             .map((f) => `  flowpact trace ${f}`)
             .join('\n')}`,

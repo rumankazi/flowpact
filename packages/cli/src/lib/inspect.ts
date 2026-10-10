@@ -11,8 +11,8 @@ import {
   trace,
 } from '@flowpact/core';
 import { buildCallGraph, type CallGraph } from '@flowpact/reporters';
-import { attempt, usage } from './errors';
-import { loadRegistry, type Session } from './session';
+import { attempt, NoSymbolMatchError, usage } from './errors';
+import { bool, loadRegistry, type Session } from './session';
 import { checkNotEmpty } from './targets';
 
 /** Which workflows call which reusable workflows and local actions. */
@@ -71,7 +71,7 @@ export async function traceSymbol(
       only: [],
     }),
   );
-  const direction: TraceDirection = options.up ? 'up' : 'down';
+  const direction: TraceDirection = bool('up', options.up) ? 'up' : 'down';
   const matches = resolveSymbols(analysis.index, query);
   if (matches.length === 0) {
     const unit = analysis.index.units().find((u) => u.path === query || u.path.endsWith(`/${query}`));
@@ -85,7 +85,7 @@ export async function traceSymbol(
     const files = [...analysis.project.workflows.keys(), ...analysis.project.actions.keys()].filter((f) =>
       traceable.has(f),
     );
-    throw usage(
+    throw new NoSymbolMatchError(
       files.length
         ? `No symbol matches "${query}". Workflows and actions with inputs, secrets or outputs: ${files.slice(0, 8).join(', ')}${files.length > 8 ? ', …' : ''}`
         : `No symbol matches "${query}", and no workflow or action here declares inputs, secrets or outputs.`,

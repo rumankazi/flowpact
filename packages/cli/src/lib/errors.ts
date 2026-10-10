@@ -31,6 +31,19 @@ export class FlowpactError extends Error {
   }
 }
 
+/**
+ * `trace` found no symbol: a usage error whose message names the files that have an interface to trace. The CLI turns
+ * `traceable` into suggested commands; `issues` stays for problems, so it is empty here.
+ */
+export class NoSymbolMatchError extends FlowpactError {
+  constructor(
+    message: string,
+    readonly traceable: string[],
+  ) {
+    super('usage', message);
+  }
+}
+
 /** The engine's expected errors as a FlowpactError; `plugin` for errors raised while loading plugins. */
 export function toFlowpactError(err: unknown, plugin = false): unknown {
   if (err instanceof FlowpactError) return err;

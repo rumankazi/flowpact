@@ -6,6 +6,25 @@ description: What changes between flowpact releases, and what to do when you mov
 flowpact is before 1.0: a minor release (0.7 → 0.8) can change what is reported. Each section below lists what to do
 when you move to that release.
 
+## 0.9 → 0.10
+
+0.10 is for organizations that build on flowpact: a [programmatic API](/docs/api) with a function per command, the
+action's `base-config` and `plugin` inputs for a [copy of the action](/docs/integrating#copy-the-action), and an action
+half the size. Nothing changes for workflows that use the action or the CLI as before.
+
+### Move to the new version
+
+- **GitHub Action:** `uses: rumankazi/flowpact@v0.10`. Before 1.0 the floating tag follows a minor release, so `@v0.9`
+  stays on 0.9.
+- **CLI:** `npx flowpact@0.10`, or update the dev dependency.
+- **VS Code:** the extension updates itself.
+
+### A vendored CLI is its whole package folder
+
+The npm package's `dist/index.js` now loads a second file next to it (code it shares with the API), so a copy of
+`dist/index.js` alone no longer runs. Keep the package's whole `package/` folder, as
+[Run the CLI in a step](/docs/integrating#run-the-cli-in-a-step) shows: `node tools/flowpact/dist/index.js lint …`.
+
 ## 0.8 → 0.9
 
 0.9 is for organizations that run flowpact in their own action or CI template ([Build on flowpact](/docs/integrating)):

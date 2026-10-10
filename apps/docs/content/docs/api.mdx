@@ -230,9 +230,11 @@ inputs:
     description: Fail the step on findings at this level (error, warning or never)
     default: error
   sarif:
-    description: Write SARIF for code scanning to this file, relative to the workspace (empty for none)
-    default: flowpact.sarif
+    description: Write SARIF for code scanning (its path is the sarif output)
+    default: 'true'
 outputs:
+  sarif:
+    description: The SARIF file, for github/codeql-action/upload-sarif
   errors:
     description: Number of errors
   warnings:
@@ -241,16 +243,16 @@ outputs:
     description: The regenerated contracts as a patch, when they drifted (check)
 runs:
   using: node24
-  main: dist/index.js
+  main: dist/index.mjs
 ```
 
 ```js title="src/main.js"
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as core from '@actions/core';
 import { check, FlowpactError, lint } from 'flowpact';
 
-// This file runs as dist/index.js; the defaults and rules ship next to it, in the action's directory.
+// This file runs as dist/index.mjs; the defaults and rules ship next to it, in the action's directory.
 const action = join(import.meta.dirname, '..');
 // The repository's own plugins run its code: not on events that run a fork's code with secrets.
 const UNTRUSTED = ['pull_request_target', 'workflow_run'];
@@ -278,11 +280,12 @@ try {
   const repoUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}`;
   await core.summary.addRaw(analysis.markdown({ title: 'Acme flowpact', repoUrl, sha: GITHUB_SHA })).write();
 
-  // SARIF for code scanning, and the regenerated contracts as a patch when they drifted (check).
-  const sarif = core.getInput('sarif');
-  if (sarif) {
-    mkdirSync(dirname(resolve(workspace, sarif)), { recursive: true });
-    writeFileSync(resolve(workspace, sarif), analysis.sarif());
+  // SARIF for code scanning, and the regenerated contracts as a patch when they drifted (check). Both go to
+  // RUNNER_TEMP, not the checkout, where a pull request could have committed a symlink in their place.
+  if (core.getBooleanInput('sarif')) {
+    const file = join(process.env.RUNNER_TEMP, 'flowpact.sarif');
+    writeFileSync(file, analysis.sarif());
+    core.setOutput('sarif', file);
   }
   const patch = analysis.contracts?.patch();
   if (patch) {
@@ -312,18 +315,19 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node24',
-  outfile: 'dist/index.js',
+  // .mjs: an ES module whatever package.json the action's repository has.
+  outfile: 'dist/index.mjs',
   // Some of @actions/core's dependencies are CommonJS and call require().
   banner: { js: "import { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);" },
 });
 ```
 
-From one run, this gives the annotations, the job summary, the SARIF file for `github/codeql-action/upload-sarif`, a
-failed step at `fail-on`, the patch when contracts drifted, and the counts as outputs. Repositories use it after
+From one run, this gives the annotations, the job summary, the SARIF file for `github/codeql-action/upload-sarif` (its
+path is the `sarif` output), a failed step at `fail-on`, the patch when contracts drifted, and the counts as outputs. Repositories use it after
 `actions/checkout`, as `uses: acme/flowpact-action@<commit-sha>`.
 
 - [`@vercel/ncc`](https://github.com/vercel/ncc) works as well: `ncc build src/main.js -o dist` writes `dist/index.js` and
-  a `dist/package.json` that marks it as an ES module; commit both.
+  a `dist/package.json` that marks it as an ES module; commit both, and point `main` at `dist/index.js`.
 - A bundler's license report lists flowpact as one package. flowpact's own notices and SBOM list what it bundles: copy
   `node_modules/flowpact/dist/THIRD_PARTY_LICENSES.txt` and `sbom.cdx.json` next to yours.
 - When flowpact is updated (Renovate or Dependabot, as in [Keeping it current](/docs/integrating#keeping-it-current)),

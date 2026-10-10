@@ -12,7 +12,7 @@ import {
   writeContracts,
 } from '@flowpact/core';
 import { attempt, usage } from './errors';
-import { loadRegistry, type Session, stringList } from './session';
+import { bool, loadRegistry, type Session, stringList } from './session';
 import { checkNotEmpty, checkTargets, protectedTrees } from './targets';
 
 export interface GenerateOptions {
@@ -83,7 +83,9 @@ export async function runGenerate(
   const plan = result.project.targets.size > 0 ? scopePlan(all, contractsInScope(result.index)) : all;
   const out = options.out ? resolve(process.cwd(), options.out) : undefined;
   // Every target is checked before anything is written, so a refusal leaves the repository as it was.
-  const written = options.dryRun ? [] : attempt(() => writeContracts(root, plan, out, protectedTrees(root)));
+  const written = bool('dryRun', options.dryRun)
+    ? []
+    : attempt(() => writeContracts(root, plan, out, protectedTrees(root)));
   return {
     drift: plan.drift,
     breaking: plan.breaking,

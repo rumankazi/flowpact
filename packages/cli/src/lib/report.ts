@@ -22,7 +22,7 @@ import {
   renderSarif,
 } from '@flowpact/reporters';
 import { attempt, usage } from './errors';
-import { loadRegistry, oneOf, type Session, stringList } from './session';
+import { bool, loadRegistry, oneOf, type Session, stringList } from './session';
 import { checkNotEmpty, checkTargets } from './targets';
 
 export type ReportCommand = 'lint' | 'check' | 'impact';
@@ -135,7 +135,7 @@ export async function runReport(
   const { root, loaded, logger } = session;
   const notes: string[] = [];
   let impact: PreparedImpact | undefined;
-  if (command === 'impact' || options.impact) {
+  if (command === 'impact' || bool('impact', options.impact)) {
     impact = setupImpact(session, {
       ...(options.base !== undefined ? { base: options.base } : {}),
       ...(expect ? { expect } : {}),
@@ -159,7 +159,7 @@ export async function runReport(
       registry,
       ...(options.now ? { now: options.now } : {}),
       paths: command === 'impact' ? [] : paths,
-      validateSchema: command === 'impact' ? false : options.schema !== false,
+      validateSchema: command === 'impact' ? false : bool('schema', options.schema) !== false,
       checkContracts: command === 'check',
       ...(command === 'impact' && !only ? { only: [...IMPACT_CODES] } : only ? { only } : {}),
       ...(impact && 'options' in impact ? { impact: impact.options } : {}),

@@ -58,6 +58,16 @@ export function stringList(name: string, value: unknown): string[] | undefined {
   return value as string[];
 }
 
+/**
+ * A boolean, or a usage error naming the option. A JavaScript caller may pass what `@actions/core` getInput returns,
+ * the string "false", which must not count as true (for `repositoryPlugins`, that would run the repository's code).
+ */
+export function bool(name: string, value: unknown): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'boolean') throw usage(`${name} must be true or false (got ${JSON.stringify(value)})`);
+  return value;
+}
+
 /** One of `options`, or a usage error naming the option. */
 export function oneOf<T extends string>(name: string, value: unknown, options: readonly T[]): T | undefined {
   if (value === undefined) return undefined;
@@ -88,7 +98,7 @@ export function openSession(options: CommonOptions & PluginOptions = {}): Sessio
     logger,
     loaded,
     plugins: {
-      config: options.repositoryPlugins !== false,
+      config: bool('repositoryPlugins', options.repositoryPlugins) !== false,
       extra: (stringList('plugins', options.plugins) ?? []).map((p) => resolve(process.cwd(), p)),
     },
   };
