@@ -89,8 +89,9 @@ async function cli(args: string[], env: Record<string, string> = {}) {
 }
 
 /** Timings differ between runs. */
+/** Output without its timings. In the terminal summary box, the padding after them depends on their width too. */
 const untimed = (s: string) =>
-  s.replace(/\d+ ms\b/g, 'N ms').replace(/"durationMs": \d+/g, '"durationMs": 0');
+  s.replace(/\d+ ms\b */g, 'N ms ').replace(/"durationMs": \d+/g, '"durationMs": 0');
 
 function copy(name: string): string {
   const root = mkdtempSync(join(tmpdir(), 'flowpact-api-repo-'));
