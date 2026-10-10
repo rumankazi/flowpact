@@ -4,6 +4,16 @@ All notable changes to flowpact (called wfc before 0.2.0) are documented here. T
 [Semantic Versioning](https://semver.org/). Rule codes (`FPnnn`) are stable: a code never changes meaning, and removed
 codes are not reused. They were renamed once, from `WFCnnn` to `FPnnn` with the same numbers, in 0.2.0.
 
+## [0.10.1](https://github.com/rumankazi/flowpact/compare/v0.10.0...v0.10.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **action:** name the plugin input's files that a run skips, and why ([#82](https://github.com/rumankazi/flowpact/issues/82)) ([fd6c359](https://github.com/rumankazi/flowpact/commit/fd6c3592ccfc53c3e460b620e90a20cf1e5d1f44))
+* **action:** print no empty impact baseline group when impact mode does not run ([#82](https://github.com/rumankazi/flowpact/issues/82)) ([fd6c359](https://github.com/rumankazi/flowpact/commit/fd6c3592ccfc53c3e460b620e90a20cf1e5d1f44))
+* **action:** warn when a copy of the action has an action.yml that cannot be read, instead of ignoring its defaults ([#82](https://github.com/rumankazi/flowpact/issues/82)) ([fd6c359](https://github.com/rumankazi/flowpact/commit/fd6c3592ccfc53c3e460b620e90a20cf1e5d1f44))
+* **cli:** publish the npm package without devDependencies and scripts, so a vendored copy works in an npm workspace ([#82](https://github.com/rumankazi/flowpact/issues/82)) ([fd6c359](https://github.com/rumankazi/flowpact/commit/fd6c3592ccfc53c3e460b620e90a20cf1e5d1f44))
+
 ## [0.10.0](https://github.com/rumankazi/flowpact/compare/v0.9.0...v0.10.0) (2026-10-10)
 
 
